@@ -1,0 +1,28 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Node 14
+      uses: actions/setup-node@v3
+      with:
+        node-version: 14        
+
+    - name: Build & Test
+      run: |
+        npm ci 
+        npm run build
+        npm run test
+      

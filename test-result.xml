@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+    <testsuite name="suitename" timestamp="2022-07-29T08:26:42+01:00" hostname="url" tests="0" failures="0"  errors="0"  time="0">
+        <properties>
+            <property name="outcome" value="Passed"/>
+            <property name="testsRan" value="0"/>
+            <property name="passing" value="0"/>
+            <property name="failing" value="0"/>
+            <property name="skipped" value="0"/>
+            <property name="passRate" value="NaN%"/>
+            <property name="failRate" value="NaN%"/>
+            <property name="testStartTime" value="Jul 29, 2022 8:26 AM"/>
+            <property name="testExecutionTime" value="0 s"/>
+            <property name="testTotalTime" value="1948.33 s"/>
+            <property name="commandTime" value="11388.94 s"/>
+            <property name="hostname" value="url"/>
+            <property name="orgId" value="orgId"/>
+            <property name="username" value="username"/>
+            <property name="testRunId" value="7078A00002dmvpfQAA"/>
+            <property name="userId" value="0058A00000AXZfQQAX"/>
+        </properties>
+    </testsuite>
+</testsuites>

@@ -1,0 +1,22 @@
+{
+  "summary": {
+    "outcome": "Passed",
+    "testsRan": "0",
+    "passing": "0",
+    "failing": "0",
+    "skipped": "0",
+    "passRate": "NaN%",
+    "failRate": "NaN%",
+    "testStartTime": "Jul 29, 2022 8:26 AM",
+    "testExecutionTime": "0 ms",
+    "testTotalTime": "1948325 ms",
+    "commandTime": "11388944 ms",
+    "hostname": "url",
+    "orgId": "orgId",
+    "username": "username",
+    "testRunId": "7078A00002dmvpfQAA",
+    "userId": "0058A00000AXZfQQAX"
+  },
+  "tests": 
+    ]
+}
