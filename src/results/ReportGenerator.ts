@@ -17,7 +17,7 @@ import { OutputGenerator } from './OutputGenerator';
 import moment from 'moment';
 import { Logger } from '../log/Logger';
 
-export default class ReportGenerator implements OutputGenerator {
+export class ReportGenerator implements OutputGenerator {
   private instanceUrl: string;
   private orgId: string;
   private username: string;

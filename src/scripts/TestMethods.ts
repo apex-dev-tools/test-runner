@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 /* istanbul ignore file */
+/*
+ * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
+ */
 
 import { Connection, AuthInfo } from '@apexdevtools/sfdx-auth-helper';
 import { OrgTestMethodCollector } from '../collector/TestMethodCollector';

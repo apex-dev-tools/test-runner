@@ -8,7 +8,7 @@ import {
 } from '@apexdevtools/sfdx-auth-helper/lib/src/testSetup';
 import { createSandbox, SinonSandbox } from 'sinon';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
-import ReportGenerator from '../../src/results/ReportGenerator';
+import { ReportGenerator } from '../../src/results/ReportGenerator';
 import moment from 'moment';
 
 const $$ = testSetup();

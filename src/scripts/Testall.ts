@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 /* istanbul ignore file */
+/*
+ * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
+ */
 
 import { Connection, AuthInfo, fs } from '@apexdevtools/sfdx-auth-helper';
 import { OrgTestMethodCollector } from '../collector/TestMethodCollector';
 import { Testall } from '../command/Testall';
 import { BaseLogger } from '../log/BaseLogger';
-import ReportGenerator from '../results/ReportGenerator';
+import { ReportGenerator } from '../results/ReportGenerator';
 import { AsyncTestRunner } from '../runner/TestRunner';
 
 async function getConnection(username: string): Promise<Connection> {
