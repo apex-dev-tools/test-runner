@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
+/* istanbul ignore file */
 export { Testall, TestallOptions } from './command/Testall';
 
 export {

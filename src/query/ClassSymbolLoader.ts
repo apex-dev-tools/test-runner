@@ -58,22 +58,25 @@ export class ClassSymbolLoader {
     });
 
     // See comment above for why we don't care about return on this
-    if (failedIds.length > 0)
+    if (failedIds.length > 0) {
       await this.queryApexClassesWithBodySOAP(failedIds);
 
-    // Try again for missing SymbolTables
-    let missing = 0;
-    const classInfoAgain = await this.queryApexClassesWithSymbolsREST(classIds);
-    classInfoAgain.forEach(cls => {
-      if (cls.SymbolTable == null) {
-        missing += 1;
-      }
-      results.push(cls);
-    });
-    if (missing > 0)
-      this.logger.logWarning(
-        `Failed to find symbol tables for ${missing} classes`
+      // Try again for missing SymbolTables
+      const classInfoAgain = await this.queryApexClassesWithSymbolsREST(
+        failedIds
       );
+      let missing = 0;
+      classInfoAgain.forEach(cls => {
+        if (cls.SymbolTable == null) {
+          missing += 1;
+        }
+        results.push(cls);
+      });
+      if (missing > 0)
+        this.logger.logWarning(
+          `Failed to find symbol tables for ${missing} classes`
+        );
+    }
 
     return results;
   }

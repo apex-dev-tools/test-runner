@@ -79,8 +79,9 @@ export abstract class BaseLogger implements Logger {
   }
 
   logTestRetry(result: ApexTestResult): void {
+    const name = `${result.ApexClass.Name}.${result.MethodName}`;
     this.logMessage(
-      `${result.MethodName} re-run sequentially due to failure, outcome=${result.Outcome}`
+      `${name} re-run sequentially due to locking, outcome=${result.Outcome}`
     );
   }
 

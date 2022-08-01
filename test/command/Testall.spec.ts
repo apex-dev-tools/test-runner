@@ -287,7 +287,9 @@ describe('messages', () => {
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
     expect(logger.entries[1]).to.match(
-      logRegex('testMethod re-run sequentially due to failure, outcome=Pass')
+      logRegex(
+        'FooClass.testMethod re-run sequentially due to locking, outcome=Pass'
+      )
     );
   });
 
@@ -349,7 +351,9 @@ describe('messages', () => {
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
     expect(logger.entries[1]).to.match(
-      logRegex('testMethod re-run sequentially due to failure, outcome=Fail')
+      logRegex(
+        'FooClass.testMethod re-run sequentially due to locking, outcome=Fail'
+      )
     );
   });
 
