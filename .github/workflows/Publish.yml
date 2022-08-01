@@ -12,13 +12,17 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 14
-          registry-url: 'https://registry.npmjs.org'        
+          registry-url: 'https://registry.npmjs.org'
+
+      - uses: pnpm/action-setup@v2.2.2
+        with:
+          version: 7.5.2
 
       - run: |
-          npm ci
-          npm run build
-          npm run test
-          npm publish --access public
+          pnpm install
+          pnpm build
+          pnpm test
+          pnpm publish --access public
 
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
