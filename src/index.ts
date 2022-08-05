@@ -13,3 +13,6 @@ export { TestRunner, AsyncTestRunner } from './runner/TestRunner';
 
 export { OutputGenerator } from './results/OutputGenerator';
 export { ReportGenerator } from './results/ReportGenerator';
+
+export { BaseLogger } from './log/BaseLogger';
+export { CapturingLogger } from './log/CapturingLogger';
