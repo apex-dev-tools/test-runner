@@ -26,7 +26,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nawforce/apex-link-gulp.git"
+    "url": "git+https://github.com/apex-dev-tools/test-runner.git"
   },
   "engines": {
     "node": ">=14.0"
@@ -37,9 +37,9 @@
     "apexlink"
   ],
   "bugs": {
-    "url": "https://github.com/nawforce/apex-link-gulp/issues"
+    "url": "https://github.com/apex-dev-tools/test-runner/issues"
   },
-  "homepage": "https://github.com/nawforce/apex-link-gulp#readme",
+  "homepage": "https://github.com/apex-dev-tools/test-runner#readme",
   "pnpm": {
     "overrides": {
       "@salesforce/apex-node@0.13.0>@salesforce/core": "npm:@apexdevtools/sfdx-auth-helper@1.0.5"
