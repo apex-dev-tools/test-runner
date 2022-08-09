@@ -14,7 +14,7 @@ export interface ApexClassInfo {
   SymbolTable: any;
 }
 
-export const MAX_SYMBOLS_CHUNK_SIZE = 200;
+export const MAX_SYMBOLS_CHUNK_SIZE = 100;
 
 export class ClassSymbolLoader {
   private logger: Logger;
