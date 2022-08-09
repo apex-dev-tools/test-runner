@@ -180,7 +180,7 @@ export class ReportGenerator implements OutputGenerator {
       const success = test.Outcome === 'Pass';
       let classname = test.ApexClass.Name;
       if (test.ApexClass.NamespacePrefix) {
-        classname = test.ApexClass.NamespacePrefix + classname;
+        classname = test.ApexClass.NamespacePrefix + '.' + classname;
       }
       junit += `        <testcase name="${
         test.MethodName

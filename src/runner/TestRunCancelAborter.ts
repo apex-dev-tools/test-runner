@@ -12,6 +12,7 @@ import {
   TestRunAborter,
 } from './TestOptions';
 import { QueryHelper } from '../query/QueryHelper';
+import { chunk } from '../query/Chunk';
 
 export class TestRunCancelAborter implements TestRunAborter {
   async abortRun(
@@ -28,7 +29,7 @@ export class TestRunCancelAborter implements TestRunAborter {
       `Status IN ('Holding', 'Queued', 'Preparing', 'Processing') AND ParentJobId='${testRunId}'`,
       'Id'
     );
-    const chunks = this.chunk(apexQueueItems, 1000);
+    const chunks = chunk(apexQueueItems, 1000);
     for (const chunk of chunks) {
       const ids = chunk.map(item => `'${item.Id}'`).join(',');
 
@@ -102,13 +103,6 @@ export class TestRunCancelAborter implements TestRunAborter {
       }
       throw err;
     }
-  }
-
-  private chunk<A>(xs: Array<A>, chunkSize: number): A[][] {
-    const accum = [];
-    for (let i = 0; i < xs.length; i += chunkSize)
-      accum.push(xs.slice(i, i + chunkSize));
-    return accum;
   }
 }
 
