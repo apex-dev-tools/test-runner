@@ -10,6 +10,7 @@ import {
   ClassSymbolLoader,
   MAX_SYMBOLS_CHUNK_SIZE,
 } from '../query/ClassSymbolLoader';
+import { chunk } from '../query/Chunk';
 
 export interface TestMethodCollector {
   classIdNameMap(): Promise<Map<string, string>>;
@@ -38,17 +39,33 @@ export class OrgTestMethodCollector implements TestMethodCollector {
 
   async classIdNameMap(): Promise<Map<string, string>> {
     if (this.classNameById == null) {
-      const classes = this.classNames.map(name => `'${name}'`).join(', ');
+      let apexClasses: ApexClassInfo[] = [];
 
-      const apexClasses = await QueryHelper.instance(
-        this.connection
-      ).query<ApexClassInfo>(
-        'ApexClass',
-        `NamespacePrefix=${
-          this.namespace === '' ? 'null' : `'${this.namespace}'`
-        } ${classes.length > 0 ? `AND Name in (${classes})` : ''}`,
-        'Id, Name'
-      );
+      if (this.classNames.length == 0) {
+        apexClasses = await QueryHelper.instance(
+          this.connection
+        ).query<ApexClassInfo>(
+          'ApexClass',
+          `NamespacePrefix=${
+            this.namespace === '' ? 'null' : `'${this.namespace}'`
+          }`,
+          'Id, Name'
+        );
+      } else {
+        const chunks = chunk(this.classNames, 200);
+        for (const chunk of chunks) {
+          const classes = chunk.map(name => `'${name}'`).join(', ');
+          apexClasses = apexClasses.concat(
+            await QueryHelper.instance(this.connection).query<ApexClassInfo>(
+              'ApexClass',
+              `NamespacePrefix=${
+                this.namespace === '' ? 'null' : `'${this.namespace}'`
+              } ${classes.length > 0 ? `AND Name in (${classes})` : ''}`,
+              'Id, Name'
+            )
+          );
+        }
+      }
 
       this.classNameById = new Map(
         apexClasses.map(record => [record.Id, record.Name])
@@ -66,7 +83,7 @@ export class OrgTestMethodCollector implements TestMethodCollector {
     );
 
     const classNamesByIds = await this.classIdNameMap();
-    const chunks = this.chunk(
+    const chunks = chunk(
       Array.from(classNamesByIds.keys()),
       MAX_SYMBOLS_CHUNK_SIZE
     );
@@ -103,12 +120,5 @@ export class OrgTestMethodCollector implements TestMethodCollector {
     }
 
     return testMethodsByClassName;
-  }
-
-  private chunk<A>(xs: Array<A>, chunkSize: number): A[][] {
-    const accum = [];
-    for (let i = 0; i < xs.length; i += chunkSize)
-      accum.push(xs.slice(i, i + chunkSize));
-    return accum;
   }
 }

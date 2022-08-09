@@ -109,6 +109,35 @@ describe('messages', () => {
     expect(classNameById.get('An Id') === 'FooClass');
   });
 
+  it('should create map of passed large class ids to names', async () => {
+    const mockApexClasses: ApexClassInfo[] = [];
+    for (let i = 0; i < 500; i++) {
+      mockApexClasses.push({
+        Id: `Id${i}`,
+        Name: `Foo${i}`,
+        SymbolTable: null,
+      });
+    }
+
+    queryHelperStub.onCall(0).resolves(mockApexClasses.slice(0, 200));
+    queryHelperStub.onCall(1).resolves(mockApexClasses.slice(200, 400));
+    queryHelperStub.onCall(2).resolves(mockApexClasses.slice(400));
+
+    const testMethodCollector = new OrgTestMethodCollector(
+      new CapturingLogger(mockConnection, false),
+      mockConnection,
+      'foo',
+      mockApexClasses.map(cls => cls.Name)
+    );
+    const classNameById = await testMethodCollector.classIdNameMap();
+
+    expect(classNameById.size === 500);
+    expect(classNameById.has('Id0'));
+    expect(classNameById.get('Id0') === 'Foo0');
+    expect(classNameById.has('Id499'));
+    expect(classNameById.get('Id499') === 'Foo499');
+  });
+
   it('should collect test methods from REST query', async () => {
     const mockApexClasses: ApexClassInfo[] = [
       {
