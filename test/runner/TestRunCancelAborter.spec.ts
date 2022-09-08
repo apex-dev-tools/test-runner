@@ -106,7 +106,7 @@ describe('messages', () => {
     try {
       const aborter = new TestRunCancelAborter();
       await aborter.abortRun(logger, mockConnection, testRunId);
-      expect(false);
+      expect.fail('Missing exception');
     } catch (err) {
       error = err;
     }
@@ -155,7 +155,7 @@ describe('messages', () => {
         cancelPollTimoutMins: 0, // Just for test, to ensure timeout
         cancelPollIntervalMs: 100,
       });
-      expect(false);
+      expect.fail('Missing exception');
     } catch (err) {
       error = err;
     }
@@ -189,7 +189,7 @@ describe('messages', () => {
     try {
       const aborter = new TestRunCancelAborter();
       await aborter.abortRun(logger, mockConnection, testRunId);
-      expect(false);
+      expect.fail('Missing exception');
     } catch (err) {
       error = err;
     }

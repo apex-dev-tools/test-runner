@@ -8,8 +8,9 @@ import {
 } from '@apexdevtools/sfdx-auth-helper/lib/src/testSetup';
 import { createSandbox, SinonSandbox } from 'sinon';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
-import { ReportGenerator } from '../../src/results/ReportGenerator';
 import moment from 'moment';
+import { ClassTimeGenerator } from '../../src/results/ClassTimeGenerator';
+import { SfDate } from 'jsforce';
 import { expect } from 'chai';
 
 const $$ = testSetup();
@@ -41,12 +42,12 @@ describe('messages', () => {
     sandboxStub.restore();
   });
 
-  it('should create json & xml output on failing report', () => {
-    const generator = new ReportGenerator(
+  it('should create csv output', () => {
+    const now = Date.now();
+    const generator = new ClassTimeGenerator(
       'instanceUrl',
       'orgId',
-      'username',
-      'suitename'
+      'username'
     );
 
     const logger = new CapturingLogger(mockConnection, true);
@@ -69,7 +70,7 @@ describe('messages', () => {
           Message: null,
           StackTrace: null,
           RunTime: 10,
-          TestTimestamp: '',
+          TestTimestamp: SfDate.toDateTimeLiteral(now).toString(),
         },
         {
           Id: 'An id',
@@ -85,7 +86,7 @@ describe('messages', () => {
           Message: null,
           StackTrace: null,
           RunTime: 20,
-          TestTimestamp: '',
+          TestTimestamp: SfDate.toDateTimeLiteral(now + 1000).toString(),
         },
         {
           Id: 'An id',
@@ -101,7 +102,7 @@ describe('messages', () => {
           Message: null,
           StackTrace: null,
           RunTime: 20,
-          TestTimestamp: '',
+          TestTimestamp: SfDate.toDateTimeLiteral(now + 2000).toString(),
         },
         {
           Id: 'An id',
@@ -117,7 +118,7 @@ describe('messages', () => {
           Message: 'A message',
           StackTrace: 'Stack info',
           RunTime: 20,
-          TestTimestamp: '',
+          TestTimestamp: SfDate.toDateTimeLiteral(now + 3000).toString(),
         },
       ],
       {
@@ -135,63 +136,16 @@ describe('messages', () => {
       }
     );
 
-    expect(logger.files.length).to.be.equal(2);
-    expect(logger.files[0][0]).to.be.equal('test-output.xml');
-    expect(logger.files[0][1].length > 0).to.be.true;
-    expect(logger.files[1][0]).to.be.equal('test-output.json');
-    expect(logger.files[1][1].length > 0).to.be.true;
-  });
+    expect(logger.files.length).to.equal(1);
+    expect(logger.files[0][0]).to.equal('test-output-time.csv');
+    expect(logger.files[0][1].length).not.to.equal(0);
 
-  it('should create json & xml output on passing report', () => {
-    const generator = new ReportGenerator(
-      'instanceUrl',
-      'orgId',
-      'username',
-      'suitename'
-    );
-
-    const logger = new CapturingLogger(mockConnection, true);
-    generator.generate(
-      logger,
-      'test-output',
-      moment(),
-      [
-        {
-          Id: 'An id',
-          QueueItemId: 'queue item id',
-          AsyncApexJobId: 'job id',
-          Outcome: 'Pass',
-          ApexClass: {
-            Id: 'Class Id',
-            Name: 'Class1',
-            NamespacePrefix: null,
-          },
-          MethodName: 'Method1',
-          Message: null,
-          StackTrace: null,
-          RunTime: 10,
-          TestTimestamp: '',
-        },
-      ],
-      {
-        AsyncApexJobId: 'job Id',
-        StartTime: '2020-07-10 15:00:00.000',
-        EndTime: '2020-07-10 15:01:00.000',
-        Status: 'Status',
-        TestTime: 1000,
-        UserId: 'user Id',
-        ClassesCompleted: 100,
-        ClassesEnqueued: 99,
-        MethodsCompleted: 500,
-        MethodsEnqueued: 600,
-        MethodsFailed: 0,
-      }
-    );
-
-    expect(logger.files.length).to.be.equal(2);
-    expect(logger.files[0][0]).to.be.equal('test-output.xml');
-    expect(logger.files[0][1].length > 0).to.be.true;
-    expect(logger.files[1][0]).to.be.equal('test-output.json');
-    expect(logger.files[1][1].length > 0).to.be.true;
+    const lines = logger.files[0][1].split('\n');
+    expect(lines.length).to.equal(5);
+    expect(lines[0]).to.equal('ClassName, StartTime, EndTime, TotalTime');
+    expect(lines[1]).to.equal('# instanceUrl orgId username');
+    expect(lines[2]).to.match(/Class1, [0-9]*, [0-9]*, 10/);
+    expect(lines[3]).to.match(/Class3, [0-9]*, [0-9]*, 40/);
+    expect(lines[4]).to.match(/Class2, [0-9]*, [0-9]*, 20/);
   });
 });

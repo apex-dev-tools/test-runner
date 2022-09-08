@@ -17,4 +17,5 @@ export interface ApexTestResult {
   Message: string | null;
   StackTrace: string | null;
   RunTime: number;
+  TestTimestamp: string;
 }

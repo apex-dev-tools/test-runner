@@ -60,13 +60,13 @@ export class Testall {
     namespace: string,
     methodCollector: TestMethodCollector,
     runner: TestRunner,
-    outputGenerator: OutputGenerator,
+    outputGenerators: OutputGenerator[],
     options: TestallOptions
   ): Promise<void> {
     try {
       logger.logTestallStart(options);
       const cmd = new Testall(logger, connection, namespace, options);
-      await cmd.run(runner, methodCollector, outputGenerator);
+      await cmd.run(runner, methodCollector, outputGenerators);
     } catch (e) {
       logger.logError(e);
       throw e;
@@ -88,7 +88,7 @@ export class Testall {
   public async run(
     runner: TestRunner,
     methodCollector: TestMethodCollector,
-    outputGenerator: null | OutputGenerator
+    outputGenerators: OutputGenerator[]
   ): Promise<void> {
     const startTime = moment();
 
@@ -117,15 +117,15 @@ export class Testall {
     await this.runSequentially(testResults.locked);
 
     // Reporting
-    if (outputGenerator != null) {
+    outputGenerators.forEach(outputGenerator =>
       outputGenerator.generate(
         this._logger,
         getOutputFileBase(this._options),
         startTime,
         Array.from(results.values()),
         runResult
-      );
-    }
+      )
+    );
   }
 
   public async asyncRun(

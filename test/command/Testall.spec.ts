@@ -82,14 +82,14 @@ describe('messages', () => {
         '',
         testMethods,
         runner,
-        new MockOutputGenerator(),
+        [new MockOutputGenerator()],
         {}
       );
     } catch (err) {
       // Ignore
     }
 
-    expect(logger.entries.length == 4);
+    expect(logger.entries.length).to.be.equal(4);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
@@ -117,14 +117,14 @@ describe('messages', () => {
         '',
         testMethods,
         runner,
-        new MockOutputGenerator(),
+        [new MockOutputGenerator()],
         {}
       );
     } catch (err) {
       // Ignore
     }
 
-    expect(logger.entries.length == 2);
+    expect(logger.entries.length).to.be.equal(2);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
@@ -159,11 +159,11 @@ describe('messages', () => {
       '',
       testMethods,
       runner,
-      new MockOutputGenerator(),
+      [new MockOutputGenerator()],
       {}
     );
 
-    expect(logger.entries.length == 2);
+    expect(logger.entries.length).to.be.equal(2);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
@@ -199,6 +199,7 @@ describe('messages', () => {
       Message: null,
       StackTrace: null,
       RunTime: 1,
+      TestTimestamp: '',
     };
     queryHelperStub.resolves([mockTestRunResult]);
     const testMethods = new MockTestMethodCollector(
@@ -212,13 +213,13 @@ describe('messages', () => {
       '',
       testMethods,
       runner,
-      new MockOutputGenerator(),
+      [new MockOutputGenerator()],
       {
         maxErrorsForReRun: 0,
       }
     );
 
-    expect(logger.entries.length == 2);
+    expect(logger.entries.length).to.be.equal(2);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 0')
     );
@@ -261,6 +262,7 @@ describe('messages', () => {
         Message: 'UNABLE_TO_LOCK_ROW',
         StackTrace: null,
         RunTime: 1,
+        TestTimestamp: '',
       },
     ];
     queryHelperStub.resolves(mockTestRunResult);
@@ -278,11 +280,11 @@ describe('messages', () => {
       '',
       testMethods,
       runner,
-      new MockOutputGenerator(),
+      [new MockOutputGenerator()],
       {}
     );
 
-    expect(logger.entries.length == 2);
+    expect(logger.entries.length).to.be.equal(2);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
@@ -325,6 +327,7 @@ describe('messages', () => {
         Message: 'UNABLE_TO_LOCK_ROW',
         StackTrace: null,
         RunTime: 1,
+        TestTimestamp: '',
       },
     ];
     queryHelperStub.resolves(mockTestRunResult);
@@ -342,11 +345,11 @@ describe('messages', () => {
       '',
       testMethods,
       runner,
-      new MockOutputGenerator(),
+      [new MockOutputGenerator()],
       {}
     );
 
-    expect(logger.entries.length == 2);
+    expect(logger.entries.length).to.be.equal(2);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
@@ -391,6 +394,7 @@ describe('messages', () => {
         Message: '',
         StackTrace: null,
         RunTime: 1,
+        TestTimestamp: '',
       },
       {
         Id: 'Class id',
@@ -402,6 +406,7 @@ describe('messages', () => {
         Message: '',
         StackTrace: null,
         RunTime: 1,
+        TestTimestamp: '',
       },
     ];
     queryHelperStub.onCall(0).resolves([mockTestRunResult[0]]);
@@ -413,11 +418,11 @@ describe('messages', () => {
       '',
       testMethods,
       runner,
-      new MockOutputGenerator(),
+      [new MockOutputGenerator()],
       {}
     );
 
-    expect(logger.entries.length == 2);
+    expect(logger.entries.length).to.be.equal(2);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );

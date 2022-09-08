@@ -64,17 +64,18 @@ describe('messages', () => {
       Message: null,
       StackTrace: null,
       RunTime: 1,
+      TestTimestamp: '',
     };
 
-    queryHelperStub.resolves({ records: [mockTestRunResult] });
+    queryHelperStub.resolves([mockTestRunResult]);
 
     const results = await ResultCollector.gatherResults(
       mockConnection,
       testRunId
     );
 
-    expect(results.length == 1);
-    expect(results[0] === mockTestRunResult);
+    expect(results.length).to.equal(1);
+    expect(results[0]).to.equal(mockTestRunResult);
   });
 
   it('should group test results by type', () => {
@@ -89,6 +90,7 @@ describe('messages', () => {
         Message: null,
         StackTrace: null,
         RunTime: 1,
+        TestTimestamp: '',
       },
       {
         Id: 'The id',
@@ -100,6 +102,7 @@ describe('messages', () => {
         Message: 'Some error message',
         StackTrace: null,
         RunTime: 1,
+        TestTimestamp: '',
       },
       {
         Id: 'The id',
@@ -111,6 +114,7 @@ describe('messages', () => {
         Message: 'Some UNABLE_TO_LOCK_ROW error',
         StackTrace: null,
         RunTime: 1,
+        TestTimestamp: '',
       },
       {
         Id: 'The id',
@@ -122,18 +126,19 @@ describe('messages', () => {
         Message: 'Some deadlock detected while waiting for resource error',
         StackTrace: null,
         RunTime: 1,
+        TestTimestamp: '',
       },
     ];
 
     const results = ResultCollector.groupRecords(mockTestRunResults);
 
-    expect(results.passed.length === 1);
-    expect(results.passed[0] === mockTestRunResults[0]);
-    expect(results.failed.length === 1);
-    expect(results.failed[0] === mockTestRunResults[1]);
-    expect(results.locked.length === 2);
-    expect(results.locked[0] === mockTestRunResults[2]);
-    expect(results.locked[1] === mockTestRunResults[3]);
+    expect(results.passed.length).to.equal(1);
+    expect(results.passed[0]).to.equal(mockTestRunResults[0]);
+    expect(results.failed.length).to.equal(1);
+    expect(results.failed[0]).to.equal(mockTestRunResults[1]);
+    expect(results.locked.length).to.equal(2);
+    expect(results.locked[0]).to.equal(mockTestRunResults[2]);
+    expect(results.locked[1]).to.equal(mockTestRunResults[3]);
   });
 
   it('should re-group test results by type', () => {
@@ -148,6 +153,7 @@ describe('messages', () => {
         Message: null,
         StackTrace: null,
         RunTime: 1,
+        TestTimestamp: '',
       },
       {
         Id: 'The id',
@@ -159,6 +165,7 @@ describe('messages', () => {
         Message: 'Some error message',
         StackTrace: null,
         RunTime: 1,
+        TestTimestamp: '',
       },
       {
         Id: 'The id',
@@ -170,6 +177,7 @@ describe('messages', () => {
         Message: 'Some UNABLE_TO_LOCK_ROW error',
         StackTrace: null,
         RunTime: 1,
+        TestTimestamp: '',
       },
       {
         Id: 'The id',
@@ -181,6 +189,7 @@ describe('messages', () => {
         Message: 'Some deadlock detected while waiting for resource error',
         StackTrace: null,
         RunTime: 1,
+        TestTimestamp: '',
       },
     ];
 
@@ -192,12 +201,12 @@ describe('messages', () => {
 
     const results = ResultCollector.reGroupRecords(badResultsByType);
 
-    expect(results.passed.length === 1);
-    expect(results.passed[0] === mockTestRunResults[0]);
-    expect(results.failed.length === 1);
-    expect(results.failed[0] === mockTestRunResults[1]);
-    expect(results.locked.length === 2);
-    expect(results.locked[0] === mockTestRunResults[2]);
-    expect(results.locked[1] === mockTestRunResults[3]);
+    expect(results.passed.length).to.equal(1);
+    expect(results.passed[0]).to.equal(mockTestRunResults[0]);
+    expect(results.failed.length).to.equal(1);
+    expect(results.failed[0]).to.equal(mockTestRunResults[1]);
+    expect(results.locked.length).to.equal(2);
+    expect(results.locked[0]).to.equal(mockTestRunResults[2]);
+    expect(results.locked[1]).to.equal(mockTestRunResults[3]);
   });
 });

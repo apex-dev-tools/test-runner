@@ -85,7 +85,7 @@ describe('messages', () => {
       ['TestSample'],
       {}
     );
-    expect(runner.getTestClasses() == ['TestSample']);
+    expect(runner.getTestClasses()).to.deep.equal(['TestSample']);
 
     const testRunResult = await runner.run();
     expect(testRunResult.AsyncApexJobId).to.equal(testRunId);
@@ -116,7 +116,7 @@ describe('messages', () => {
       maxTestRunRetries: 1,
       testRunTimeoutMins: 10,
     });
-    expect(runner.getTestClasses() == []);
+    expect(runner.getTestClasses()).to.deep.equal([]);
 
     const testRunResult = await runner.run();
     expect(testRunResult.AsyncApexJobId).to.equal(testRunId);
@@ -206,7 +206,7 @@ describe('messages', () => {
     let error;
     try {
       await runner.run();
-      expect(false);
+      expect.fail(false, 'Missing exception');
     } catch (err) {
       error = err;
     }
@@ -241,7 +241,7 @@ describe('messages', () => {
     let error;
     try {
       await runner.run();
-      expect(false);
+      expect.fail(false, 'Missing exception');
     } catch (err) {
       error = err;
     }
@@ -332,7 +332,7 @@ describe('messages', () => {
     let error;
     try {
       await runner.run();
-      expect(false);
+      expect.fail(false, 'Missing exception');
     } catch (err) {
       error = err;
     }
@@ -484,7 +484,7 @@ describe('messages', () => {
       ['TestSample'],
       {}
     );
-    expect(runner.getTestClasses() == ['TestSample']);
+    expect(runner.getTestClasses()).to.deep.equal(['TestSample']);
 
     const another = runner.newRunner(
       new Map<string, Set<string>>([
@@ -492,6 +492,9 @@ describe('messages', () => {
         ['TestSample3', new Set(['methodC'])],
       ])
     );
-    expect(another.getTestClasses() == ['TestSample2', 'TestSample3']);
+    expect(another.getTestClasses()).to.deep.equal([
+      'TestSample2',
+      'TestSample3',
+    ]);
   });
 });
