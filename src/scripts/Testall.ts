@@ -9,6 +9,7 @@ import { OrgTestMethodCollector } from '../collector/TestMethodCollector';
 import { Testall } from '../command/Testall';
 import { BaseLogger } from '../log/BaseLogger';
 import { ClassTimeGenerator } from '../results/ClassTimeGenerator';
+import { ExecutionMapGenerator } from '../results/ExecutionMapGenerator';
 import { ReportGenerator } from '../results/ReportGenerator';
 import { AsyncTestRunner } from '../runner/TestRunner';
 
@@ -38,6 +39,11 @@ async function runTestall(username: string, namespace: string) {
     'suitename'
   );
   const classTimeGenerator = new ClassTimeGenerator('url', 'orgId', 'username');
+  const executionMapGenerator = new ExecutionMapGenerator(
+    'url',
+    'orgId',
+    'username'
+  );
 
   const logger = new ConsoleLogger(connection, false);
   const methodCollector = new OrgTestMethodCollector(
@@ -55,7 +61,7 @@ async function runTestall(username: string, namespace: string) {
     namespace == 'unmanaged' ? '' : namespace,
     methodCollector,
     runner,
-    [reportGenerator, classTimeGenerator],
+    [reportGenerator, classTimeGenerator, executionMapGenerator],
     {}
   );
 }
