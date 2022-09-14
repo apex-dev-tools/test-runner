@@ -8,6 +8,8 @@ import { Connection, AuthInfo, fs } from '@apexdevtools/sfdx-auth-helper';
 import { OrgTestMethodCollector } from '../collector/TestMethodCollector';
 import { Testall } from '../command/Testall';
 import { BaseLogger } from '../log/BaseLogger';
+import { ClassTimeGenerator } from '../results/ClassTimeGenerator';
+import { ExecutionMapGenerator } from '../results/ExecutionMapGenerator';
 import { ReportGenerator } from '../results/ReportGenerator';
 import { AsyncTestRunner } from '../runner/TestRunner';
 
@@ -30,12 +32,19 @@ class ConsoleLogger extends BaseLogger {
 
 async function runTestall(username: string, namespace: string) {
   const connection = await getConnection(username);
-  const generator = new ReportGenerator(
+  const reportGenerator = new ReportGenerator(
     'url',
     'orgId',
     'username',
     'suitename'
   );
+  const classTimeGenerator = new ClassTimeGenerator('url', 'orgId', 'username');
+  const executionMapGenerator = new ExecutionMapGenerator(
+    'url',
+    'orgId',
+    'username'
+  );
+
   const logger = new ConsoleLogger(connection, false);
   const methodCollector = new OrgTestMethodCollector(
     logger,
@@ -52,7 +61,7 @@ async function runTestall(username: string, namespace: string) {
     namespace == 'unmanaged' ? '' : namespace,
     methodCollector,
     runner,
-    generator,
+    [reportGenerator, classTimeGenerator, executionMapGenerator],
     {}
   );
 }

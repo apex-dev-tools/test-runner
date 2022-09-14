@@ -16,6 +16,7 @@ import { ApexTestResult } from '../model/ApexTestResult';
 import { OutputGenerator } from './OutputGenerator';
 import moment from 'moment';
 import { Logger } from '../log/Logger';
+import { SfDate } from 'jsforce';
 
 export class ReportGenerator implements OutputGenerator {
   private instanceUrl: string;
@@ -255,6 +256,9 @@ export class ReportGenerator implements OutputGenerator {
         test.ApexClass.NamespacePrefix ? test.ApexClass.NamespacePrefix : ''
       }"\n`;
       json += '   },\n';
+      json += `   "StartTime": ${SfDate.parseDate(
+        test.TestTimestamp
+      ).getTime()},\n`;
       json += `   "RunTime": ${test.RunTime},\n`;
       json += `   "FullName": "${test.ApexClass.Name}.${test.MethodName}"\n`;
       json += '  },\n';

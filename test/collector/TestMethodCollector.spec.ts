@@ -74,9 +74,9 @@ describe('messages', () => {
     );
     const classNameById = await testMethodCollector.classIdNameMap();
 
-    expect(classNameById.size === 1);
-    expect(classNameById.has('An Id'));
-    expect(classNameById.get('An Id') === 'FooClass');
+    expect(classNameById.size).to.equal(1);
+    expect(classNameById.has('An Id')).to.be.true;
+    expect(classNameById.get('An Id')).to.equal('FooClass');
   });
 
   it('should create map of passed class ids to names', async () => {
@@ -104,9 +104,11 @@ describe('messages', () => {
     );
     const classNameById = await testMethodCollector.classIdNameMap();
 
-    expect(classNameById.size === 1);
-    expect(classNameById.has('An Id'));
-    expect(classNameById.get('An Id') === 'FooClass');
+    expect(classNameById.size).to.equal(2);
+    expect(classNameById.has('An Id')).to.be.true;
+    expect(classNameById.get('An Id')).to.equal('FooClass');
+    expect(classNameById.has('Another Id')).to.be.true;
+    expect(classNameById.get('Another Id')).to.equal('BarClass');
   });
 
   it('should create map of passed large class ids to names', async () => {
@@ -131,11 +133,11 @@ describe('messages', () => {
     );
     const classNameById = await testMethodCollector.classIdNameMap();
 
-    expect(classNameById.size === 500);
-    expect(classNameById.has('Id0'));
-    expect(classNameById.get('Id0') === 'Foo0');
-    expect(classNameById.has('Id499'));
-    expect(classNameById.get('Id499') === 'Foo499');
+    expect(classNameById.size).to.equal(500);
+    expect(classNameById.has('Id0')).to.be.true;
+    expect(classNameById.get('Id0')).to.equal('Foo0');
+    expect(classNameById.has('Id499')).to.be.true;
+    expect(classNameById.get('Id499')).to.equal('Foo499');
   });
 
   it('should collect test methods from REST query', async () => {
@@ -200,14 +202,16 @@ describe('messages', () => {
     );
     const testMethodsByClassName = await testMethodCollector.gatherTestMethods();
 
-    expect(testMethodsByClassName.size === 2);
-    expect(testMethodsByClassName.has('FooClass'));
-    expect(testMethodsByClassName.get('FooClass')?.size == 2);
-    expect(testMethodsByClassName.get('FooClass')?.has('FooMethod1'));
-    expect(testMethodsByClassName.get('FooClass')?.has('FooMethod3'));
-    expect(testMethodsByClassName.has('BazClass'));
-    expect(testMethodsByClassName.get('BazClass')?.size == 1);
-    expect(testMethodsByClassName.get('BazClass')?.has('BazMethod'));
+    expect(testMethodsByClassName.size).to.equal(2);
+    expect(testMethodsByClassName.has('FooClass')).to.be.true;
+    expect(testMethodsByClassName.get('FooClass')?.size).to.equal(2);
+    expect(testMethodsByClassName.get('FooClass')?.has('FooMethod1')).to.be
+      .true;
+    expect(testMethodsByClassName.get('FooClass')?.has('FooMethod3')).to.be
+      .true;
+    expect(testMethodsByClassName.has('BazClass')).to.be.true;
+    expect(testMethodsByClassName.get('BazClass')?.size).to.equal(1);
+    expect(testMethodsByClassName.get('BazClass')?.has('BazMethod')).to.be.true;
   });
 
   it('should collect test methods from SOAP query', async () => {
@@ -243,7 +247,7 @@ describe('messages', () => {
       },
     ];
     queryHelperStub.resolves(mockApexClasses);
-    toolingQueryStub.resolves({ records: mockApexClasses });
+    toolingQueryStub.onCall(0).resolves({ records: mockApexClasses });
 
     const updatedApexClasses: ApexClassInfo[] = [
       {
@@ -270,7 +274,8 @@ describe('messages', () => {
         },
       },
     ];
-    setupQueryApexClassesSOAP(toolingRequestStub, updatedApexClasses);
+    toolingQueryStub.onCall(1).resolves({ records: updatedApexClasses });
+    setupQueryApexClassesSOAP(toolingRequestStub, []);
 
     const testMethodCollector = new OrgTestMethodCollector(
       new CapturingLogger(mockConnection, false),
@@ -280,13 +285,15 @@ describe('messages', () => {
     );
     const testMethodsByClassName = await testMethodCollector.gatherTestMethods();
 
-    expect(testMethodsByClassName.size === 2);
-    expect(testMethodsByClassName.has('FooClass'));
-    expect(testMethodsByClassName.get('FooClass')?.size == 2);
-    expect(testMethodsByClassName.get('FooClass')?.has('FooMethod1'));
-    expect(testMethodsByClassName.get('FooClass')?.has('FooMethod3'));
-    expect(testMethodsByClassName.has('BazClass'));
-    expect(testMethodsByClassName.get('BazClass')?.size == 1);
-    expect(testMethodsByClassName.get('BazClass')?.has('BazMethod'));
+    expect(testMethodsByClassName.size).to.equal(2);
+    expect(testMethodsByClassName.has('FooClass')).to.be.true;
+    expect(testMethodsByClassName.get('FooClass')?.size).to.equal(2);
+    expect(testMethodsByClassName.get('FooClass')?.has('FooMethod1')).to.be
+      .true;
+    expect(testMethodsByClassName.get('FooClass')?.has('FooMethod3')).to.be
+      .true;
+    expect(testMethodsByClassName.has('BazClass')).to.be.true;
+    expect(testMethodsByClassName.get('BazClass')?.size).to.equal(1);
+    expect(testMethodsByClassName.get('BazClass')?.has('BazMethod')).to.be.true;
   });
 });

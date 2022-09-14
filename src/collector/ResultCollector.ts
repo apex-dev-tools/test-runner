@@ -20,7 +20,7 @@ export class ResultCollector {
     return await QueryHelper.instance(connection).query<ApexTestResult>(
       'ApexTestResult',
       `AsyncApexJobId='${testRunId}'`,
-      `Id, QueueItemId, StackTrace, Message, AsyncApexJobId, MethodName, Outcome, RunTime, 
+      `Id, QueueItemId, StackTrace, Message, AsyncApexJobId, MethodName, Outcome, RunTime, TestTimestamp,
         ApexClass.Id, ApexClass.Name, ApexClass.NamespacePrefix`
     );
   }
