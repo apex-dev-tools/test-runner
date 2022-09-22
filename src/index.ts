@@ -4,10 +4,8 @@
 /* istanbul ignore file */
 export { Testall, TestallOptions } from './command/Testall';
 
-export {
-  TestMethodCollector,
-  OrgTestMethodCollector,
-} from './collector/TestMethodCollector';
+export { TestMethodCollector } from './collector/TestMethodCollector';
+export { OrgTestMethodCollector } from './collector/OrgTestMethodCollector';
 
 export { TestRunner, AsyncTestRunner } from './runner/TestRunner';
 

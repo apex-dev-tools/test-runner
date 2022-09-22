@@ -9,11 +9,11 @@ import {
 import { StreamingClient } from '@salesforce/apex-node/lib/src/streaming';
 import { createSandbox, SinonSandbox, SinonStub } from 'sinon';
 import { expect } from 'chai';
-import { OrgTestMethodCollector } from '../../src/collector/TestMethodCollector';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import { QueryHelper } from '../../src/query/QueryHelper';
 import { ApexClassInfo } from '../../src/query/ClassSymbolLoader';
 import { setupQueryApexClassesSOAP } from '../Setup';
+import { OrgTestMethodCollector } from '../../src/collector/OrgTestMethodCollector';
 
 const $$ = testSetup();
 let mockConnection: Connection;

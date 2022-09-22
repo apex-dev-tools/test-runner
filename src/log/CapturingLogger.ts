@@ -13,7 +13,7 @@ export class CapturingLogger extends BaseLogger {
     super(connection, verbose);
   }
 
-  protected logMessage(message: string): void {
+  logMessage(message: string): void {
     const timestamp = new Date().toISOString();
     this.entries.push(`${timestamp} - ${message}`);
   }

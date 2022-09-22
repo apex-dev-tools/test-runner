@@ -5,20 +5,8 @@
  */
 
 import { Connection, AuthInfo } from '@apexdevtools/sfdx-auth-helper';
-import { OrgTestMethodCollector } from '../collector/TestMethodCollector';
-import { BaseLogger } from '../log/BaseLogger';
-import * as fs from 'fs';
-
-class ConsoleLogger extends BaseLogger {
-  protected logMessage(message: string): void {
-    const timestamp = new Date().toISOString();
-    console.log(`${timestamp} - ${message}`);
-  }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  protected logFile(path: string, contents: string): void {
-    fs.writeFileSync(path, contents);
-  }
-}
+import { OrgTestMethodCollector } from '../collector/OrgTestMethodCollector';
+import { ConsoleLogger } from './ConsoleLogger';
 
 async function getConnection(username: string): Promise<Connection> {
   return await Connection.create({

@@ -4,30 +4,19 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import { Connection, AuthInfo, fs } from '@apexdevtools/sfdx-auth-helper';
-import { OrgTestMethodCollector } from '../collector/TestMethodCollector';
+import { Connection, AuthInfo } from '@apexdevtools/sfdx-auth-helper';
+import { OrgTestMethodCollector } from '../collector/OrgTestMethodCollector';
 import { Testall } from '../command/Testall';
-import { BaseLogger } from '../log/BaseLogger';
 import { ClassTimeGenerator } from '../results/ClassTimeGenerator';
 import { ExecutionMapGenerator } from '../results/ExecutionMapGenerator';
 import { ReportGenerator } from '../results/ReportGenerator';
 import { AsyncTestRunner } from '../runner/TestRunner';
+import { ConsoleLogger } from './ConsoleLogger';
 
 async function getConnection(username: string): Promise<Connection> {
   return await Connection.create({
     authInfo: await AuthInfo.create({ username: username }),
   });
-}
-
-class ConsoleLogger extends BaseLogger {
-  protected logMessage(message: string): void {
-    const timestamp = new Date().toISOString();
-    console.log(`${timestamp} - ${message}`);
-  }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  protected logFile(path: string, contents: string): void {
-    fs.writeFileSync(path, contents);
-  }
 }
 
 async function runTestall(username: string, namespace: string) {
