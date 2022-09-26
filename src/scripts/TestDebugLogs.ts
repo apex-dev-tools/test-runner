@@ -7,6 +7,8 @@
 import { Connection, AuthInfo } from '@apexdevtools/sfdx-auth-helper';
 import { ConsoleLogger } from './ConsoleLogger';
 import { TestDebugLogs } from '../command/TestDebugLogs';
+import { AsyncTestRunner } from '../runner/TestRunner';
+import { OrgTestMethodCollector } from '../collector/OrgTestMethodCollector';
 
 async function getConnection(username: string): Promise<Connection> {
   return await Connection.create({
@@ -22,13 +24,21 @@ async function run(
 ): Promise<void> {
   const connection = await getConnection(username);
   const logger = new ConsoleLogger(connection, false);
+  const runner = new AsyncTestRunner(logger, connection, [], {});
+  const methodCollector = new OrgTestMethodCollector(
+    logger,
+    connection,
+    namespace,
+    testClasses
+  );
   await TestDebugLogs.run(
     logger,
     connection,
     namespace,
+    methodCollector,
+    runner,
     username,
-    outputDir,
-    testClasses
+    outputDir
   );
 }
 

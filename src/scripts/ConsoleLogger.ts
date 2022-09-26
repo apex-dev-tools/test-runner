@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
+/* istanbul ignore file */
 import { BaseLogger } from '../log/BaseLogger';
 import * as fs from 'fs';
 

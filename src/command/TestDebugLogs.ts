@@ -5,13 +5,14 @@
 import { Connection } from '@apexdevtools/sfdx-auth-helper';
 import { Logger } from '../log/Logger';
 import { TestItem } from '@salesforce/apex-node';
-import { AsyncTestRunner } from '../runner/TestRunner';
-import { TestItemTestMethodCollector } from '../collector/TestItemTestMethodCollactor';
+import { TestRunner } from '../runner/TestRunner';
+import { TestItemTestMethodCollector } from '../collector/TestItemTestMethodCollector';
 import { Testall } from './Testall';
 import { DebugTraceLoader } from '../query/DebugTraceLoader';
 import { DebugLogLoader } from '../query/DebugLogLoader';
-import { OrgTestMethodCollector } from '../collector/OrgTestMethodCollector';
 import * as fs from 'fs';
+import { QueryHelper } from '../query/QueryHelper';
+import { TestMethodCollector } from '../collector/TestMethodCollector';
 
 export class TestDebugLogs {
   _logger: Logger;
@@ -24,9 +25,10 @@ export class TestDebugLogs {
     logger: Logger,
     connection: Connection,
     namespace: string,
+    methodCollector: TestMethodCollector,
+    runner: TestRunner,
     username: string,
-    outputDir: string,
-    classNames: string[]
+    outputDir: string
   ): Promise<void> {
     try {
       const cmd = new TestDebugLogs(
@@ -36,7 +38,7 @@ export class TestDebugLogs {
         username,
         outputDir
       );
-      await cmd.run(classNames);
+      await cmd.run(methodCollector, runner);
     } catch (e) {
       logger.logError(e);
       throw e;
@@ -57,7 +59,10 @@ export class TestDebugLogs {
     this._username = username;
   }
 
-  public async run(classNames: string[]): Promise<void> {
+  public async run(
+    methodCollector: TestMethodCollector,
+    runner: TestRunner
+  ): Promise<void> {
     const userId = await this.getUserId(this._username, this._connection);
     this.clearOutputDir(this._outputDir);
 
@@ -82,12 +87,6 @@ export class TestDebugLogs {
 
     this._logger.logMessage(
       'Collecting test methods, this may take some time...'
-    );
-    const methodCollector = new OrgTestMethodCollector(
-      this._logger,
-      this._connection,
-      this._namespace,
-      classNames
     );
     const testMethodMap = await methodCollector.gatherTestMethods();
     this._logger.logMessage(`Found ${testMethodMap.size} test classes`);
@@ -115,26 +114,26 @@ export class TestDebugLogs {
         this._logger,
         this._connection,
         this._namespace,
+        runner,
         testItems
       );
-      {
-        const logLoader = await DebugLogLoader.instance(
-          this._connection,
-          this._namespace
-        );
-        await logLoader.saveLogs(this._outputDir);
-        await logLoader.clearLogs();
-      }
+
+      const resultLogLoader = await DebugLogLoader.instance(
+        this._connection,
+        this._namespace
+      );
+      await resultLogLoader.saveLogs(this._outputDir);
+      await resultLogLoader.clearLogs();
     }
   }
 
   clearOutputDir(outputDir: string): void {
     if (!fs.existsSync(outputDir)) {
-      this._logger.logMessage(`Creating output directory ${outputDir}`);
+      this._logger.logMessage(`Creating output directory '${outputDir}'`);
       fs.mkdirSync(outputDir);
     } else if (fs.lstatSync(outputDir).isDirectory()) {
       this._logger.logMessage(
-        `Removing & recreating output directory ${outputDir}`
+        `Removing & recreating output directory '${outputDir}'`
       );
       fs.rmdirSync(outputDir, { recursive: true });
       fs.mkdirSync(outputDir);
@@ -146,19 +145,26 @@ export class TestDebugLogs {
   }
 
   async getUserId(username: string, connection: Connection): Promise<string> {
-    const users = await connection.sobject('User').find({ Username: username });
-    return users[0].Id as string;
+    const users = await QueryHelper.instance(connection).query(
+      'User',
+      "Username = '${username}'",
+      'Id'
+    );
+    if (users.length == 1) {
+      return users[0].Id as string;
+    } else {
+      throw Error(`Unknown user '${username}' on this org`);
+    }
   }
 
   async runTestItems(
     logger: Logger,
     connection: Connection,
     namespace: string,
+    runner: TestRunner,
     testItems: TestItem[]
   ): Promise<void> {
-    const runner = new AsyncTestRunner(logger, connection, testItems, {
-      testRunTimeoutMins: 240,
-    });
+    const localRunner = runner.newRunner(testItems);
     const runMethodCollector = new TestItemTestMethodCollector(
       logger,
       connection,
@@ -170,7 +176,7 @@ export class TestDebugLogs {
       connection,
       namespace == 'unmanaged' ? '' : namespace,
       runMethodCollector,
-      runner,
+      localRunner,
       [],
       {}
     );

@@ -193,7 +193,16 @@ export class Testall {
     // Try again if something was missed
     if (missingTests.size > 0) {
       this._logger.logTestallRerun(missingTests);
-      const newRunner = runner.newRunner(missingTests);
+
+      const testItems: TestItem[] = [];
+      missingTests.forEach((methods, className) => {
+        testItems.push({
+          className: className,
+          testMethods: Array.from(methods),
+        });
+      });
+
+      const newRunner = runner.newRunner(testItems);
       const newResults = await this.asyncRun(
         priorFailures + testResults.failed.length,
         newRunner,

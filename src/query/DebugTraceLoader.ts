@@ -3,7 +3,7 @@
  */
 
 import { Connection } from '@apexdevtools/sfdx-auth-helper';
-import { SfDate } from 'jsforce';
+import { RecordResult, SfDate } from 'jsforce';
 
 export interface TraceFlag {
   Id: string;
@@ -48,9 +48,12 @@ export class DebugTraceLoader {
     await this.connection.tooling
       .sobject('TraceFlag')
       .delete(this.traces.map(trace => trace.Id));
-    const levels = await this.connection.tooling
-      .sobject('DebugLevel')
-      .find<DebugLevel>({ DeveloperName: 'TestRunner' });
+
+    const levels = (
+      await this.connection.tooling.query<DebugLevel>(
+        "Select Id FROM DebugLevel WHERE DeveloperName= 'TestRunner'"
+      )
+    ).records;
     if (levels.length > 0) {
       await this.connection.tooling
         .sobject('DebugLevel')
@@ -59,7 +62,7 @@ export class DebugTraceLoader {
   }
 
   async setFlags(userId: string): Promise<void> {
-    const level = await this.connection.tooling.sobject('DebugLevel').create({
+    const level = (await this.connection.tooling.create('DebugLevel', {
       MasterLabel: 'TestRunner',
       DeveloperName: 'TestRunner',
       ApexCode: 'FINE',
@@ -70,11 +73,11 @@ export class DebugTraceLoader {
       Validation: 'NONE',
       Visualforce: 'NONE',
       Workflow: 'NONE',
-    });
+    })) as RecordResult;
     if (level.success) {
       const start = Date.now();
       const end = start + 86400000 - 1000;
-      await this.connection.tooling.sobject('TraceFlag').create({
+      await this.connection.tooling.create('TraceFlag', {
         DebugLevelId: level.id,
         StartDate: SfDate.toDateTimeLiteral(start).toString(),
         ExpirationDate: SfDate.toDateTimeLiteral(end).toString(),

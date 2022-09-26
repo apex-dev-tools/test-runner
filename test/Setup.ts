@@ -5,6 +5,7 @@
 import {
   AsyncTestArrayConfiguration,
   AsyncTestConfiguration,
+  TestItem,
 } from '@salesforce/apex-node';
 import {
   ExecAnonApiResponse,
@@ -150,20 +151,20 @@ export class MockAborter implements TestRunAborter {
 
 export class MockTestRunner implements TestRunner {
   results: ApexTestRunResult;
-  testClasses: string[];
+  testItems: TestItem[];
 
-  constructor(results: ApexTestRunResult, testClasses: string[] = []) {
+  constructor(results: ApexTestRunResult, testItems: TestItem[] = []) {
     this.results = results;
-    this.testClasses = testClasses;
+    this.testItems = testItems;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  newRunner(methodsTests: Map<string, Set<string>>): TestRunner {
-    return new MockTestRunner(this.results, this.testClasses);
+  newRunner(testItems: TestItem[]): TestRunner {
+    return new MockTestRunner(this.results, this.testItems);
   }
 
   getTestClasses(): string[] {
-    return this.testClasses;
+    return this.testItems.map(i => i.className as string);
   }
 
   async run(): Promise<ApexTestRunResult> {
@@ -180,7 +181,7 @@ export class MockThrowingTestRunner implements TestRunner {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  newRunner(methodsTests: Map<string, Set<string>>): TestRunner {
+  newRunner(testItems: TestItem[]): TestRunner {
     throw this.error;
   }
 

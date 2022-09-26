@@ -64,7 +64,9 @@ export class DebugLogLoader {
 
   async clearLogs(): Promise<void> {
     // @types/jsforce does not have good types for this so just using defaults
-    await this.connection.sobject('ApexLog').find().destroy();
+    await this.connection
+      .sobject('ApexLog')
+      .destroy(this.logs.map(log => log.Id));
     this.logs = [];
   }
 }
