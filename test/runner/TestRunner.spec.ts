@@ -486,12 +486,10 @@ describe('messages', () => {
     );
     expect(runner.getTestClasses()).to.deep.equal(['TestSample']);
 
-    const another = runner.newRunner(
-      new Map<string, Set<string>>([
-        ['TestSample2', new Set(['methodA', 'methodB'])],
-        ['TestSample3', new Set(['methodC'])],
-      ])
-    );
+    const another = runner.newRunner([
+      { className: 'TestSample2', testMethods: ['methodA', 'methodB'] },
+      { className: 'TestSample3', testMethods: ['methodC'] },
+    ]);
     expect(another.getTestClasses()).to.deep.equal([
       'TestSample2',
       'TestSample3',

@@ -23,7 +23,7 @@ export abstract class BaseLogger implements Logger {
     this.verbose = verbose;
   }
 
-  protected abstract logMessage(message: string): void;
+  abstract logMessage(message: string): void;
   protected abstract logFile(path: string, contents: string): void;
 
   logError(error: MaybeError): void {

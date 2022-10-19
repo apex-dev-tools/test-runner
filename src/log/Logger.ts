@@ -10,6 +10,7 @@ export interface Logger {
   // For general use
   logError(error: any): void;
   logWarning(error: any): void;
+  logMessage(error: any): void;
 
   // Additonal output
   logOutputFile(path: string, contents: string): void;

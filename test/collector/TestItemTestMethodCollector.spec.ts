@@ -9,17 +9,17 @@ import {
 import { StreamingClient } from '@salesforce/apex-node/lib/src/streaming';
 import { createSandbox, SinonSandbox, SinonStub } from 'sinon';
 import { expect } from 'chai';
-import { OrgTestMethodCollector } from '../../src/collector/TestMethodCollector';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import { QueryHelper } from '../../src/query/QueryHelper';
 import { ApexClassInfo } from '../../src/query/ClassSymbolLoader';
-import { setupQueryApexClassesSOAP } from '../Setup';
+import { OrgTestMethodCollector } from '../../src/collector/OrgTestMethodCollector';
+import { TestItemTestMethodCollector } from '../../src/collector/TestItemTestMethodCollector';
+import { TestItem } from '@salesforce/apex-node';
 
 const $$ = testSetup();
 let mockConnection: Connection;
 let sandboxStub: SinonSandbox;
 let toolingQueryStub: SinonStub;
-let toolingRequestStub: SinonStub;
 let queryHelperStub: SinonStub;
 const testData = new MockTestOrgData();
 
@@ -44,7 +44,6 @@ describe('messages', () => {
 
     sandboxStub.stub(StreamingClient.prototype, 'handshake').resolves();
     toolingQueryStub = sandboxStub.stub(mockConnection.tooling, 'query');
-    toolingRequestStub = sandboxStub.stub(mockConnection.tooling, 'request');
     queryHelperStub = sandboxStub.stub(
       QueryHelper.instance(mockConnection),
       'query'
@@ -66,7 +65,7 @@ describe('messages', () => {
 
     queryHelperStub.resolves(mockApexClasses);
 
-    const testMethodCollector = new OrgTestMethodCollector(
+    const testMethodCollector = new TestItemTestMethodCollector(
       new CapturingLogger(mockConnection, false),
       mockConnection,
       'foo',
@@ -125,11 +124,15 @@ describe('messages', () => {
     queryHelperStub.onCall(1).resolves(mockApexClasses.slice(200, 400));
     queryHelperStub.onCall(2).resolves(mockApexClasses.slice(400));
 
-    const testMethodCollector = new OrgTestMethodCollector(
+    const testMethodCollector = new TestItemTestMethodCollector(
       new CapturingLogger(mockConnection, false),
       mockConnection,
       'foo',
-      mockApexClasses.map(cls => cls.Name)
+      mockApexClasses.map(cls => {
+        return {
+          className: cls.Name,
+        };
+      })
     );
     const classNameById = await testMethodCollector.classIdNameMap();
 
@@ -140,148 +143,27 @@ describe('messages', () => {
     expect(classNameById.get('Id499')).to.equal('Foo499');
   });
 
-  it('should collect test methods from REST query', async () => {
-    const mockApexClasses: ApexClassInfo[] = [
+  it('should collect test methods from TestItems', async () => {
+    const mockTestItems: TestItem[] = [
       {
-        Id: 'Id1',
-        Name: 'FooClass',
-        SymbolTable: {
-          tableDeclaration: {
-            modifiers: ['testMethod'],
-          },
-          methods: [
-            {
-              modifiers: ['testMethod'],
-              name: 'FooMethod1',
-            },
-            {
-              modifiers: [],
-              name: 'FooMethod2',
-            },
-            {
-              modifiers: ['testMethod'],
-              name: 'FooMethod3',
-            },
-          ],
-        },
+        className: 'FooClass',
+        testMethods: ['FooMethod1'],
       },
       {
-        Id: 'Id2',
-        Name: 'BarClass',
-        SymbolTable: {
-          tableDeclaration: {
-            modifiers: [],
-          },
-        },
+        className: 'FooClass',
+        testMethods: ['FooMethod3'],
       },
       {
-        Id: 'Id3',
-        Name: 'BazClass',
-        SymbolTable: {
-          tableDeclaration: {
-            modifiers: ['testMethod'],
-          },
-          methods: [
-            {
-              modifiers: ['testMethod'],
-              name: 'BazMethod',
-            },
-          ],
-        },
+        className: 'BazClass',
+        testMethods: ['BazMethod'],
       },
     ];
 
-    queryHelperStub.resolves(mockApexClasses);
-    toolingQueryStub.resolves({ records: mockApexClasses });
-
-    const testMethodCollector = new OrgTestMethodCollector(
+    const testMethodCollector = new TestItemTestMethodCollector(
       new CapturingLogger(mockConnection, false),
       mockConnection,
       'foo',
-      []
-    );
-    const testMethodsByClassName = await testMethodCollector.gatherTestMethods();
-
-    expect(testMethodsByClassName.size).to.equal(2);
-    expect(testMethodsByClassName.has('FooClass')).to.be.true;
-    expect(testMethodsByClassName.get('FooClass')?.size).to.equal(2);
-    expect(testMethodsByClassName.get('FooClass')?.has('FooMethod1')).to.be
-      .true;
-    expect(testMethodsByClassName.get('FooClass')?.has('FooMethod3')).to.be
-      .true;
-    expect(testMethodsByClassName.has('BazClass')).to.be.true;
-    expect(testMethodsByClassName.get('BazClass')?.size).to.equal(1);
-    expect(testMethodsByClassName.get('BazClass')?.has('BazMethod')).to.be.true;
-  });
-
-  it('should collect test methods from SOAP query', async () => {
-    const mockApexClasses: ApexClassInfo[] = [
-      {
-        Id: 'Id1',
-        Name: 'FooClass',
-        SymbolTable: null,
-      },
-      {
-        Id: 'Id2',
-        Name: 'BarClass',
-        SymbolTable: {
-          tableDeclaration: {
-            modifiers: [],
-          },
-        },
-      },
-      {
-        Id: 'Id3',
-        Name: 'BazClass',
-        SymbolTable: {
-          tableDeclaration: {
-            modifiers: ['testMethod'],
-          },
-          methods: [
-            {
-              modifiers: ['testMethod'],
-              name: 'BazMethod',
-            },
-          ],
-        },
-      },
-    ];
-    queryHelperStub.resolves(mockApexClasses);
-    toolingQueryStub.onCall(0).resolves({ records: mockApexClasses });
-
-    const updatedApexClasses: ApexClassInfo[] = [
-      {
-        Id: 'Id1',
-        Name: 'FooClass',
-        SymbolTable: {
-          tableDeclaration: {
-            modifiers: ['testMethod'],
-          },
-          methods: [
-            {
-              modifiers: ['testMethod'],
-              name: 'FooMethod1',
-            },
-            {
-              modifiers: [],
-              name: 'FooMethod2',
-            },
-            {
-              modifiers: ['testMethod'],
-              name: 'FooMethod3',
-            },
-          ],
-        },
-      },
-    ];
-    toolingQueryStub.onCall(1).resolves({ records: updatedApexClasses });
-    setupQueryApexClassesSOAP(toolingRequestStub, []);
-
-    const testMethodCollector = new OrgTestMethodCollector(
-      new CapturingLogger(mockConnection, false),
-      mockConnection,
-      'foo',
-      []
+      mockTestItems
     );
     const testMethodsByClassName = await testMethodCollector.gatherTestMethods();
 

@@ -37,7 +37,7 @@ import TestStats from './TestStats';
 export interface TestRunner {
   getTestClasses(): string[];
   run(): Promise<ApexTestRunResult>;
-  newRunner(methodsTests: Map<string, Set<string>>): TestRunner;
+  newRunner(testItems: TestItem[]): TestRunner;
 }
 
 export class AsyncTestRunner implements TestRunner {
@@ -82,14 +82,7 @@ export class AsyncTestRunner implements TestRunner {
     this._stats = TestStats.instance(this._options);
   }
 
-  newRunner(methodTests: Map<string, Set<string>>): TestRunner {
-    const testItems: TestItem[] = [];
-    methodTests.forEach((methods, className) => {
-      testItems.push({
-        className: className,
-        testMethods: Array.from(methods),
-      });
-    });
+  newRunner(testItems: TestItem[]): TestRunner {
     return new AsyncTestRunner(
       this._logger,
       this._connection,

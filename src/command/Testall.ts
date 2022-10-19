@@ -18,20 +18,20 @@ import { ApexTestRunResult } from '../model/ApexTestRunResult';
  * Parallel unit test runner that can hide intermitant failures caused by UNABLE_TO_LOCK_ROW, deadlock errors and
  * missing test results.
  *
- * The stratagy here is to run all tests using a 'RunLocalTests' scope and then selectively re-run tests to determine
+ * The stratagy here is to run a pre-defined set of tests and then selectively re-run tests to determine
  * if a failure is genuine. Failures due to UNABLE_TO_LOCK_ROW/deadlock are always re-run, other failures will be
  * re-run if there are less than a limit to avoid lots of failures causing long run times.
  *
- * The test runs are executed using TestRunner which provides the ability to cancel & restart and run should it not
+ * The test runs are executed using a TestRunner which provides the ability to cancel & restart and run should it not
  * make progress.
  *
- * JUnit style test result files can be automatically generated for the run in junit.xml & junit.json.
+ * JUnit style test result files can be automatically generated for the run (along with other formats) by providing
+ * OutputGenerators to post-process the test run results.
  */
 
 export interface TestallOptions extends TestRunnerOptions {
   maxErrorsForReRun?: number; // Don't re-run if > failed tests (excluding locking/missed tests), default 10
-  outputFileBase?: string; // Base for junit xml & json
-  testMethodCollector?: TestMethodCollector; // Provides access to available test methods
+  outputFileBase?: string; // Base for junit and other output files, default 'test-result*'
 }
 
 const DEFAULT_MAX_ERRORS_FOR_RERUN = 10;
@@ -193,7 +193,16 @@ export class Testall {
     // Try again if something was missed
     if (missingTests.size > 0) {
       this._logger.logTestallRerun(missingTests);
-      const newRunner = runner.newRunner(missingTests);
+
+      const testItems: TestItem[] = [];
+      missingTests.forEach((methods, className) => {
+        testItems.push({
+          className: className,
+          testMethods: Array.from(methods),
+        });
+      });
+
+      const newRunner = runner.newRunner(testItems);
       const newResults = await this.asyncRun(
         priorFailures + testResults.failed.length,
         newRunner,
