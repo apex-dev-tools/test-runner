@@ -6,6 +6,7 @@ export { Testall, TestallOptions } from './command/Testall';
 
 export { TestMethodCollector } from './collector/TestMethodCollector';
 export { OrgTestMethodCollector } from './collector/OrgTestMethodCollector';
+export { ResultCollector } from './collector/ResultCollector';
 
 export { TestRunner, AsyncTestRunner } from './runner/TestRunner';
 
