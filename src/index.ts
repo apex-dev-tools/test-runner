@@ -9,6 +9,7 @@ export { OrgTestMethodCollector } from './collector/OrgTestMethodCollector';
 export { ResultCollector } from './collector/ResultCollector';
 
 export { TestRunner, AsyncTestRunner } from './runner/TestRunner';
+export { TestRunCancelAborter } from './runner/TestRunCancelAborter';
 
 export { OutputGenerator } from './results/OutputGenerator';
 export { ReportGenerator } from './results/ReportGenerator';
