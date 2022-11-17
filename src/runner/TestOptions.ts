@@ -51,12 +51,17 @@ export interface TestRunAborter {
   ): Promise<void>;
 }
 
+export interface TestRunnerCallbacks {
+  onRunStarted?: (jobId: string) => void;
+}
+
 export interface TestRunnerOptions extends CancelTestRunOptions {
   aborter?: TestRunAborter; // Instance to handler aborting run, defaults to TestRunCancelAborter
   maxTestRunRetries?: number; // Maximum Number of times to try to complete a test run, default 3
   testRunTimeoutMins?: number; // Maximum time for a single test run to execute, default 120 mins
   statusPollIntervalMs?: number; // Time to wait between checking test run status, default 30 secs
   pollLimitToAssumeHangingTests?: number; // Number polls without test progress before a hang is assumed, default 60
+  callbacks?: TestRunnerCallbacks; // Callbacks for events in test runner
 }
 
 export function getTestRunAborter(options: TestRunnerOptions): TestRunAborter {
