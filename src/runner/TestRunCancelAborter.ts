@@ -20,7 +20,7 @@ export class TestRunCancelAborter implements TestRunAborter {
     connection: Connection,
     testRunId: string,
     options: CancelTestRunOptions = {}
-  ): Promise<void> {
+  ): Promise<string[]> {
     logger.logRunCancelling(testRunId);
     const apexQueueItems = await QueryHelper.instance(
       connection
@@ -55,7 +55,12 @@ export class TestRunCancelAborter implements TestRunAborter {
       }
     }
 
-    await this.waitForTestRunToCancel(logger, connection, testRunId, options);
+    return this.waitForTestRunToCancel(
+      logger,
+      connection,
+      testRunId,
+      options
+    ).then(() => apexQueueItems.map(x => x.Id));
   }
 
   private async waitForTestRunToCancel(

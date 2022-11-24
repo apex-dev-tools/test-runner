@@ -43,12 +43,16 @@ const DEFAULT_MAX_TEST_RUN_RETRIES = 3;
 const DEFAULT_POLL_LIMIT_TO_ASSUME_TESTS_HANGING = 60;
 
 export interface TestRunAborter {
+  /**
+   * Aborts the run given a run id.
+   * @returns the QueueItem Ids of the items that has been canceled
+   */
   abortRun(
     logger: Logger,
     connection: Connection,
     testRunId: string,
     options: CancelTestRunOptions
-  ): Promise<void>;
+  ): Promise<string[]>;
 }
 
 export interface TestRunnerCallbacks {

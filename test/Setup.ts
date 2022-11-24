@@ -143,9 +143,9 @@ export class MockAborter implements TestRunAborter {
     _testRunId: string,
     _options: CancelTestRunOptions
     /* eslint-enable @typescript-eslint/no-unused-vars */
-  ): Promise<void> {
+  ): Promise<string[]> {
     this.calls++;
-    await Promise.resolve();
+    return Promise.resolve(['ID1']);
   }
 }
 
