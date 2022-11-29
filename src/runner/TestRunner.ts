@@ -26,11 +26,11 @@ import {
 import TestStats from './TestStats';
 
 /**
- * Parallel unit test runner that includes the ability to cancel & restart a run should it not make sugiicient progress
+ * Parallel unit test runner that includes the ability to cancel & restart a run should it not make sufficient progress
  * within some period and to terminate should a run take to long overall.
  *
- * This builds over the @salesforce/apex-node test running capabilities so there are some simularities to how
- * force:apex:test:run operates. You can select between runnin specific classes, methods or all local tests.
+ * This builds over the @salesforce/apex-node test running capabilities so there are some similarities to how
+ * force:apex:test:run operates. You can select between running specific classes, methods or all local tests.
  * See TestRunnerOptions for specifying configurable parameters.
  */
 
@@ -112,7 +112,9 @@ export class AsyncTestRunner implements TestRunner {
       true
     )) as TestRunIdResult;
 
+    this._options.callbacks?.onRunStarted?.(testRunIdResult.testRunId);
     this._logger.logRunStarted(testRunIdResult.testRunId);
+
     await this.waitForTestRunCompletion(testRunIdResult.testRunId);
 
     const result = await this.testRunResult(testRunIdResult.testRunId);
