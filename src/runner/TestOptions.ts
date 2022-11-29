@@ -6,6 +6,7 @@ import { Connection } from '@apexdevtools/sfdx-auth-helper';
 import { Duration } from '@salesforce/kit';
 import { Logger } from '../log/Logger';
 import { TestRunCancelAborter } from './TestRunCancelAborter';
+import { ApexTestResult } from '../model/ApexTestResult';
 
 const DEFAULT_POLL_INTERVAL_MS = 30000;
 const DEFAULT_POLL_TIMEOUT_MINS = 10;
@@ -57,6 +58,7 @@ export interface TestRunAborter {
 
 export interface TestRunnerCallbacks {
   onRunStarted?: (jobId: string) => void;
+  onPoll?: (testsResults: Array<ApexTestResult>) => void;
 }
 
 export interface TestRunnerOptions extends CancelTestRunOptions {

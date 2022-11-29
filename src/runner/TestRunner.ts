@@ -16,14 +16,17 @@ import {
   ApexTestRunResult,
   ApexTestRunResultFields,
 } from '../model/ApexTestRunResult';
+import { ApexTestResult } from '../model/ApexTestResult';
 import {
   getMaxTestRunRetries,
   getStatusPollIntervalMs,
   getTestRunAborter,
   getTestRunTimeoutMins,
+  TestRunnerCallbacks,
   TestRunnerOptions,
 } from './TestOptions';
 import TestStats from './TestStats';
+import { ResultCollector } from '../collector/ResultCollector';
 
 /**
  * Parallel unit test runner that includes the ability to cancel & restart a run should it not make sufficient progress
@@ -173,6 +176,7 @@ export class AsyncTestRunner implements TestRunner {
     testRunId: string,
     token?: CancellationToken
   ): Promise<void> {
+    const polledTests: Array<ApexTestResult> = [];
     const options: PollingClient.Options = {
       poll: async () => {
         const testRunResult = await this.testRunResult(testRunId);
@@ -180,6 +184,11 @@ export class AsyncTestRunner implements TestRunner {
         // Update progress
         this._logger.logStatus(testRunResult);
         this._stats = this._stats.update(testRunResult.MethodsCompleted);
+        await this.updateCallbacks(
+          testRunId,
+          polledTests,
+          this._options.callbacks
+        );
 
         if (token?.isCancellationRequested) {
           await getTestRunAborter(this._options).abortRun(
@@ -237,5 +246,19 @@ export class AsyncTestRunner implements TestRunner {
         `Wrong number of ApexTestRunResult records found for '${testRunId}', found ${records.length}, expected 1`
       );
     return records[0];
+  }
+
+  private async updateCallbacks(
+    testRunId: string,
+    seen: Array<ApexTestResult>,
+    callbacks?: TestRunnerCallbacks
+  ) {
+    await ResultCollector.gatherResults(this._connection, testRunId).then(
+      res => {
+        const newItems = res.filter(x => !seen.includes(x));
+        callbacks?.onPoll?.(newItems);
+        seen.push(...newItems);
+      }
+    );
   }
 }
