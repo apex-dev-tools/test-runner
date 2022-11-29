@@ -24,6 +24,9 @@ import {
 } from '../Setup';
 import { AggResult } from '../../src/log/BaseLogger';
 import { QueryHelper } from '../../src/query/QueryHelper';
+import { ResultCollector } from '../../src/collector/ResultCollector';
+import { TestRunnerCallbacks } from '../../src/runner/TestOptions';
+import { ApexTestResult } from '@salesforce/apex-node/lib/src/tests/types';
 
 const $$ = testSetup();
 let mockConnection: Connection;
@@ -32,6 +35,45 @@ let toolingRequestStub: SinonStub;
 let toolingQueryStub: SinonStub;
 let queryHelperStub: SinonStub;
 const testData = new MockTestOrgData();
+
+jest.mock('../../src/collector/ResultCollector');
+const mockTestResult = [
+  {
+    Id: 'An id',
+    QueueItemId: 'queue item id',
+    AsyncApexJobId: 'job id',
+    Outcome: 'Pass',
+    ApexClass: {
+      Id: 'Class Id',
+      Name: 'Class1',
+      NamespacePrefix: null,
+    },
+    MethodName: 'Method1',
+    Message: null,
+    StackTrace: null,
+    RunTime: 10,
+    TestTimestamp: '2022-09-07T07:38:56.000+0000',
+  },
+  {
+    Id: 'An id',
+    QueueItemId: 'queue item id',
+    AsyncApexJobId: 'job id',
+    Outcome: 'Fail',
+    ApexClass: {
+      Id: 'Class Id3',
+      Name: 'Class3',
+      NamespacePrefix: null,
+    },
+    MethodName: 'Method2',
+    Message: null,
+    StackTrace: null,
+    RunTime: 20,
+    TestTimestamp: '2022-09-07T07:38:56.000+0000',
+  },
+];
+const gatherResult = jest
+  .spyOn(ResultCollector, 'gatherResults')
+  .mockReturnValue(Promise.resolve(mockTestResult));
 
 describe('messages', () => {
   beforeEach(async () => {
@@ -494,5 +536,39 @@ describe('messages', () => {
       'TestSample2',
       'TestSample3',
     ]);
+  });
+
+  it('should call OnPoll when running tests', async () => {
+    setupRunTestsAsynchronous(toolingRequestStub, mockConnection, {
+      tests: [{ className: 'TestSample' }],
+      testLevel: TestLevel.RunSpecifiedTests,
+      skipCodeCoverage: true,
+    });
+    setupQueryApexTestResults(toolingQueryStub, {});
+    const aggCount: AggResult = {
+      expr0: 10,
+    };
+
+    queryHelperStub.onCall(0).resolves([aggCount]);
+
+    const mockedOnRunStart = jest.fn<void, [string, void]>();
+    const mockedOnPoll = jest.fn<void, [ApexTestResult, void]>();
+
+    const callbacks = ({
+      onRunStarted: mockedOnRunStart,
+      onPoll: mockedOnPoll,
+    } as unknown) as TestRunnerCallbacks;
+
+    const logger = new CapturingLogger(mockConnection);
+    const runner: TestRunner = AsyncTestRunner.forClasses(
+      logger,
+      mockConnection,
+      '',
+      ['TestSample'],
+      { callbacks }
+    );
+    await runner.run();
+    expect(mockedOnRunStart.mock.calls[0][0]).to.equal(testRunId);
+    expect(mockedOnPoll.mock.calls[0][0]).to.deep.equal(mockTestResult);
   });
 });
