@@ -199,7 +199,7 @@ export class MockOutputGenerator implements OutputGenerator {
     /* eslint-disable @typescript-eslint/no-unused-vars */
     logger: Logger,
     outputFileBase: string,
-    startTime: Moment,
+    startTime: Date,
     tests: ApexTestResult[],
     runResultSummary: ApexTestRunResult
     /* eslint-enable @typescript-eslint/no-unused-vars */

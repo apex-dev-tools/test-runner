@@ -2,8 +2,6 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import { Moment } from 'moment';
-
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 import { ApexTestResult } from '../model/ApexTestResult';
 import { OutputGenerator } from './OutputGenerator';
@@ -28,7 +26,7 @@ export class ExecutionMapGenerator implements OutputGenerator {
   generate(
     logger: Logger,
     outputFileBase: string,
-    startRunTime: Moment,
+    startRunTime: Date,
     testResults: ApexTestResult[],
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _runResults: ApexTestRunResult

@@ -39,7 +39,7 @@ export class ReportGenerator implements OutputGenerator {
   generate(
     logger: Logger,
     outputFileBase: string,
-    startTime: Moment,
+    startTime: Date,
     testResults: ApexTestResult[],
     runResults: ApexTestRunResult
   ): void {
@@ -56,7 +56,7 @@ export class ReportGenerator implements OutputGenerator {
   }
 
   summary(
-    startTime: Moment,
+    startTime: Date,
     testResults: ExtendedApexTestResult[],
     runResults: ApexTestRunResult
   ): SummaryData {
@@ -98,7 +98,7 @@ export class ReportGenerator implements OutputGenerator {
     )}%`;
 
     // time of cmd invocation
-    const commandTime = moment().diff(startTime, 'millisecond', true);
+    const commandTime = moment().diff(moment(startTime), 'millisecond', true);
 
     // start time per run summary
     const testStartTime = moment.parseZone(runResults.StartTime).local();
