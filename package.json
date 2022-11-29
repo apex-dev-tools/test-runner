@@ -1,6 +1,6 @@
 {
   "name": "@apexdevtools/test-runner",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Apex parallel test runner with reliability goodness",
   "author": {
     "name": "Apex Dev Tools Team",
