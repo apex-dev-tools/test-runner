@@ -13,6 +13,8 @@ export { TestRunCancelAborter } from './runner/TestRunCancelAborter';
 
 export { OutputGenerator } from './results/OutputGenerator';
 export { ReportGenerator } from './results/ReportGenerator';
+export { ClassTimeGenerator } from './results/ClassTimeGenerator';
+export { ExecutionMapGenerator } from './results/ExecutionMapGenerator';
 
 export { BaseLogger } from './log/BaseLogger';
 export { CapturingLogger } from './log/CapturingLogger';
