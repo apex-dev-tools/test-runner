@@ -3,14 +3,13 @@
  */
 import { ApexTestResult } from '../model/ApexTestResult';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
-import { Moment } from 'moment';
 import { Logger } from '../log/Logger';
 
 export interface OutputGenerator {
   generate(
     logger: Logger,
     outputFileBase: string,
-    startTime: Moment,
+    startTime: Date,
     tests: ApexTestResult[],
     runResultSummary: ApexTestRunResult
   ): void;

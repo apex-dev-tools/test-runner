@@ -90,7 +90,7 @@ export class Testall {
     methodCollector: TestMethodCollector,
     outputGenerators: OutputGenerator[]
   ): Promise<void> {
-    const startTime = moment();
+    const startTime = new Date();
 
     // Create promise for test methods we expect to run
     // We pass the promise to avoid delaying the start of the test run

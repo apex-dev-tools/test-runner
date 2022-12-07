@@ -16,14 +16,17 @@ import {
   ApexTestRunResult,
   ApexTestRunResultFields,
 } from '../model/ApexTestRunResult';
+import { ApexTestResult } from '../model/ApexTestResult';
 import {
   getMaxTestRunRetries,
   getStatusPollIntervalMs,
   getTestRunAborter,
   getTestRunTimeoutMins,
+  TestRunnerCallbacks,
   TestRunnerOptions,
 } from './TestOptions';
 import TestStats from './TestStats';
+import { ResultCollector } from '../collector/ResultCollector';
 
 /**
  * Parallel unit test runner that includes the ability to cancel & restart a run should it not make sufficient progress
@@ -36,8 +39,15 @@ import TestStats from './TestStats';
 
 export interface TestRunner {
   getTestClasses(): string[];
-  run(): Promise<ApexTestRunResult>;
+  run(token?: CancellationToken): Promise<ApexTestRunResult>;
   newRunner(testItems: TestItem[]): TestRunner;
+}
+
+export interface CancellationToken {
+  /**
+   * Is `true` when the token has been cancelled, `false` otherwise.
+   */
+  isCancellationRequested: boolean;
 }
 
 export class AsyncTestRunner implements TestRunner {
@@ -95,7 +105,7 @@ export class AsyncTestRunner implements TestRunner {
     return this._testItems.map(item => item.className as string);
   }
 
-  public async run(): Promise<ApexTestRunResult> {
+  public async run(token?: CancellationToken): Promise<ApexTestRunResult> {
     if (this.hasHitMaxNumberOfTestRunRetries()) {
       throw new Error(
         `Max number of test run retries reached, max allowed retries: ${getMaxTestRunRetries(
@@ -115,7 +125,7 @@ export class AsyncTestRunner implements TestRunner {
     this._options.callbacks?.onRunStarted?.(testRunIdResult.testRunId);
     this._logger.logRunStarted(testRunIdResult.testRunId);
 
-    await this.waitForTestRunCompletion(testRunIdResult.testRunId);
+    await this.waitForTestRunCompletion(testRunIdResult.testRunId, token);
 
     const result = await this.testRunResult(testRunIdResult.testRunId);
     if (result.Status == 'Processing' && this._stats.isTestRunHanging()) {
@@ -162,7 +172,11 @@ export class AsyncTestRunner implements TestRunner {
     return payload;
   }
 
-  private async waitForTestRunCompletion(testRunId: string): Promise<void> {
+  private async waitForTestRunCompletion(
+    testRunId: string,
+    token?: CancellationToken
+  ): Promise<void> {
+    let polledTests: Set<ApexTestResult> = new Set();
     const options: PollingClient.Options = {
       poll: async () => {
         const testRunResult = await this.testRunResult(testRunId);
@@ -170,6 +184,22 @@ export class AsyncTestRunner implements TestRunner {
         // Update progress
         this._logger.logStatus(testRunResult);
         this._stats = this._stats.update(testRunResult.MethodsCompleted);
+        polledTests = await this.getCompletedTests(testRunId, polledTests).then(
+          unSeenTests => {
+            this._options.callbacks?.onPoll?.([...unSeenTests]);
+            return new Set([...polledTests, ...unSeenTests]);
+          }
+        );
+
+        if (token?.isCancellationRequested) {
+          await getTestRunAborter(this._options).abortRun(
+            this._logger,
+            this._connection,
+            testRunId,
+            this._options
+          );
+          return Promise.resolve({ completed: true });
+        }
 
         // Bail out if we reach a completion state
         if (this.hasTestRunComplete(testRunResult.Status))
@@ -217,5 +247,17 @@ export class AsyncTestRunner implements TestRunner {
         `Wrong number of ApexTestRunResult records found for '${testRunId}', found ${records.length}, expected 1`
       );
     return records[0];
+  }
+
+  private async getCompletedTests(
+    testRunId: string,
+    seen: Set<ApexTestResult>
+  ): Promise<Array<ApexTestResult>> {
+    return ResultCollector.gatherResults(this._connection, testRunId).then(
+      res => {
+        const newItems = res.filter(x => !seen.has(x));
+        return newItems;
+      }
+    );
   }
 }

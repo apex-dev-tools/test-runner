@@ -53,7 +53,7 @@ describe('messages', () => {
     generator.generate(
       logger,
       'test-output',
-      moment(),
+      new Date(),
       [
         {
           Id: 'An id',
@@ -154,7 +154,7 @@ describe('messages', () => {
     generator.generate(
       logger,
       'test-output',
-      moment(),
+      new Date(),
       [
         {
           Id: 'An id',
