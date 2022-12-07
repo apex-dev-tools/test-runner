@@ -176,7 +176,7 @@ export class AsyncTestRunner implements TestRunner {
     testRunId: string,
     token?: CancellationToken
   ): Promise<void> {
-    const polledTests: Array<ApexTestResult> = [];
+    let polledTests: Set<ApexTestResult> = new Set();
     const options: PollingClient.Options = {
       poll: async () => {
         const testRunResult = await this.testRunResult(testRunId);
@@ -184,10 +184,11 @@ export class AsyncTestRunner implements TestRunner {
         // Update progress
         this._logger.logStatus(testRunResult);
         this._stats = this._stats.update(testRunResult.MethodsCompleted);
-        await this.updateCallbacks(
-          testRunId,
-          polledTests,
-          this._options.callbacks
+        polledTests = await this.getCompletedTests(testRunId, polledTests).then(
+          unSeenTests => {
+            this._options.callbacks?.onPoll?.([...unSeenTests]);
+            return new Set([...polledTests, ...unSeenTests]);
+          }
         );
 
         if (token?.isCancellationRequested) {
@@ -248,16 +249,14 @@ export class AsyncTestRunner implements TestRunner {
     return records[0];
   }
 
-  private async updateCallbacks(
+  private async getCompletedTests(
     testRunId: string,
-    seen: Array<ApexTestResult>,
-    callbacks?: TestRunnerCallbacks
-  ) {
-    await ResultCollector.gatherResults(this._connection, testRunId).then(
+    seen: Set<ApexTestResult>
+  ): Promise<Array<ApexTestResult>> {
+    return ResultCollector.gatherResults(this._connection, testRunId).then(
       res => {
-        const newItems = res.filter(x => !seen.includes(x));
-        callbacks?.onPoll?.(newItems);
-        seen.push(...newItems);
+        const newItems = res.filter(x => !seen.has(x));
+        return newItems;
       }
     );
   }
