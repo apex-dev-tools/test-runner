@@ -28,6 +28,9 @@ See './script' for some basic scripts to aid org testing.
 
 ### History
 
+    1.2.0 - Add callback `onPoll` for retrieving test stats.
+    1.1.0 - Export `ResultCollector`, add callback for `onRunStarted`.
+    1.0.1 - Reduce symbol chunk size.
     1.0.0 - Initial version
 
 ### License
