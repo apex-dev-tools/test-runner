@@ -179,13 +179,14 @@ export class ReportGenerator implements OutputGenerator {
     junit += '        </properties>\n';
     testResults.forEach(test => {
       const success = test.Outcome === 'Pass';
-      let classname = test.ApexClass.Name;
+      let classname = _.escape(test.ApexClass.Name);
       if (test.ApexClass.NamespacePrefix) {
         classname = test.ApexClass.NamespacePrefix + '.' + classname;
       }
-      junit += `        <testcase name="${
-        test.MethodName
-      }" classname="${classname}" time="${msToSeconds(test.RunTime)}">\n`;
+      const methodName = _.escape(test.MethodName);
+      junit += `        <testcase name="${methodName}" classname="${classname}" time="${msToSeconds(
+        test.RunTime
+      )}">\n`;
       if (!success) {
         const message = test.Message ? test.Message : 'No failure message!';
         junit += `            <failure message="${_.escape(message)}">`;

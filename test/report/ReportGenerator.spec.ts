@@ -9,8 +9,8 @@ import {
 import { createSandbox, SinonSandbox } from 'sinon';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import { ReportGenerator } from '../../src/results/ReportGenerator';
-import moment from 'moment';
 import { expect } from 'chai';
+import { parseString } from 'xml2js';
 
 const $$ = testSetup();
 let mockConnection: Connection;
@@ -193,5 +193,64 @@ describe('messages', () => {
     expect(logger.files[0][1].length > 0).to.be.true;
     expect(logger.files[1][0]).to.be.equal('test-output.json');
     expect(logger.files[1][1].length > 0).to.be.true;
+  });
+
+  it('should create escape characters in xml output', () => {
+    const generator = new ReportGenerator(
+      'instanceUrl',
+      'orgId',
+      'username',
+      'suitename'
+    );
+
+    const logger = new CapturingLogger(mockConnection, true);
+    generator.generate(
+      logger,
+      'test-output',
+      new Date(),
+      [
+        {
+          Id: 'An id',
+          QueueItemId: 'queue item id',
+          AsyncApexJobId: 'job id',
+          Outcome: 'Fail',
+          ApexClass: {
+            Id: 'Class Id',
+            Name: '<Class1',
+            NamespacePrefix: null,
+          },
+          MethodName: '&Method1',
+          Message: "It Work's",
+          StackTrace: null,
+          RunTime: 10,
+          TestTimestamp: '2022-09-07T07:38:56.000+0000',
+        },
+      ],
+      {
+        AsyncApexJobId: 'job Id',
+        StartTime: '2020-07-10 15:00:00.000',
+        EndTime: '2020-07-10 15:01:00.000',
+        Status: 'Status',
+        TestTime: 1000,
+        UserId: 'user Id',
+        ClassesCompleted: 100,
+        ClassesEnqueued: 99,
+        MethodsCompleted: 500,
+        MethodsEnqueued: 600,
+        MethodsFailed: 0,
+      }
+    );
+
+    expect(logger.files.length).to.be.equal(2);
+    expect(logger.files[0][0]).to.be.equal('test-output.xml');
+    expect(logger.files[0][1].length > 0).to.be.true;
+    const content = logger.files[0][1];
+    parseString(content, err => {
+      expect(err).to.be.null;
+    });
+    expect(content).contains(
+      '<testcase name="&amp;Method1" classname="&lt;Class1" time="0.01">'
+    );
+    expect(content).contains('<failure message="It Work&#39;s"></failure>');
   });
 });
