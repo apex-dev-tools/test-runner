@@ -41,7 +41,6 @@ export class TestDebugLogs {
       await cmd.run(methodCollector, runner);
     } catch (e) {
       logger.logError(e);
-      throw e;
     }
   }
 
@@ -88,7 +87,7 @@ export class TestDebugLogs {
     this._logger.logMessage(
       'Collecting test methods, this may take some time...'
     );
-    const testMethodMap = await methodCollector.gatherTestMethods();
+    const testMethodMap = await methodCollector.gatherTestMethods(() => false);
     this._logger.logMessage(`Found ${testMethodMap.size} test classes`);
 
     while (testMethodMap.size > 0) {

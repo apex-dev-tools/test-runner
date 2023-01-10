@@ -22,7 +22,6 @@ import {
   getStatusPollIntervalMs,
   getTestRunAborter,
   getTestRunTimeoutMins,
-  TestRunnerCallbacks,
   TestRunnerOptions,
 } from './TestOptions';
 import TestStats from './TestStats';
