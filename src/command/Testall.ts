@@ -227,6 +227,7 @@ export class Testall {
       };
       const result = (await testService.runTestSynchronous({
         tests: [item],
+        skipCodeCoverage: !(this._options.codeCoverage == true),
       })) as TestResult;
       if (result.summary.outcome == 'Passed') {
         // Only flip outcome so still considerd a 'locked test' via message

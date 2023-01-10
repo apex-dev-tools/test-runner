@@ -68,6 +68,7 @@ export interface TestRunnerOptions extends CancelTestRunOptions {
   statusPollIntervalMs?: number; // Time to wait between checking test run status, default 30 secs
   pollLimitToAssumeHangingTests?: number; // Number polls without test progress before a hang is assumed, default 60
   callbacks?: TestRunnerCallbacks; // Callbacks for events in test runner
+  codeCoverage?: boolean; // Collect code coverage data, defaults false
 }
 
 export function getTestRunAborter(options: TestRunnerOptions): TestRunAborter {
