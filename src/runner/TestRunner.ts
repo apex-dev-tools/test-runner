@@ -153,7 +153,7 @@ export class AsyncTestRunner implements TestRunner {
       const config: AsyncTestArrayConfiguration = {
         tests: this._testItems,
         testLevel: TestLevel.RunSpecifiedTests,
-        skipCodeCoverage: true,
+        skipCodeCoverage: this.skipCollectCoverage(),
       };
       return config;
     } else {
@@ -167,8 +167,12 @@ export class AsyncTestRunner implements TestRunner {
     const payload = await this._testService.buildAsyncPayload(
       TestLevel.RunLocalTests
     );
-    payload.skipCodeCoverage = true;
+    payload.skipCodeCoverage = this.skipCollectCoverage();
     return payload;
+  }
+
+  private skipCollectCoverage(): boolean {
+    return !(this._options.codeCoverage == true);
   }
 
   private async waitForTestRunCompletion(
