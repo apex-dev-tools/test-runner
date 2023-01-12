@@ -46,7 +46,9 @@ export class OrgTestMethodCollector implements TestMethodCollector {
     return this.classNameById;
   }
 
-  async gatherTestMethods(): Promise<Map<string, Set<string>>> {
+  async gatherTestMethods(
+    abort: () => boolean
+  ): Promise<Map<string, Set<string>>> {
     // Query class symbols in chunks
     const loader = new ClassSymbolLoader(
       this.logger,
@@ -62,6 +64,7 @@ export class OrgTestMethodCollector implements TestMethodCollector {
 
     let classInfos: ApexClassInfo[] = [];
     for (const chunk of chunks) {
+      if (abort()) return new Map<string, Set<string>>();
       classInfos = classInfos.concat(await loader.load(chunk));
     }
 

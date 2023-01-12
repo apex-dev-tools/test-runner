@@ -9,7 +9,7 @@ import { chunk } from '../query/Chunk';
 
 export interface TestMethodCollector {
   classIdNameMap(): Promise<Map<string, string>>;
-  gatherTestMethods(): Promise<Map<string, Set<string>>>;
+  gatherTestMethods(abort: () => boolean): Promise<Map<string, Set<string>>>;
 }
 
 export async function classIdNameMapFromNames(

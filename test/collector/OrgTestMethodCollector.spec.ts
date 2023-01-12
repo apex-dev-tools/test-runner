@@ -200,7 +200,9 @@ describe('messages', () => {
       'foo',
       []
     );
-    const testMethodsByClassName = await testMethodCollector.gatherTestMethods();
+    const testMethodsByClassName = await testMethodCollector.gatherTestMethods(
+      () => false
+    );
 
     expect(testMethodsByClassName.size).to.equal(2);
     expect(testMethodsByClassName.has('FooClass')).to.be.true;
@@ -283,7 +285,9 @@ describe('messages', () => {
       'foo',
       []
     );
-    const testMethodsByClassName = await testMethodCollector.gatherTestMethods();
+    const testMethodsByClassName = await testMethodCollector.gatherTestMethods(
+      () => false
+    );
 
     expect(testMethodsByClassName.size).to.equal(2);
     expect(testMethodsByClassName.has('FooClass')).to.be.true;

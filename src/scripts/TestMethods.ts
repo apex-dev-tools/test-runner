@@ -22,7 +22,7 @@ async function gatherTestMethods(username: string, namespace: string) {
     namespace == 'unmanaged' ? '' : namespace,
     []
   );
-  return await collector.gatherTestMethods();
+  return await collector.gatherTestMethods(() => false);
 }
 
 if (process.argv.length != 4) {

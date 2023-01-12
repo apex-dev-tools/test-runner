@@ -11,7 +11,6 @@ import { ApexTestResult } from '../model/ApexTestResult';
 import { TestRunnerOptions } from '../runner/TestOptions';
 import { TestRunner } from '../runner/TestRunner';
 import { OutputGenerator } from '../results/OutputGenerator';
-import moment from 'moment';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 
 /**
@@ -69,7 +68,6 @@ export class Testall {
       await cmd.run(runner, methodCollector, outputGenerators);
     } catch (e) {
       logger.logError(e);
-      throw e;
     }
   }
 
@@ -91,21 +89,26 @@ export class Testall {
     outputGenerators: OutputGenerator[]
   ): Promise<void> {
     const startTime = new Date();
+    let abortTestMethodColletion = false;
 
     // Create promise for test methods we expect to run
     // We pass the promise to avoid delaying the start of the test run
-    const testMethodMap = methodCollector.gatherTestMethods();
+    const testMethodMap = methodCollector.gatherTestMethods(
+      () => abortTestMethodColletion
+    );
 
     // Run them ;-)
     const results = new Map<string, ApexTestResult>();
-    const runResult = await this.asyncRun(
-      0,
-      runner,
-      testMethodMap,
-      null,
-      results
-    );
+    let runResult: ApexTestRunResult | null = null;
+    try {
+      runResult = await this.asyncRun(0, runner, testMethodMap, null, results);
+    } catch (err) {
+      // Terminate gathering test methods, its failed
+      abortTestMethodColletion = true;
+      throw err;
+    }
     if (runResult == null) {
+      abortTestMethodColletion = true;
       this._logger.logTestallAbort(this._options);
       return;
     }
@@ -123,7 +126,7 @@ export class Testall {
         getOutputFileBase(this._options),
         startTime,
         Array.from(results.values()),
-        runResult
+        runResult as ApexTestRunResult
       )
     );
   }

@@ -28,9 +28,15 @@ export abstract class BaseLogger implements Logger {
 
   logError(error: MaybeError): void {
     if (error instanceof Error) {
-      this.logMessage(error.message);
-      if (error.stack !== undefined)
-        this.logMessage('Error stack: ' + error.stack);
+      if (error.name == 'ALREADY_IN_PROCESS') {
+        this.logMessage(
+          "One or more of the tests is already queued to run, they can't be requeued"
+        );
+      } else {
+        this.logMessage(error.message);
+        if (error.stack !== undefined)
+          this.logMessage('Error stack: ' + error.stack);
+      }
     } else {
       this.logMessage('Error: ' + JSON.stringify(error));
     }
