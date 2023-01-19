@@ -13,7 +13,6 @@ import { CapturingLogger } from '../../src/log/CapturingLogger';
 import { logRegex, testRunId } from '../Setup';
 import { ApexTestRunResult } from '../../src/model/ApexTestRunResult';
 import { QueryHelper } from '../../src/query/QueryHelper';
-import { AggResult } from '../../src/log/BaseLogger';
 
 const $$ = testSetup();
 let mockConnection: Connection;
@@ -66,10 +65,17 @@ describe('messages', () => {
       MethodsFailed: 3,
     };
 
-    const aggCount: AggResult = {
-      expr0: 10,
-    };
-    queryHelperStub.onCall(0).resolves([aggCount]);
+    const queryResult = [
+      {
+        outcome: 'Pass',
+        total: 7,
+      },
+      {
+        outcome: 'Fail',
+        total: 3,
+      },
+    ];
+    queryHelperStub.onCall(0).resolves(queryResult);
 
     const mockQueueItems = {
       records: [
@@ -87,7 +93,6 @@ describe('messages', () => {
 
     const logger = new CapturingLogger(mockConnection, true);
     await logger.logStatus(mockTestRunResult);
-
     expect(logger.entries.length).to.equal(1);
     expect(logger.entries[0]).to.match(
       logRegex('3 have failed, 50% run, job is Processing$')

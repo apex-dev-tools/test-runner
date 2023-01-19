@@ -102,19 +102,27 @@ export abstract class BaseLogger implements Logger {
   }
 
   async logStatus(testRunResult: ApexTestRunResult): Promise<void> {
+    type TableShape = {
+      outcome: string;
+      total: number;
+    };
+
     // We can't rely on MethodsCompleted (it under reports) so generate our own
     const aggComplete = await QueryHelper.instance(
       this.connection
-    ).query<AggResult>(
+    ).query<TableShape>(
       'ApexTestResult',
-      `AsyncApexJobId='${testRunResult.AsyncApexJobId}'`,
-      'Count(Id)'
+      `AsyncApexJobId='${testRunResult.AsyncApexJobId}' Group by Outcome`,
+      'Outcome outcome, Count(Id) total'
     );
-    const countComplete = aggComplete[0].expr0;
+    const countComplete = aggComplete.reduce((n, { total }) => n + total, 0);
 
     const testRunId = testRunResult.AsyncApexJobId;
     const status = testRunResult.Status;
-    const numberFailed = testRunResult.MethodsFailed;
+    const numberFailed = aggComplete
+      .filter(a => a.outcome === 'Fail')
+      .map(n => n.total)
+      .reduce((a, b) => a + b, 0);
     const complete =
       testRunResult.MethodsEnqueued > 0
         ? Math.round((countComplete * 100) / testRunResult.MethodsEnqueued)
