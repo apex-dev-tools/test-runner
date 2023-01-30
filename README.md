@@ -13,7 +13,7 @@ The Testall command also handles re-running tests that failed due to locking aft
 
 You can start a Testall run by providing a set of test classes. If you don't provide any the run will execute against all the "local" (non-packaged) tests in the org.
 
-### Building
+## Building
 
 You must use **pnpm** to build the package.
 
@@ -26,13 +26,6 @@ Jest unit tests can be run with
 
 See './script' for some basic scripts to aid org testing.
 
-### History
-
-    1.2.0 - Add callback `onPoll` for retrieving test stats.
-    1.1.0 - Export `ResultCollector`, add callback for `onRunStarted`.
-    1.0.1 - Reduce symbol chunk size.
-    1.0.0 - Initial version
-
-### License
+## License
 
 All the source code included uses a 3-clause BSD license, see LICENSE for details.
