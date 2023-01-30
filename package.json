@@ -10,7 +10,8 @@
   "main": "./lib/src/index.js",
   "license": "BSD-3-Clause",
   "files": [
-    "lib/**/*"
+    "lib/**/*",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "tsc",
