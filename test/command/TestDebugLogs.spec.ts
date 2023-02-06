@@ -134,8 +134,7 @@ describe('messages', () => {
     toolingCreateStub.resolves({ success: true }); // Debug trace
 
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'foo-'));
-    fs.rmdirSync(tmpDir);
-
+    fs.rmSync(tmpDir, { recursive: true, force: true });
     try {
       await TestDebugLogs.run(
         logger,

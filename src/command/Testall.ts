@@ -115,9 +115,10 @@ export class Testall {
 
     // Do sequential re-run of locked to try and get more passes
     const testResults = ResultCollector.groupRecords(
+      this._logger,
       Array.from(results.values())
     );
-    await this.runSequentially(testResults.locked);
+    await this.runSequentially(testResults.rerun);
 
     // Reporting
     outputGenerators.forEach(outputGenerator =>
@@ -171,7 +172,10 @@ export class Testall {
     }
 
     // If we have too many genuine failures then give up
-    const testResults = ResultCollector.groupRecords(rawTestResults);
+    const testResults = ResultCollector.groupRecords(
+      this._logger,
+      rawTestResults
+    );
     if (
       priorFailures + testResults.failed.length >
       getMaxErrorsForReRun(this._options)

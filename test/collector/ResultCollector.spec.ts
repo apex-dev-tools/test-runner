@@ -16,6 +16,7 @@ import {
 } from '../../src/collector/ResultCollector';
 import { testRunId } from '../Setup';
 import { QueryHelper } from '../../src/query/QueryHelper';
+import { CapturingLogger } from '../../src/log/CapturingLogger';
 
 const $$ = testSetup();
 let mockConnection: Connection;
@@ -130,15 +131,16 @@ describe('messages', () => {
       },
     ];
 
-    const results = ResultCollector.groupRecords(mockTestRunResults);
+    const logger = new CapturingLogger(mockConnection);
+    const results = ResultCollector.groupRecords(logger, mockTestRunResults);
 
     expect(results.passed.length).to.equal(1);
     expect(results.passed[0]).to.equal(mockTestRunResults[0]);
     expect(results.failed.length).to.equal(1);
     expect(results.failed[0]).to.equal(mockTestRunResults[1]);
-    expect(results.locked.length).to.equal(2);
-    expect(results.locked[0]).to.equal(mockTestRunResults[2]);
-    expect(results.locked[1]).to.equal(mockTestRunResults[3]);
+    expect(results.rerun.length).to.equal(2);
+    expect(results.rerun[0]).to.equal(mockTestRunResults[2]);
+    expect(results.rerun[1]).to.equal(mockTestRunResults[3]);
   });
 
   it('should re-group test results by type', () => {
@@ -196,17 +198,18 @@ describe('messages', () => {
     const badResultsByType: ResultsByType = {
       passed: [mockTestRunResults[2]],
       failed: [mockTestRunResults[0], mockTestRunResults[3]],
-      locked: [mockTestRunResults[1]],
+      rerun: [mockTestRunResults[1]],
     };
 
-    const results = ResultCollector.reGroupRecords(badResultsByType);
+    const logger = new CapturingLogger(mockConnection);
+    const results = ResultCollector.reGroupRecords(logger, badResultsByType);
 
     expect(results.passed.length).to.equal(1);
     expect(results.passed[0]).to.equal(mockTestRunResults[0]);
     expect(results.failed.length).to.equal(1);
     expect(results.failed[0]).to.equal(mockTestRunResults[1]);
-    expect(results.locked.length).to.equal(2);
-    expect(results.locked[0]).to.equal(mockTestRunResults[2]);
-    expect(results.locked[1]).to.equal(mockTestRunResults[3]);
+    expect(results.rerun.length).to.equal(2);
+    expect(results.rerun[0]).to.equal(mockTestRunResults[2]);
+    expect(results.rerun[1]).to.equal(mockTestRunResults[3]);
   });
 });
