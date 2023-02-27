@@ -134,7 +134,7 @@ export class TestDebugLogs {
       this._logger.logMessage(
         `Removing & recreating output directory '${outputDir}'`
       );
-      fs.rmdirSync(outputDir, { recursive: true });
+      fs.rmSync(outputDir, { recursive: true });
       fs.mkdirSync(outputDir);
     } else {
       throw new Error(

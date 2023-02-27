@@ -3,11 +3,13 @@
  */
 
 import { Connection } from '@apexdevtools/sfdx-auth-helper';
+import { Logger } from '../log/Logger';
 import { ApexTestResult } from '../model/ApexTestResult';
 import { QueryHelper } from '../query/QueryHelper';
+import { TestResultMatcher } from './TestResultMatcher';
 
 export interface ResultsByType {
-  locked: ApexTestResult[];
+  rerun: ApexTestResult[];
   failed: ApexTestResult[];
   passed: ApexTestResult[];
 }
@@ -25,17 +27,21 @@ export class ResultCollector {
     );
   }
 
-  static reGroupRecords(results: ResultsByType): ResultsByType {
-    const all = results.passed.concat(results.locked, results.failed);
-    return this.groupRecords(all);
+  static reGroupRecords(logger: Logger, results: ResultsByType): ResultsByType {
+    const all = results.passed.concat(results.rerun, results.failed);
+    return this.groupRecords(logger, all);
   }
 
-  static groupRecords(records: ApexTestResult[]): ResultsByType {
+  static groupRecords(
+    logger: Logger,
+    records: ApexTestResult[]
+  ): ResultsByType {
     const results: ResultsByType = {
-      locked: [],
+      rerun: [],
       failed: [],
       passed: [],
     };
+    const matcher = TestResultMatcher.create(logger);
     records.filter(testDetail => {
       const testMessage = testDetail.Message ? testDetail.Message : '';
       if (testDetail.Outcome === 'Pass') {
@@ -43,11 +49,9 @@ export class ResultCollector {
       } else if (
         testDetail.Outcome !== 'Pass' &&
         testDetail.Outcome !== 'Skip' &&
-        (testMessage.search(/UNABLE_TO_LOCK_ROW/) !== -1 ||
-          testMessage.search(/deadlock detected while waiting for resource/) !==
-            -1)
+        matcher.doesMatchAny(testMessage)
       ) {
-        results.locked.push(testDetail);
+        results.rerun.push(testDetail);
       } else {
         results.failed.push(testDetail);
       }

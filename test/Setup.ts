@@ -22,7 +22,6 @@ import {
 } from '../src/runner/TestOptions';
 import { TestRunner } from '../src/runner/TestRunner';
 import { OutputGenerator } from '../src/results/OutputGenerator';
-import { Moment } from 'moment';
 import { ApexTestResult } from '../src/model/ApexTestResult';
 import { ApexClassInfo, QueryResponse } from '../src/query/ClassSymbolLoader';
 
