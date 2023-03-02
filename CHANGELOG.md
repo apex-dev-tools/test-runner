@@ -1,5 +1,9 @@
 # test-runner - Changelog
 
+## 1.4.0 - 2023-03-02
+
+* Add support for test rerun patterns in `.apexTestRerun`.
+
 ## 1.3.0 - 2023-01-30
 
 * Fix misreporting of failed tests.
