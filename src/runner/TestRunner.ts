@@ -136,7 +136,7 @@ export class AsyncTestRunner implements TestRunner {
         testRunIdResult.testRunId,
         this._options
       );
-      return await this.run();
+      return await this.run(token);
     } else {
       return result;
     }
