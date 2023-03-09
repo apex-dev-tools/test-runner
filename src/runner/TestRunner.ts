@@ -25,6 +25,7 @@ import {
 } from './TestOptions';
 import TestStats from './TestStats';
 import { ResultCollector } from '../collector/ResultCollector';
+import { QueryHelper } from '../query/QueryHelper';
 
 /**
  * Parallel unit test runner that includes the ability to cancel & restart a run should it not make sufficient progress
@@ -230,17 +231,18 @@ export class AsyncTestRunner implements TestRunner {
   }
 
   private async testRunResult(testRunId: string): Promise<ApexTestRunResult> {
-    const testRunResults = await this._connection.tooling.query<ApexTestRunResult>(
-      `SELECT ${ApexTestRunResultFields.join(
-        ', '
-      )} FROM ApexTestRunResult WHERE AsyncApexJobId = '${testRunId}'`
+    const testRunResults = await QueryHelper.instance(
+      this._connection
+    ).query<ApexTestRunResult>(
+      'ApexTestRunResult',
+      `AsyncApexJobId = '${testRunId}'`,
+      ApexTestRunResultFields.join(', ')
     );
-    const records = testRunResults.records;
-    if (records.length != 1)
+    if (testRunResults.length != 1)
       throw new Error(
-        `Wrong number of ApexTestRunResult records found for '${testRunId}', found ${records.length}, expected 1`
+        `Wrong number of ApexTestRunResult records found for '${testRunId}', found ${testRunResults.length}, expected 1`
       );
-    return records[0];
+    return testRunResults[0];
   }
 
   private async updateProgress(
