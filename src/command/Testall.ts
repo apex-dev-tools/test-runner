@@ -89,12 +89,12 @@ export class Testall {
     outputGenerators: OutputGenerator[]
   ): Promise<void> {
     const startTime = new Date();
-    let abortTestMethodColletion = false;
+    let abortTestMethodCollection = false;
 
     // Create promise for test methods we expect to run
     // We pass the promise to avoid delaying the start of the test run
     const testMethodMap = methodCollector.gatherTestMethods(
-      () => abortTestMethodColletion
+      () => abortTestMethodCollection
     );
 
     // Run them ;-)
@@ -104,16 +104,16 @@ export class Testall {
       runResult = await this.asyncRun(0, runner, testMethodMap, null, results);
     } catch (err) {
       // Terminate gathering test methods, its failed
-      abortTestMethodColletion = true;
+      abortTestMethodCollection = true;
       throw err;
     }
     if (runResult == null) {
-      abortTestMethodColletion = true;
+      abortTestMethodCollection = true;
       this._logger.logTestallAbort(this._options);
       return;
     }
 
-    // Do sequential re-run of locked to try and get more passes
+    // Do sequential re-run of matched patterns to try and get more passes
     const testResults = ResultCollector.groupRecords(
       this._logger,
       Array.from(results.values())

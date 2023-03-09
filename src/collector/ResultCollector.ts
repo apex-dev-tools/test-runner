@@ -4,7 +4,7 @@
 
 import { Connection } from '@apexdevtools/sfdx-auth-helper';
 import { Logger } from '../log/Logger';
-import { ApexTestResult } from '../model/ApexTestResult';
+import { ApexTestResult, ApexTestResultFields } from '../model/ApexTestResult';
 import { QueryHelper } from '../query/QueryHelper';
 import { TestResultMatcher } from './TestResultMatcher';
 
@@ -22,8 +22,7 @@ export class ResultCollector {
     return await QueryHelper.instance(connection).query<ApexTestResult>(
       'ApexTestResult',
       `AsyncApexJobId='${testRunId}'`,
-      `Id, QueueItemId, StackTrace, Message, AsyncApexJobId, MethodName, Outcome, RunTime, TestTimestamp,
-        ApexClass.Id, ApexClass.Name, ApexClass.NamespacePrefix`
+      ApexTestResultFields.join(', ')
     );
   }
 
@@ -47,7 +46,6 @@ export class ResultCollector {
       if (testDetail.Outcome === 'Pass') {
         results.passed.push(testDetail);
       } else if (
-        testDetail.Outcome !== 'Pass' &&
         testDetail.Outcome !== 'Skip' &&
         matcher.doesMatchAny(testMessage)
       ) {
