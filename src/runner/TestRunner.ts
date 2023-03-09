@@ -16,7 +16,6 @@ import {
   ApexTestRunResult,
   ApexTestRunResultFields,
 } from '../model/ApexTestRunResult';
-import { ApexTestResult } from '../model/ApexTestResult';
 import {
   getMaxTestRunRetries,
   getStatusPollIntervalMs,
@@ -179,20 +178,12 @@ export class AsyncTestRunner implements TestRunner {
     testRunId: string,
     token?: CancellationToken
   ): Promise<void> {
-    let polledTests: Set<ApexTestResult> = new Set();
+    let polledTests: Set<string> = new Set();
     const options: PollingClient.Options = {
       poll: async () => {
         const testRunResult = await this.testRunResult(testRunId);
 
-        // Update progress
-        this._logger.logStatus(testRunResult);
-        this._stats = this._stats.update(testRunResult.MethodsCompleted);
-        polledTests = await this.getCompletedTests(testRunId, polledTests).then(
-          unSeenTests => {
-            this._options.callbacks?.onPoll?.([...unSeenTests]);
-            return new Set([...polledTests, ...unSeenTests]);
-          }
-        );
+        polledTests = await this.updateProgress(testRunResult, polledTests);
 
         if (token?.isCancellationRequested) {
           await getTestRunAborter(this._options).abortRun(
@@ -252,15 +243,38 @@ export class AsyncTestRunner implements TestRunner {
     return records[0];
   }
 
-  private async getCompletedTests(
-    testRunId: string,
-    seen: Set<ApexTestResult>
-  ): Promise<Array<ApexTestResult>> {
-    return ResultCollector.gatherResults(this._connection, testRunId).then(
-      res => {
-        const newItems = res.filter(x => !seen.has(x));
-        return newItems;
-      }
+  private async updateProgress(
+    testRunResult: ApexTestRunResult,
+    seen: Set<string>
+  ): Promise<Set<string>> {
+    const runId = testRunResult.AsyncApexJobId;
+    const results = await ResultCollector.gatherResults(
+      this._connection,
+      testRunResult.AsyncApexJobId
     );
+    const newResults = results.filter(x => !seen.has(x.Id));
+
+    this._logger.logStatus(testRunResult, results);
+    this._stats = this._stats.update(results.length);
+
+    this._options.callbacks?.onPoll?.([...newResults]);
+
+    await this.reportQueueItems(runId);
+
+    return new Set([...seen, ...newResults.map(r => r.Id)]);
+  }
+
+  private async reportQueueItems(testRunId: string): Promise<void> {
+    if (this._logger.verbose) {
+      const apexQueueItems = await QueryHelper.instance(this._connection).query(
+        'ApexTestQueueItem',
+        `ParentJobId='${testRunId}'`,
+        'Id, ApexClassId, ExtendedStatus, Status, TestRunResultID, ShouldSkipCodeCoverage'
+      );
+      this._logger.logOutputFile(
+        `testqueue-${new Date().toISOString()}.json`,
+        JSON.stringify(apexQueueItems, undefined, 2)
+      );
+    }
   }
 }

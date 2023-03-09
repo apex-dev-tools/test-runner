@@ -22,11 +22,14 @@ import {
   setupRunTestsAsynchronous,
   testRunId,
 } from '../Setup';
-import { AggResult } from '../../src/log/BaseLogger';
 import { QueryHelper } from '../../src/query/QueryHelper';
 import { ResultCollector } from '../../src/collector/ResultCollector';
 import { TestRunnerCallbacks } from '../../src/runner/TestOptions';
 import { ApexTestResult } from '@salesforce/apex-node/lib/src/tests/types';
+
+interface AggResult {
+  expr0: number;
+}
 
 const $$ = testSetup();
 let mockConnection: Connection;

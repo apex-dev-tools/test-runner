@@ -7,6 +7,9 @@ import { ApexTestResult } from '../model/ApexTestResult';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 
 export interface Logger {
+  readonly logDirPath: string;
+  readonly verbose: boolean;
+
   // For general use
   logError(error: any): void;
   logWarning(error: any): void;
@@ -20,12 +23,13 @@ export interface Logger {
   logTestallAbort(options: TestallOptions): void;
   logTestallRerun(missing: Map<string, Set<string>>): void;
   logMaxErrorAbort(failed: ApexTestResult[]): void;
-  logTestRetry(result: ApexTestResult): void;
+  logTestWillRetry(rerun: ApexTestResult[]): void;
+  logTestRetry(result: ApexTestResult, otherMessage: string | null): void;
 
   // Test runner
   logRunStarted(testRunId: string): void;
   logNoProgress(testRunId: string): void;
-  logStatus(status: ApexTestRunResult): void;
+  logStatus(status: ApexTestRunResult, tests: ApexTestResult[]): void;
 
   // Test job cancelling
   logRunCancelling(testRunId: string): void;

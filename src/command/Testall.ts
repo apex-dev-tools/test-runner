@@ -227,6 +227,7 @@ export class Testall {
 
   private async runSequentially(tests: ApexTestResult[]): Promise<void> {
     const testService = new TestService(this._connection);
+    this._logger.logTestWillRetry(tests);
     for (const detail of tests) {
       const item: TestItem = {
         classId: detail.ApexClass.Id,
@@ -240,7 +241,7 @@ export class Testall {
         // Only flip outcome so still considerd a 'locked test' via message
         detail.Outcome = 'Pass';
       }
-      this._logger.logTestRetry(detail);
+      this._logger.logTestRetry(detail, result.tests[0]?.message);
     }
   }
 }
