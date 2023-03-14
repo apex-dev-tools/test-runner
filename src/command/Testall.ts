@@ -12,6 +12,7 @@ import { TestRunnerOptions } from '../runner/TestOptions';
 import { TestRunner } from '../runner/TestRunner';
 import { OutputGenerator } from '../results/OutputGenerator';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
+import { QueryOptions } from '../query/QueryHelper';
 
 /**
  * Parallel unit test runner that can hide intermitant failures caused by UNABLE_TO_LOCK_ROW, deadlock errors and
@@ -28,7 +29,7 @@ import { ApexTestRunResult } from '../model/ApexTestRunResult';
  * OutputGenerators to post-process the test run results.
  */
 
-export interface TestallOptions extends TestRunnerOptions {
+export interface TestallOptions extends TestRunnerOptions, QueryOptions {
   maxErrorsForReRun?: number; // Don't re-run if > failed tests (excluding locking/missed tests), default 10
   outputFileBase?: string; // Base for junit and other output files, default 'test-result*'
 }
@@ -143,9 +144,11 @@ export class Testall {
     const runResult = await runner.run();
 
     // Get all the test results for analysis
-    const rawTestResults = await ResultCollector.gatherResults(
+    const rawTestResults = await ResultCollector.gatherResultsWithRetry(
       this._connection,
-      runResult.AsyncApexJobId
+      runResult.AsyncApexJobId,
+      this._logger,
+      this._options
     );
 
     // Update rolling results for tests that did run

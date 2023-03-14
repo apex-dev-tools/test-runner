@@ -5,7 +5,7 @@
 import { Connection } from '@apexdevtools/sfdx-auth-helper';
 import { Logger } from '../log/Logger';
 import { ApexTestResult, ApexTestResultFields } from '../model/ApexTestResult';
-import { QueryHelper } from '../query/QueryHelper';
+import { QueryHelper, QueryOptions } from '../query/QueryHelper';
 import { TestResultMatcher } from './TestResultMatcher';
 
 export interface ResultsByType {
@@ -20,6 +20,21 @@ export class ResultCollector {
     testRunId: string
   ): Promise<ApexTestResult[]> {
     return await QueryHelper.instance(connection).query<ApexTestResult>(
+      'ApexTestResult',
+      `AsyncApexJobId='${testRunId}'`,
+      ApexTestResultFields.join(', ')
+    );
+  }
+
+  static async gatherResultsWithRetry(
+    connection: Connection,
+    testRunId: string,
+    logger: Logger,
+    options: QueryOptions
+  ): Promise<ApexTestResult[]> {
+    return await QueryHelper.instance(
+      connection
+    ).queryWithRetry<ApexTestResult>(logger, options)(
       'ApexTestResult',
       `AsyncApexJobId='${testRunId}'`,
       ApexTestResultFields.join(', ')
