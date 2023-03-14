@@ -48,19 +48,7 @@ export function setupRunTestsAsynchronous(
   stub.withArgs(testAsyncRequest).returns(testRunId);
 }
 
-export interface ApexTestRunResultParams {
-  AsyncApexJobId?: string;
-  StartTime?: string;
-  EndTime?: string;
-  Status?: string;
-  TestTime?: number;
-  UserId?: string;
-  ClassesCompleted?: number;
-  ClassesEnqueued?: number;
-  MethodsCompleted?: number;
-  MethodsEnqueued?: number;
-  MethodsFailed?: number;
-}
+export type ApexTestRunResultParams = Partial<ApexTestRunResult>;
 
 export function setupQueryApexTestResults(
   stub: SinonStub,

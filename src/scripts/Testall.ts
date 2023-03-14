@@ -34,7 +34,7 @@ async function runTestall(username: string, namespace: string) {
     'username'
   );
 
-  const logger = new ConsoleLogger(connection, false);
+  const logger = new ConsoleLogger();
   const methodCollector = new OrgTestMethodCollector(
     logger,
     connection,

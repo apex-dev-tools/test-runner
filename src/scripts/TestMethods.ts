@@ -17,7 +17,7 @@ async function getConnection(username: string): Promise<Connection> {
 async function gatherTestMethods(username: string, namespace: string) {
   const connection = await getConnection(username);
   const collector = new OrgTestMethodCollector(
-    new ConsoleLogger(connection, false),
+    new ConsoleLogger(),
     connection,
     namespace == 'unmanaged' ? '' : namespace,
     []

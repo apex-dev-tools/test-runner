@@ -42,7 +42,7 @@ describe('messages', () => {
     const logger = new CapturingLogger('/log/path', true);
     const content = '{ "records": [] }';
 
-    logger.logOutputFile('somefile.json', '');
+    logger.logOutputFile('somefile.json', content);
 
     expect(logger.files.length).to.equal(1);
     expect(logger.files[0][0]).to.equal('/log/path/somefile.json');
@@ -53,7 +53,7 @@ describe('messages', () => {
     const logger = new CapturingLogger('/log/path', true);
     const content = '{ "records": [] }';
 
-    logger.logOutputFile('to/somefile.json', '');
+    logger.logOutputFile('to/somefile.json', content);
 
     expect(logger.files.length).to.equal(1);
     expect(logger.files[0][0]).to.equal('/log/path/to/somefile.json');
@@ -64,10 +64,21 @@ describe('messages', () => {
     const logger = new CapturingLogger('/log/path', true);
     const content = '{ "records": [] }';
 
-    logger.logOutputFile('/abs/path/to/somefile.json', '');
+    logger.logOutputFile('/abs/path/to/somefile.json', content);
 
     expect(logger.files.length).to.equal(1);
     expect(logger.files[0][0]).to.equal('/abs/path/to/somefile.json');
+    expect(logger.files[0][1]).to.equal(content);
+  });
+
+  it('should output file content with relative log path', () => {
+    const logger = new CapturingLogger('.', true);
+    const content = '{ "records": [] }';
+
+    logger.logOutputFile('to/somefile.json', content);
+
+    expect(logger.files.length).to.equal(1);
+    expect(logger.files[0][0]).to.equal('./to/somefile.json');
     expect(logger.files[0][1]).to.equal(content);
   });
 
