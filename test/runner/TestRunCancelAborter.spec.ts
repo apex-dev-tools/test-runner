@@ -72,7 +72,7 @@ describe('messages', () => {
     );
     queryHelperStub.resolves([]);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const aborter = new TestRunCancelAborter();
     await aborter.abortRun(logger, mockConnection, testRunId);
 
@@ -101,7 +101,7 @@ describe('messages', () => {
       }
     );
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     let error;
     try {
       const aborter = new TestRunCancelAborter();
@@ -147,7 +147,7 @@ describe('messages', () => {
 
     queryHelperStub.resolves([{ Status: 'Something' }]);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     let error;
     try {
       const aborter = new TestRunCancelAborter();
@@ -184,7 +184,7 @@ describe('messages', () => {
     );
     queryHelperStub.throws(new Error('An Error'));
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     let error;
     try {
       const aborter = new TestRunCancelAborter();
@@ -220,7 +220,7 @@ describe('messages', () => {
     queryHelperStub.onCall(2).resolves([{ Status: 'Something' }]);
     queryHelperStub.onCall(3).resolves([]);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const aborter = new TestRunCancelAborter();
     await aborter.abortRun(logger, mockConnection, testRunId, {
       cancelPollIntervalMs: 100, // Just for test so polls quickly

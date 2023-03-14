@@ -25,7 +25,8 @@ import {
 import { QueryHelper } from '../../src/query/QueryHelper';
 import { ResultCollector } from '../../src/collector/ResultCollector';
 import { TestRunnerCallbacks } from '../../src/runner/TestOptions';
-import { ApexTestResult } from '@salesforce/apex-node/lib/src/tests/types';
+import { ApexTestResult as ApexNodeTestResult } from '@salesforce/apex-node/lib/src/tests/types';
+import { ApexTestResult } from '../../src/model/ApexTestResult';
 
 interface AggResult {
   expr0: number;
@@ -40,7 +41,7 @@ let queryHelperStub: SinonStub;
 const testData = new MockTestOrgData();
 
 jest.mock('../../src/collector/ResultCollector');
-const mockTestResult = [
+const mockTestResult: ApexTestResult[] = [
   {
     Id: 'An id',
     QueueItemId: 'queue item id',
@@ -122,7 +123,7 @@ describe('messages', () => {
     };
     queryHelperStub.onCall(0).resolves([aggCount]);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner: TestRunner = AsyncTestRunner.forClasses(
       logger,
       mockConnection,
@@ -156,7 +157,7 @@ describe('messages', () => {
     };
     queryHelperStub.onCall(0).resolves([aggCount]);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner = new AsyncTestRunner(logger, mockConnection, [], {
       maxTestRunRetries: 1,
       testRunTimeoutMins: 10,
@@ -187,7 +188,7 @@ describe('messages', () => {
     };
     queryHelperStub.onCall(0).resolves([aggCount]);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner = new AsyncTestRunner(logger, mockConnection, [], {
       maxTestRunRetries: 1,
       testRunTimeoutMins: 10,
@@ -217,7 +218,7 @@ describe('messages', () => {
     };
     queryHelperStub.onCall(0).resolves([aggCount]);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner = new AsyncTestRunner(logger, mockConnection, [], {
       maxTestRunRetries: 1,
       testRunTimeoutMins: 10,
@@ -236,7 +237,7 @@ describe('messages', () => {
   });
 
   it('should throw if max retries exceeded', async () => {
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner = AsyncTestRunner.forClasses(
       logger,
       mockConnection,
@@ -271,7 +272,7 @@ describe('messages', () => {
     });
     setupEmptyQueryApexTestResults(toolingQueryStub);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner = AsyncTestRunner.forClasses(
       logger,
       mockConnection,
@@ -314,7 +315,7 @@ describe('messages', () => {
     };
     queryHelperStub.resolves([aggCount]);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner = AsyncTestRunner.forClasses(
       logger,
       mockConnection,
@@ -361,7 +362,7 @@ describe('messages', () => {
     };
     queryHelperStub.resolves([aggCount]);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner = AsyncTestRunner.forClasses(
       logger,
       mockConnection,
@@ -417,7 +418,7 @@ describe('messages', () => {
     };
     queryHelperStub.resolves([aggCount]);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const mockAborter = new MockAborter();
     const runner = AsyncTestRunner.forClasses(
       logger,
@@ -485,7 +486,7 @@ describe('messages', () => {
     };
     queryHelperStub.resolves([aggCount]);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const mockAborter = new MockAborter();
     const runner = AsyncTestRunner.forClasses(
       logger,
@@ -521,7 +522,7 @@ describe('messages', () => {
   });
 
   it('should create clone additional run', () => {
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner: TestRunner = AsyncTestRunner.forClasses(
       logger,
       mockConnection,
@@ -555,14 +556,14 @@ describe('messages', () => {
     queryHelperStub.onCall(0).resolves([aggCount]);
 
     const mockedOnRunStart = jest.fn<void, [string, void]>();
-    const mockedOnPoll = jest.fn<void, [ApexTestResult, void]>();
+    const mockedOnPoll = jest.fn<void, [ApexNodeTestResult, void]>();
 
     const callbacks = ({
       onRunStarted: mockedOnRunStart,
       onPoll: mockedOnPoll,
     } as unknown) as TestRunnerCallbacks;
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner: TestRunner = AsyncTestRunner.forClasses(
       logger,
       mockConnection,

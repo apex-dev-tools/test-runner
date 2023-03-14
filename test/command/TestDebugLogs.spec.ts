@@ -67,7 +67,7 @@ describe('messages', () => {
   });
 
   it('unknown user should throw', async () => {
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runnerResult: ApexTestRunResult = {
       AsyncApexJobId: testRunId,
       StartTime: '',
@@ -111,7 +111,7 @@ describe('messages', () => {
   });
 
   it('creates output directory', async () => {
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runnerResult: ApexTestRunResult = {
       AsyncApexJobId: testRunId,
       StartTime: '',
@@ -163,7 +163,7 @@ describe('messages', () => {
   });
 
   it('re-creates output directory', async () => {
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runnerResult: ApexTestRunResult = {
       AsyncApexJobId: testRunId,
       StartTime: '',
@@ -215,7 +215,7 @@ describe('messages', () => {
   });
 
   it('clears trace flags/logs & saves logs', async () => {
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runnerResult: ApexTestRunResult = {
       AsyncApexJobId: testRunId,
       StartTime: '',

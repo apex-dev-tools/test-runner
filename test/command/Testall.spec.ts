@@ -66,7 +66,7 @@ describe('messages', () => {
   });
 
   it('should log and re-throw internal Error', async () => {
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const err = new Error('TestRunner failed');
     ((err as unknown) as Record<string, unknown>).data = 'More data';
     const runner = new MockThrowingTestRunner(err);
@@ -103,7 +103,7 @@ describe('messages', () => {
   });
 
   it('should log and re-throw non-Error exception', async () => {
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner = new MockThrowingTestRunner('TestRunner failed');
     const testMethods = new MockTestMethodCollector(
       new Map<string, string>([['An Id', 'FooClass']]),
@@ -132,7 +132,7 @@ describe('messages', () => {
   });
 
   it('should stop after an initial aborted test run', async () => {
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runnerResult: ApexTestRunResult = {
       AsyncApexJobId: testRunId,
       StartTime: '',
@@ -173,7 +173,7 @@ describe('messages', () => {
   });
 
   it('should stop if there are too many failed tests', async () => {
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runnerResult: ApexTestRunResult = {
       AsyncApexJobId: testRunId,
       StartTime: '',
@@ -231,7 +231,7 @@ describe('messages', () => {
   });
 
   it('should complete after passed sequential re-run of locked tests', async () => {
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runnerResult: ApexTestRunResult = {
       AsyncApexJobId: testRunId,
       StartTime: '',
@@ -296,7 +296,7 @@ describe('messages', () => {
   });
 
   it('should complete after failed sequential re-run of locked tests', async () => {
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runnerResult: ApexTestRunResult = {
       AsyncApexJobId: testRunId,
       StartTime: '',
@@ -361,7 +361,7 @@ describe('messages', () => {
   });
 
   it('should re-run missing tests', async () => {
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runnerResult: ApexTestRunResult = {
       AsyncApexJobId: testRunId,
       StartTime: '',

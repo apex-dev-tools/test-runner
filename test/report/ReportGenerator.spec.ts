@@ -49,7 +49,7 @@ describe('messages', () => {
       'suitename'
     );
 
-    const logger = new CapturingLogger(mockConnection, true);
+    const logger = new CapturingLogger();
     generator.generate(
       logger,
       'test-output',
@@ -150,7 +150,7 @@ describe('messages', () => {
       'suitename'
     );
 
-    const logger = new CapturingLogger(mockConnection, true);
+    const logger = new CapturingLogger();
     generator.generate(
       logger,
       'test-output',
@@ -203,7 +203,7 @@ describe('messages', () => {
       'suitename'
     );
 
-    const logger = new CapturingLogger(mockConnection, true);
+    const logger = new CapturingLogger();
     generator.generate(
       logger,
       'test-output',

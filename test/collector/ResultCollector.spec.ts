@@ -131,7 +131,7 @@ describe('messages', () => {
       },
     ];
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const results = ResultCollector.groupRecords(logger, mockTestRunResults);
 
     expect(results.passed.length).to.equal(1);
@@ -201,7 +201,7 @@ describe('messages', () => {
       rerun: [mockTestRunResults[1]],
     };
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const results = ResultCollector.reGroupRecords(logger, badResultsByType);
 
     expect(results.passed.length).to.equal(1);

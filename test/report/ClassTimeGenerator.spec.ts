@@ -8,7 +8,6 @@ import {
 } from '@apexdevtools/sfdx-auth-helper/lib/src/testSetup';
 import { createSandbox, SinonSandbox } from 'sinon';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
-import moment from 'moment';
 import { ClassTimeGenerator } from '../../src/results/ClassTimeGenerator';
 import { SfDate } from 'jsforce';
 import { expect } from 'chai';
@@ -50,7 +49,7 @@ describe('messages', () => {
       'username'
     );
 
-    const logger = new CapturingLogger(mockConnection, true);
+    const logger = new CapturingLogger();
     generator.generate(
       logger,
       'test-output',

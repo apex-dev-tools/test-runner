@@ -135,7 +135,7 @@ export abstract class BaseLogger implements Logger {
         : 0;
 
     this.logMessage(
-      `[${status}] Passed: ${passed} | Failed: ${failed} | ${complete}% done`
+      `[${status}] Passed: ${passed} | Failed: ${failed} | ${complete}% Complete`
     );
   }
 
