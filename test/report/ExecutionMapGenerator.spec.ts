@@ -52,7 +52,7 @@ describe('messages', () => {
     const logger = new CapturingLogger();
     generator.generate(
       logger,
-      'test-output',
+      '/test-output',
       new Date(),
       [
         {
@@ -136,7 +136,7 @@ describe('messages', () => {
     );
 
     expect(logger.files.length).to.equal(1);
-    expect(logger.files[0][0]).to.equal('test-output-time.ppm');
+    expect(logger.files[0][0]).to.equal('/test-output-time.ppm');
     expect(logger.files[0][1].length).not.to.equal(0);
 
     const lines = logger.files[0][1].split('\n');

@@ -52,7 +52,7 @@ describe('messages', () => {
     const logger = new CapturingLogger();
     generator.generate(
       logger,
-      'test-output',
+      '/test-output',
       new Date(),
       [
         {
@@ -136,9 +136,9 @@ describe('messages', () => {
     );
 
     expect(logger.files.length).to.be.equal(2);
-    expect(logger.files[0][0]).to.be.equal('test-output.xml');
+    expect(logger.files[0][0]).to.be.equal('/test-output.xml');
     expect(logger.files[0][1].length > 0).to.be.true;
-    expect(logger.files[1][0]).to.be.equal('test-output.json');
+    expect(logger.files[1][0]).to.be.equal('/test-output.json');
     expect(logger.files[1][1].length > 0).to.be.true;
   });
 
@@ -153,7 +153,7 @@ describe('messages', () => {
     const logger = new CapturingLogger();
     generator.generate(
       logger,
-      'test-output',
+      '/test-output',
       new Date(),
       [
         {
@@ -189,9 +189,9 @@ describe('messages', () => {
     );
 
     expect(logger.files.length).to.be.equal(2);
-    expect(logger.files[0][0]).to.be.equal('test-output.xml');
+    expect(logger.files[0][0]).to.be.equal('/test-output.xml');
     expect(logger.files[0][1].length > 0).to.be.true;
-    expect(logger.files[1][0]).to.be.equal('test-output.json');
+    expect(logger.files[1][0]).to.be.equal('/test-output.json');
     expect(logger.files[1][1].length > 0).to.be.true;
   });
 
@@ -206,7 +206,7 @@ describe('messages', () => {
     const logger = new CapturingLogger();
     generator.generate(
       logger,
-      'test-output',
+      '/test-output',
       new Date(),
       [
         {
@@ -242,7 +242,7 @@ describe('messages', () => {
     );
 
     expect(logger.files.length).to.be.equal(2);
-    expect(logger.files[0][0]).to.be.equal('test-output.xml');
+    expect(logger.files[0][0]).to.be.equal('/test-output.xml');
     expect(logger.files[0][1].length > 0).to.be.true;
     const content = logger.files[0][1];
     parseString(content, err => {

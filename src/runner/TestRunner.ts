@@ -26,6 +26,7 @@ import {
 import TestStats from './TestStats';
 import { ResultCollector } from '../collector/ResultCollector';
 import { QueryHelper } from '../query/QueryHelper';
+import { ApexTestQueueItem } from '../model/ApexTestQueueItem';
 
 /**
  * Parallel unit test runner that includes the ability to cancel & restart a run should it not make sufficient progress
@@ -261,22 +262,24 @@ export class AsyncTestRunner implements TestRunner {
 
     this._options.callbacks?.onPoll?.([...newResults]);
 
-    await this.reportQueueItems(runId);
+    if (this._logger.verbose) {
+      await this.reportQueueItems(runId);
+    }
 
     return new Set([...seen, ...newResults.map(r => r.Id)]);
   }
 
   private async reportQueueItems(testRunId: string): Promise<void> {
-    if (this._logger.verbose) {
-      const apexQueueItems = await QueryHelper.instance(this._connection).query(
-        'ApexTestQueueItem',
-        `ParentJobId='${testRunId}'`,
-        'Id, ApexClassId, ExtendedStatus, Status, TestRunResultID, ShouldSkipCodeCoverage'
-      );
-      this._logger.logOutputFile(
-        `testqueue-${new Date().toISOString()}.json`,
-        JSON.stringify(apexQueueItems, undefined, 2)
-      );
-    }
+    const apexQueueItems = await QueryHelper.instance(
+      this._connection
+    ).query<ApexTestQueueItem>(
+      'ApexTestQueueItem',
+      `ParentJobId='${testRunId}'`,
+      'Id, ApexClassId, ExtendedStatus, Status, TestRunResultID, ShouldSkipCodeCoverage'
+    );
+    this._logger.logOutputFile(
+      `testqueue-${new Date().toISOString()}.json`,
+      JSON.stringify(apexQueueItems, undefined, 2)
+    );
   }
 }

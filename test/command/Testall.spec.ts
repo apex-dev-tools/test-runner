@@ -28,7 +28,7 @@ const $$ = testSetup();
 let mockConnection: Connection;
 let sandboxStub: SinonSandbox;
 let testingServiceSyncStub: SinonStub;
-let queryHelperStub: SinonStub;
+let queryStub: SinonStub;
 const testData = new MockTestOrgData();
 
 describe('messages', () => {
@@ -55,10 +55,12 @@ describe('messages', () => {
       TestService.prototype,
       'runTestSynchronous'
     );
-    queryHelperStub = sandboxStub.stub(
-      QueryHelper.instance(mockConnection),
-      'query'
-    );
+
+    queryStub = sandboxStub.stub(QueryHelper.instance(mockConnection), 'query');
+    // delegate retry variant to basic query
+    sandboxStub
+      .stub(QueryHelper.instance(mockConnection), 'queryWithRetry')
+      .returns(queryStub);
   });
 
   afterEach(() => {
@@ -147,7 +149,7 @@ describe('messages', () => {
       MethodsFailed: 0,
     };
     const runner = new MockTestRunner(runnerResult);
-    queryHelperStub.resolves([]);
+    queryStub.resolves([]);
     const testMethods = new MockTestMethodCollector(
       new Map<string, string>([['An Id', 'FooClass']]),
       new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
@@ -201,7 +203,7 @@ describe('messages', () => {
       RunTime: 1,
       TestTimestamp: '',
     };
-    queryHelperStub.resolves([mockTestRunResult]);
+    queryStub.resolves([mockTestRunResult]);
     const testMethods = new MockTestMethodCollector(
       new Map<string, string>([['An Id', 'FooClass']]),
       new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
@@ -225,7 +227,7 @@ describe('messages', () => {
     );
     expect(logger.entries[1]).to.match(
       logRegex(
-        'Aborting re-testing as 1 failed \\(excluding for locking\\) which is above the max limit'
+        'Aborting re-testing as 1 failed \\(excluding pattern matches\\) which is above the max limit'
       )
     );
   });
@@ -265,12 +267,13 @@ describe('messages', () => {
         TestTimestamp: '',
       },
     ];
-    queryHelperStub.resolves(mockTestRunResult);
+    queryStub.resolves(mockTestRunResult);
 
     const mockTestResult = {
       summary: {
         outcome: 'Passed',
       },
+      tests: [{ message: null }],
     } as TestResult;
     testingServiceSyncStub.resolves(mockTestResult);
 
@@ -284,14 +287,15 @@ describe('messages', () => {
       {}
     );
 
-    expect(logger.entries.length).to.be.equal(2);
+    expect(logger.entries.length).to.be.equal(3);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
     expect(logger.entries[1]).to.match(
-      logRegex(
-        'FooClass.testMethod re-run sequentially due to locking, outcome=Pass'
-      )
+      logRegex('Failed tests matched patterns, running 1 tests sequentially')
+    );
+    expect(logger.entries[2]).to.match(
+      logRegex('FooClass.testMethod re-run complete, outcome = Pass')
     );
   });
 
@@ -330,12 +334,13 @@ describe('messages', () => {
         TestTimestamp: '',
       },
     ];
-    queryHelperStub.resolves(mockTestRunResult);
+    queryStub.resolves(mockTestRunResult);
 
     const mockTestResult = {
       summary: {
         outcome: 'Failed',
       },
+      tests: [{ message: 'Other Error' }],
     } as TestResult;
     testingServiceSyncStub.resolves(mockTestResult);
 
@@ -349,15 +354,20 @@ describe('messages', () => {
       {}
     );
 
-    expect(logger.entries.length).to.be.equal(2);
+    expect(logger.entries.length).to.be.equal(5);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
     expect(logger.entries[1]).to.match(
-      logRegex(
-        'FooClass.testMethod re-run sequentially due to locking, outcome=Fail'
-      )
+      logRegex('Failed tests matched patterns, running 1 tests sequentially')
     );
+    expect(logger.entries[2]).to.match(
+      logRegex('FooClass.testMethod re-run complete, outcome = Fail')
+    );
+    expect(logger.entries[3]).to.match(
+      logRegex(' \\[Before\\] UNABLE_TO_LOCK_ROW')
+    );
+    expect(logger.entries[4]).to.match(logRegex(' \\[After\\] Other Error'));
   });
 
   it('should re-run missing tests', async () => {
@@ -409,8 +419,8 @@ describe('messages', () => {
         TestTimestamp: '',
       },
     ];
-    queryHelperStub.onCall(0).resolves([mockTestRunResult[0]]);
-    queryHelperStub.onCall(1).resolves([mockTestRunResult[1]]);
+    queryStub.onCall(0).resolves([mockTestRunResult[0]]);
+    queryStub.onCall(1).resolves([mockTestRunResult[1]]);
 
     await Testall.run(
       logger,

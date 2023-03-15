@@ -51,11 +51,9 @@ export abstract class BaseLogger implements Logger {
   }
 
   logOutputFile(filepath: string, contents: string): void {
-    if (path.isAbsolute(filepath)) {
-      this.logFile(filepath, contents);
-    } else {
-      this.logFile(path.resolve(this.logDirPath, filepath), contents);
-    }
+    // if filepath is absolute it will be used instead
+    // given resolve() right to left logic
+    this.logFile(path.resolve(this.logDirPath, filepath), contents);
   }
 
   logTestallStart(options: TestallOptions): void {
