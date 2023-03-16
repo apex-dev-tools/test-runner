@@ -11,6 +11,7 @@
 * Update logging for pattern based retries with before/after explanation.
 * Fix unhandled promise rejection on failed polling query.
 * Fix cancellation token not passed to test reruns.
+* Export `DEFAULT_TEST_RERUN_PATTERNS` from `TestResultMatcher`.
 
 ## 1.4.0 - 2023-03-02
 
