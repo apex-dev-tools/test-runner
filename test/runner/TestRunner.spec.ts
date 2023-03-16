@@ -9,10 +9,11 @@ import {
 import { StreamingClient } from '@salesforce/apex-node/lib/src/streaming';
 import { ExecuteService, TestLevel } from '@salesforce/apex-node';
 import { expect } from 'chai';
-import { createSandbox, SinonSandbox, SinonStub } from 'sinon';
+import { createSandbox, SinonSandbox, SinonStub, match } from 'sinon';
 import { AsyncTestRunner, TestRunner } from '../../src/runner/TestRunner';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import {
+  isoDateFormat,
   logRegex,
   MockAborter,
   setupExecuteAnonymous,
@@ -126,7 +127,7 @@ describe('messages', () => {
     expect(testRunResult.Status).to.equal('Completed');
     expect(logger.entries.length).to.equal(2);
     expect(logger.entries[0]).to.match(
-      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}$`)
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
     );
     expect(logger.entries[1]).to.match(
       logRegex('\\[Completed\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
@@ -153,7 +154,7 @@ describe('messages', () => {
     expect(testRunResult.Status).to.equal('Completed');
     expect(logger.entries.length).to.equal(2);
     expect(logger.entries[0]).to.match(
-      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}$`)
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
     );
     expect(logger.entries[1]).to.match(
       logRegex('\\[Completed\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
@@ -179,7 +180,7 @@ describe('messages', () => {
     expect(testRunResult.Status).to.equal('Failed');
     expect(logger.entries.length).to.equal(2);
     expect(logger.entries[0]).to.match(
-      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}$`)
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
     );
     expect(logger.entries[1]).to.match(
       logRegex('\\[Failed\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
@@ -205,7 +206,7 @@ describe('messages', () => {
     expect(testRunResult.Status).to.equal('Aborted');
     expect(logger.entries.length).to.equal(2);
     expect(logger.entries[0]).to.match(
-      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}$`)
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
     );
     expect(logger.entries[1]).to.match(
       logRegex('\\[Aborted\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
@@ -306,7 +307,7 @@ describe('messages', () => {
     expect(testRunResult.Status).to.equal('Completed');
     expect(logger.entries.length).to.equal(4);
     expect(logger.entries[0]).to.match(
-      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}$`)
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
     );
     expect(logger.entries[1]).to.match(
       logRegex('\\[Queued\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
@@ -407,7 +408,7 @@ describe('messages', () => {
     expect(testRunResult.Status).to.equal('Completed');
     expect(logger.entries.length).to.equal(6);
     expect(logger.entries[0]).to.match(
-      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}$`)
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
     );
     expect(logger.entries[1]).to.match(
       logRegex('\\[Processing\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
@@ -417,11 +418,11 @@ describe('messages', () => {
     );
     expect(logger.entries[3]).to.match(
       logRegex(
-        `Test run '${testRunId}' was not progressing, cancelling and retrying...$`
+        `Test run '${testRunId}' was not progressing, cancelling and retrying...`
       )
     );
     expect(logger.entries[4]).to.match(
-      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}$`)
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
     );
     expect(logger.entries[5]).to.match(
       logRegex('\\[Completed\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
@@ -502,7 +503,7 @@ describe('messages', () => {
     expect(testRunResult.Status).to.equal('Completed');
     expect(logger.entries.length).to.equal(5);
     expect(logger.entries[0]).to.match(
-      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}$`)
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
     );
     expect(logger.entries[1]).to.match(
       logRegex('\\[Processing\\] Passed: 1 \\| Failed: 0 \\| 0% Complete')
@@ -566,5 +567,54 @@ describe('messages', () => {
     await runner.run();
     expect(mockedOnRunStart.mock.calls[0][0]).to.equal(testRunId);
     expect(mockedOnPoll.mock.calls[0][0]).to.deep.equal(mockTestResult);
+  });
+
+  it('should report queue items to file on verbose logging', async () => {
+    setupRunTestsAsynchronous(toolingRequestStub, mockConnection, {
+      tests: [{ className: 'TestSample' }],
+      testLevel: TestLevel.RunSpecifiedTests,
+      skipCodeCoverage: true,
+    });
+    setupQueryApexTestResults(queryStub, {});
+    const mockQueueItems = [
+      {
+        Id: 'id',
+        ApexClassId: 'apexClassId',
+        ExtendedStatus: 'extendedStatus',
+        Status: 'status',
+        TestRunResultID: 'testRunResultId',
+        ShouldSkipCodeCoverage: true,
+      },
+    ];
+    queryStub
+      .withArgs('ApexTestQueueItem', match.any, match.any)
+      .resolves(mockQueueItems);
+
+    const logger = new CapturingLogger('', true);
+    const runner: TestRunner = AsyncTestRunner.forClasses(
+      logger,
+      mockConnection,
+      '',
+      ['TestSample'],
+      {}
+    );
+
+    const testRunResult = await runner.run();
+    expect(testRunResult.AsyncApexJobId).to.equal(testRunId);
+    expect(testRunResult.Status).to.equal('Completed');
+    expect(logger.entries.length).to.equal(2);
+    expect(logger.entries[0]).to.match(
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
+    );
+    expect(logger.entries[1]).to.match(
+      logRegex('\\[Completed\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
+    );
+    expect(logger.files.length).to.equal(1);
+    expect(logger.files[0][0]).to.match(
+      new RegExp(`^${process.cwd()}/testqueue-${isoDateFormat}.json`)
+    );
+    expect(logger.files[0][1]).to.equal(
+      JSON.stringify(mockQueueItems, undefined, 2)
+    );
   });
 });

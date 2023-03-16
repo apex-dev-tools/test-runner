@@ -57,6 +57,10 @@ describe('messages', () => {
       QueryHelper.instance(mockConnection),
       'query'
     );
+    // delegate retry variant to basic query
+    sandboxStub
+      .stub(QueryHelper.instance(mockConnection), 'queryWithRetry')
+      .returns(queryHelperStub);
     toolingQueryStub = sandboxStub.stub(mockConnection.tooling, 'query');
     toolingCreateStub = sandboxStub.stub(mockConnection.tooling, 'create');
     toolingRequestStub = sandboxStub.stub(mockConnection.tooling, 'request');

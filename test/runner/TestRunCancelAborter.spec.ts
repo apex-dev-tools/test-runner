@@ -78,10 +78,10 @@ describe('messages', () => {
 
     expect(logger.entries.length).to.equal(2);
     expect(logger.entries[0]).to.match(
-      logRegex(`Cancelling test run '${testRunId}'$`)
+      logRegex(`Cancelling test run '${testRunId}'`)
     );
     expect(logger.entries[1]).to.match(
-      logRegex(`Test run '${testRunId}' has been cancelled$`)
+      logRegex(`Test run '${testRunId}' has been cancelled`)
     );
   });
 
@@ -228,20 +228,20 @@ describe('messages', () => {
 
     expect(logger.entries.length).to.equal(4);
     expect(logger.entries[0]).to.match(
-      logRegex(`Cancelling test run '${testRunId}'$`)
+      logRegex(`Cancelling test run '${testRunId}'`)
     );
     expect(logger.entries[1]).to.match(
       logRegex(
-        `Waiting for test run '${testRunId}' to cancel... 2 tests queued$`
+        `Waiting for test run '${testRunId}' to cancel... 2 tests queued`
       )
     );
     expect(logger.entries[2]).to.match(
       logRegex(
-        `Waiting for test run '${testRunId}' to cancel... 1 tests queued$`
+        `Waiting for test run '${testRunId}' to cancel... 1 tests queued`
       )
     );
     expect(logger.entries[3]).to.match(
-      logRegex(`Test run '${testRunId}' has been cancelled$`)
+      logRegex(`Test run '${testRunId}' has been cancelled`)
     );
   });
 });

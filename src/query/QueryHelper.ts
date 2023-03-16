@@ -66,7 +66,7 @@ export class QueryHelper {
     const retries = getMaxQueryRetries(options);
     const delay = getQueryInitialIntervalMs(options);
 
-    return (sobject: string, clause: string, fields: string) => {
+    return async (sobject: string, clause: string, fields: string) => {
       const boundQuery = this.query.bind<
         this,
         string,
@@ -77,7 +77,8 @@ export class QueryHelper {
       >(this, sobject, clause, fields);
 
       try {
-        return this.doRetry(logger, boundQuery, retries, delay);
+        // await required to catch errors
+        return await this.doRetry(logger, boundQuery, retries, delay);
       } catch (err) {
         logger.logMessage(
           `Request failed after ${retries} retries. Cause: ${this.getErrorCause(
@@ -97,7 +98,8 @@ export class QueryHelper {
     delay: number
   ): Promise<T> {
     try {
-      return boundFn();
+      // await required to catch errors
+      return await boundFn();
     } catch (err) {
       if (retries > 0) {
         logger.logMessage(
