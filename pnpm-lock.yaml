@@ -12,7 +12,7 @@ specifiers:
   '@salesforce/ts-sinon': 1.1.2
   '@types/chai': 4.3.1
   '@types/jest': 27.5.2
-  '@types/jsforce': ^1.9.41
+  '@types/jsforce': 1.9.42
   '@types/lodash': 4.14.182
   '@types/node': 14.14.31
   '@types/sinon': 7.5.2
@@ -27,7 +27,7 @@ specifiers:
   eslint-plugin-prettier: 3.4.0
   husky: 6.0.0
   jest: 27.2.0
-  jsforce: ^1.11.0
+  jsforce: 1.11.0
   lint-staged: 10.5.4
   lodash: 4.17.21
   moment: 2.29.4
@@ -54,7 +54,7 @@ devDependencies:
   '@salesforce/ts-sinon': 1.1.2
   '@types/chai': 4.3.1
   '@types/jest': 27.5.2
-  '@types/jsforce': 1.9.43
+  '@types/jsforce': 1.9.42
   '@types/lodash': 4.14.182
   '@types/node': 14.14.31
   '@types/sinon': 7.5.2
@@ -1288,10 +1288,17 @@ packages:
       pretty-format: 27.5.1
     dev: true
 
+  /@types/jsforce/1.9.42:
+    resolution: {integrity: sha512-Ht5gIROhqGn5L5g0GEC7ADOWXI04yFRmxYqJxAAcpQ2II424tlu/I1LSbce5ckc97tb9BtTYMd9I+kRrvThp0w==}
+    dependencies:
+      '@types/node': 14.14.31
+    dev: true
+
   /@types/jsforce/1.9.43:
     resolution: {integrity: sha512-9xTZYPI/WiSEaQxiBZLBZndRqzme2/QYfLARrajTVQ6RMPR0IGgGy/SiKmIEMYoLk0UESHynJPWscNtDGfuKOw==}
     dependencies:
       '@types/node': 14.14.31
+    dev: false
 
   /@types/json-schema/7.0.11:
     resolution: {integrity: sha512-wOuvG1SN4Us4rez+tylwwwCV1psiNVOkJeM3AUWUNWg/jDQY2+HE/444y5gc+jBmRqASOm2Oeh5c1axHobwRKQ==}
