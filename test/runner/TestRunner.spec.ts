@@ -94,7 +94,10 @@ describe('messages', () => {
 
     sandboxStub.stub(StreamingClient.prototype, 'handshake').resolves();
     toolingRequestStub = sandboxStub.stub(mockConnection.tooling, 'request');
-    queryStub = sandboxStub.stub(QueryHelper.instance(mockConnection), 'query');
+    queryStub = sandboxStub.stub(
+      QueryHelper.instance(mockConnection.tooling),
+      'query'
+    );
 
     gatherResult.mockReset();
     gatherResult.mockReturnValue(Promise.resolve(mockTestResult));

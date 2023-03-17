@@ -1,5 +1,9 @@
 # test-runner - Changelog
 
+## 1.5.1 - 2023-03-17
+
+* Use tooling api for most sobject queries.
+
 ## 1.5.0 - 2023-03-17
 
 * **BREAKING:** BaseLogger no longer accepts a `Connection` in constructor.

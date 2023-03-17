@@ -56,10 +56,13 @@ describe('messages', () => {
       'runTestSynchronous'
     );
 
-    queryStub = sandboxStub.stub(QueryHelper.instance(mockConnection), 'query');
+    queryStub = sandboxStub.stub(
+      QueryHelper.instance(mockConnection.tooling),
+      'query'
+    );
     // delegate retry variant to basic query
     sandboxStub
-      .stub(QueryHelper.instance(mockConnection), 'queryWithRetry')
+      .stub(QueryHelper.instance(mockConnection.tooling), 'queryWithRetry')
       .returns(queryStub);
   });
 

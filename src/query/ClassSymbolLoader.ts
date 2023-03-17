@@ -87,7 +87,7 @@ export class ClassSymbolLoader {
   ): Promise<ApexClassInfo[]> {
     const idClause = classIds.map(id => `'${id}'`).join(', ');
     const apexClasses = await QueryHelper.instance(
-      this.connection
+      this.connection.tooling
     ).query<ApexClassInfo>(
       'ApexClass',
       `Id IN (${idClause})`,

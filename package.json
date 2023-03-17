@@ -1,6 +1,6 @@
 {
   "name": "@apexdevtools/test-runner",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Apex parallel test runner with reliability goodness",
   "author": {
     "name": "Apex Dev Tools Team",
@@ -54,8 +54,8 @@
     "moment": "2.29.4"
   },
   "devDependencies": {
-    "jsforce": "^1.11.0",
-    "@types/jsforce": "^1.9.41",
+    "jsforce": "1.11.0",
+    "@types/jsforce": "1.9.42",
     "@ryansonshine/commitizen": "4.2.8",
     "@ryansonshine/cz-conventional-changelog": "3.3.4",
     "@salesforce/ts-sinon": "1.1.2",

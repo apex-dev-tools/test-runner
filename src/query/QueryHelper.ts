@@ -1,8 +1,8 @@
 /*
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
-import { Connection } from '@apexdevtools/sfdx-auth-helper';
-import { Record } from 'jsforce';
+
+import { BaseConnection as JSForceConnection, Record } from 'jsforce';
 import { Logger } from '../log/Logger';
 
 type QueryFunction<T> = (
@@ -35,10 +35,10 @@ export function getMaxQueryRetries(options: QueryOptions): number {
 }
 
 export class QueryHelper {
-  static helpers = new Map<Connection, QueryHelper>();
-  connection: Connection;
+  static helpers = new Map<JSForceConnection, QueryHelper>();
+  connection: JSForceConnection;
 
-  static instance(connection: Connection): QueryHelper {
+  static instance(connection: JSForceConnection): QueryHelper {
     let helper = this.helpers.get(connection);
     if (helper == undefined) {
       helper = new QueryHelper(connection);
@@ -47,7 +47,7 @@ export class QueryHelper {
     return helper;
   }
 
-  private constructor(connection: Connection) {
+  private constructor(connection: JSForceConnection) {
     this.connection = connection;
   }
 

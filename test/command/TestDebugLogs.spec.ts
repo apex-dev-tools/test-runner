@@ -54,12 +54,12 @@ describe('messages', () => {
 
     sandboxStub.stub(StreamingClient.prototype, 'handshake').resolves();
     queryHelperStub = sandboxStub.stub(
-      QueryHelper.instance(mockConnection),
+      QueryHelper.instance(mockConnection.tooling),
       'query'
     );
     // delegate retry variant to basic query
     sandboxStub
-      .stub(QueryHelper.instance(mockConnection), 'queryWithRetry')
+      .stub(QueryHelper.instance(mockConnection.tooling), 'queryWithRetry')
       .returns(queryHelperStub);
     toolingQueryStub = sandboxStub.stub(mockConnection.tooling, 'query');
     toolingCreateStub = sandboxStub.stub(mockConnection.tooling, 'create');
