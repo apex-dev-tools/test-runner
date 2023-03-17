@@ -6,6 +6,10 @@ import { BaseLogger } from '../log/BaseLogger';
 import * as fs from 'fs';
 
 export class ConsoleLogger extends BaseLogger {
+  constructor(verbose = false) {
+    super('.', verbose);
+  }
+
   public logMessage(message: string): void {
     const timestamp = new Date().toISOString();
     console.log(`${timestamp} - ${message}`);

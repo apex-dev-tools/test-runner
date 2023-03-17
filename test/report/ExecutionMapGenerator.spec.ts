@@ -8,7 +8,6 @@ import {
 } from '@apexdevtools/sfdx-auth-helper/lib/src/testSetup';
 import { createSandbox, SinonSandbox } from 'sinon';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
-import moment from 'moment';
 import { SfDate } from 'jsforce';
 import { expect } from 'chai';
 import { ExecutionMapGenerator } from '../../src/results/ExecutionMapGenerator';
@@ -50,10 +49,10 @@ describe('messages', () => {
       'username'
     );
 
-    const logger = new CapturingLogger(mockConnection, true);
+    const logger = new CapturingLogger();
     generator.generate(
       logger,
-      'test-output',
+      '/test-output',
       new Date(),
       [
         {
@@ -137,7 +136,7 @@ describe('messages', () => {
     );
 
     expect(logger.files.length).to.equal(1);
-    expect(logger.files[0][0]).to.equal('test-output-time.ppm');
+    expect(logger.files[0][0]).to.equal('/test-output-time.ppm');
     expect(logger.files[0][1].length).not.to.equal(0);
 
     const lines = logger.files[0][1].split('\n');

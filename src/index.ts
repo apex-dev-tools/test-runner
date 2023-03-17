@@ -18,3 +18,5 @@ export { ExecutionMapGenerator } from './results/ExecutionMapGenerator';
 
 export { BaseLogger } from './log/BaseLogger';
 export { CapturingLogger } from './log/CapturingLogger';
+
+export { DEFAULT_TEST_RERUN_PATTERNS } from './collector/TestResultMatcher';

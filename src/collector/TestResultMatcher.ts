@@ -6,6 +6,11 @@ import { Logger } from '../log/Logger';
 import * as fs from 'fs';
 import * as path from 'path';
 
+export const DEFAULT_TEST_RERUN_PATTERNS = [
+  'UNABLE_TO_LOCK_ROW',
+  'deadlock detected while waiting for resource',
+];
+
 export class TestResultMatcher {
   failedRegex: RegExp | null = null;
 

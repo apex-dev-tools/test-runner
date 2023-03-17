@@ -1,45 +1,17 @@
 /*
  * Copyright (c) 2023, FinancialForce.com, inc. All rights reserved.
  */
-import { AuthInfo, Connection } from '@apexdevtools/sfdx-auth-helper';
-import {
-  MockTestOrgData,
-  testSetup,
-} from '@apexdevtools/sfdx-auth-helper/lib/src/testSetup';
 import { expect } from 'chai';
-import { createSandbox, SinonSandbox } from 'sinon';
 import { TestResultMatcher } from '../../src/collector/TestResultMatcher';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import * as fs from 'fs';
 import { logRegex } from '../Setup';
 
-const $$ = testSetup();
-let mockConnection: Connection;
-let sandboxStub: SinonSandbox;
 let logger: CapturingLogger;
-const testData = new MockTestOrgData();
 
 describe('result message', () => {
-  beforeEach(async () => {
-    sandboxStub = createSandbox();
-    $$.setConfigStubContents('AuthInfoConfig', {
-      contents: await testData.getConfig(),
-    });
-    // Stub retrieveMaxApiVersion to get over "Domain Not Found: The org cannot be found" error
-    sandboxStub
-      .stub(Connection.prototype, 'retrieveMaxApiVersion')
-      .resolves('50.0');
-
-    mockConnection = await Connection.create({
-      authInfo: await AuthInfo.create({
-        username: testData.username,
-      }),
-    });
-    logger = new CapturingLogger(mockConnection, false);
-  });
-
-  afterEach(() => {
-    sandboxStub.restore();
+  beforeEach(() => {
+    logger = new CapturingLogger();
   });
 
   it('default should not match empty', () => {

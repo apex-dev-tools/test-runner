@@ -12,6 +12,7 @@ import { TestRunnerOptions } from '../runner/TestOptions';
 import { TestRunner } from '../runner/TestRunner';
 import { OutputGenerator } from '../results/OutputGenerator';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
+import { QueryOptions } from '../query/QueryHelper';
 
 /**
  * Parallel unit test runner that can hide intermitant failures caused by UNABLE_TO_LOCK_ROW, deadlock errors and
@@ -28,7 +29,7 @@ import { ApexTestRunResult } from '../model/ApexTestRunResult';
  * OutputGenerators to post-process the test run results.
  */
 
-export interface TestallOptions extends TestRunnerOptions {
+export interface TestallOptions extends TestRunnerOptions, QueryOptions {
   maxErrorsForReRun?: number; // Don't re-run if > failed tests (excluding locking/missed tests), default 10
   outputFileBase?: string; // Base for junit and other output files, default 'test-result*'
 }
@@ -89,12 +90,12 @@ export class Testall {
     outputGenerators: OutputGenerator[]
   ): Promise<void> {
     const startTime = new Date();
-    let abortTestMethodColletion = false;
+    let abortTestMethodCollection = false;
 
     // Create promise for test methods we expect to run
     // We pass the promise to avoid delaying the start of the test run
     const testMethodMap = methodCollector.gatherTestMethods(
-      () => abortTestMethodColletion
+      () => abortTestMethodCollection
     );
 
     // Run them ;-)
@@ -104,16 +105,16 @@ export class Testall {
       runResult = await this.asyncRun(0, runner, testMethodMap, null, results);
     } catch (err) {
       // Terminate gathering test methods, its failed
-      abortTestMethodColletion = true;
+      abortTestMethodCollection = true;
       throw err;
     }
     if (runResult == null) {
-      abortTestMethodColletion = true;
+      abortTestMethodCollection = true;
       this._logger.logTestallAbort(this._options);
       return;
     }
 
-    // Do sequential re-run of locked to try and get more passes
+    // Do sequential re-run of matched patterns to try and get more passes
     const testResults = ResultCollector.groupRecords(
       this._logger,
       Array.from(results.values())
@@ -143,9 +144,11 @@ export class Testall {
     const runResult = await runner.run();
 
     // Get all the test results for analysis
-    const rawTestResults = await ResultCollector.gatherResults(
+    const rawTestResults = await ResultCollector.gatherResultsWithRetry(
       this._connection,
-      runResult.AsyncApexJobId
+      runResult.AsyncApexJobId,
+      this._logger,
+      this._options
     );
 
     // Update rolling results for tests that did run
@@ -227,6 +230,7 @@ export class Testall {
 
   private async runSequentially(tests: ApexTestResult[]): Promise<void> {
     const testService = new TestService(this._connection);
+    this._logger.logTestWillRetry(tests);
     for (const detail of tests) {
       const item: TestItem = {
         classId: detail.ApexClass.Id,
@@ -240,7 +244,7 @@ export class Testall {
         // Only flip outcome so still considerd a 'locked test' via message
         detail.Outcome = 'Pass';
       }
-      this._logger.logTestRetry(detail);
+      this._logger.logTestRetry(detail, result.tests[0]?.message);
     }
   }
 }

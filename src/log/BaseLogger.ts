@@ -2,11 +2,11 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import { Connection } from '@apexdevtools/sfdx-auth-helper';
+import path from 'path';
 import { getMaxErrorsForReRun, TestallOptions } from '../command/Testall';
 import { ApexTestResult } from '../model/ApexTestResult';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
-import { QueryHelper } from '../query/QueryHelper';
+import { groupByOutcome } from '../results/OutputGenerator';
 import { Logger } from './Logger';
 
 export interface MaybeError {
@@ -15,11 +15,11 @@ export interface MaybeError {
 }
 
 export abstract class BaseLogger implements Logger {
-  verbose: boolean;
-  connection: Connection;
+  readonly logDirPath: string;
+  readonly verbose: boolean;
 
-  constructor(connection: Connection, verbose: boolean) {
-    this.connection = connection;
+  constructor(logDirectory: string, verbose: boolean) {
+    this.logDirPath = logDirectory;
     this.verbose = verbose;
   }
 
@@ -50,8 +50,10 @@ export abstract class BaseLogger implements Logger {
     this.logMessage('Warning: ' + message);
   }
 
-  logOutputFile(path: string, contents: string): void {
-    this.logFile(path, contents);
+  logOutputFile(filepath: string, contents: string): void {
+    // if filepath is absolute it will be used instead
+    // given resolve() right to left logic
+    this.logFile(path.resolve(this.logDirPath, filepath), contents);
   }
 
   logTestallStart(options: TestallOptions): void {
@@ -80,15 +82,32 @@ export abstract class BaseLogger implements Logger {
 
   logMaxErrorAbort(failed: ApexTestResult[]): void {
     this.logMessage(
-      `Aborting re-testing as ${failed.length} failed (excluding for locking) which is above the max limit`
+      `Aborting re-testing as ${failed.length} failed (excluding pattern matches) which is above the max limit`
     );
   }
 
-  logTestRetry(result: ApexTestResult): void {
-    const name = `${result.ApexClass.Name}.${result.MethodName}`;
+  logTestWillRetry(rerun: ApexTestResult[]): void {
+    if (rerun.length > 0) {
+      this.logMessage(
+        `Failed tests matched patterns, running ${rerun.length} tests sequentially`
+      );
+    }
+  }
+
+  logTestRetry(result: ApexTestResult, otherMessage: string | null): void {
     this.logMessage(
-      `${name} re-run sequentially due to locking, outcome=${result.Outcome}`
+      `${result.ApexClass.Name}.${result.MethodName} re-run complete, outcome = ${result.Outcome}`
     );
+
+    // i.e its failed with a different message, show what happened
+    if (otherMessage && result.Message) {
+      if (otherMessage !== result.Message) {
+        this.logMessage(` [Before] ${result.Message}`);
+        this.logMessage(` [After] ${otherMessage}`);
+      } else {
+        this.logMessage(` [Before and After] ${otherMessage}`);
+      }
+    }
   }
 
   logRunStarted(testRunId: string): void {
@@ -101,47 +120,21 @@ export abstract class BaseLogger implements Logger {
     );
   }
 
-  async logStatus(testRunResult: ApexTestRunResult): Promise<void> {
-    type TableShape = {
-      outcome: string;
-      total: number;
-    };
-
-    // We can't rely on MethodsCompleted (it under reports) so generate our own
-    const aggComplete = await QueryHelper.instance(
-      this.connection
-    ).query<TableShape>(
-      'ApexTestResult',
-      `AsyncApexJobId='${testRunResult.AsyncApexJobId}' Group by Outcome`,
-      'Outcome outcome, Count(Id) total'
-    );
-    const countComplete = aggComplete.reduce((n, { total }) => n + total, 0);
-
-    const testRunId = testRunResult.AsyncApexJobId;
+  logStatus(testRunResult: ApexTestRunResult, tests: ApexTestResult[]): void {
     const status = testRunResult.Status;
-    const numberFailed = aggComplete
-      .filter(a => a.outcome === 'Fail')
-      .map(n => n.total)
-      .reduce((a, b) => a + b, 0);
+    const outcomes = groupByOutcome(tests);
+    const completed = tests.length;
+    const passed = outcomes.Pass.length;
+    const failed = outcomes.Fail.length + outcomes.CompileFail.length;
+
     const complete =
       testRunResult.MethodsEnqueued > 0
-        ? Math.round((countComplete * 100) / testRunResult.MethodsEnqueued)
+        ? Math.round((completed * 100) / testRunResult.MethodsEnqueued)
         : 0;
-    this.logMessage(
-      `${numberFailed} have failed, ${complete}% run, job is ${status}`
-    );
 
-    if (this.verbose) {
-      const apexQueueItems = await QueryHelper.instance(this.connection).query(
-        'ApexTestQueueItem',
-        `ParentJobId='${testRunId}'`,
-        'Id, ApexClassId, ExtendedStatus, Status, TestRunResultID, ShouldSkipCodeCoverage'
-      );
-      this.logFile(
-        `testqueue-${new Date().toISOString()}.json`,
-        JSON.stringify(apexQueueItems)
-      );
-    }
+    this.logMessage(
+      `[${status}] Passed: ${passed} | Failed: ${failed} | ${complete}% Complete`
+    );
   }
 
   logRunCancelling(testRunId: string): void {
@@ -157,8 +150,4 @@ export abstract class BaseLogger implements Logger {
   logRunCancelled(testRunId: string): void {
     this.logMessage(`Test run '${testRunId}' has been cancelled`);
   }
-}
-
-export interface AggResult {
-  expr0: number;
 }

@@ -66,7 +66,7 @@ describe('messages', () => {
     queryHelperStub.resolves(mockApexClasses);
 
     const testMethodCollector = new TestItemTestMethodCollector(
-      new CapturingLogger(mockConnection, false),
+      new CapturingLogger(),
       mockConnection,
       'foo',
       []
@@ -96,7 +96,7 @@ describe('messages', () => {
     toolingQueryStub.resolves({ records: mockApexClasses });
 
     const testMethodCollector = new OrgTestMethodCollector(
-      new CapturingLogger(mockConnection, false),
+      new CapturingLogger(),
       mockConnection,
       'foo',
       ['FooClass']
@@ -125,7 +125,7 @@ describe('messages', () => {
     queryHelperStub.onCall(2).resolves(mockApexClasses.slice(400));
 
     const testMethodCollector = new TestItemTestMethodCollector(
-      new CapturingLogger(mockConnection, false),
+      new CapturingLogger(),
       mockConnection,
       'foo',
       mockApexClasses.map(cls => {
@@ -160,7 +160,7 @@ describe('messages', () => {
     ];
 
     const testMethodCollector = new TestItemTestMethodCollector(
-      new CapturingLogger(mockConnection, false),
+      new CapturingLogger(),
       mockConnection,
       'foo',
       mockTestItems

@@ -9,37 +9,37 @@ import {
 import { StreamingClient } from '@salesforce/apex-node/lib/src/streaming';
 import { ExecuteService, TestLevel } from '@salesforce/apex-node';
 import { expect } from 'chai';
-import { createSandbox, SinonSandbox, SinonStub } from 'sinon';
+import { createSandbox, SinonSandbox, SinonStub, match } from 'sinon';
 import { AsyncTestRunner, TestRunner } from '../../src/runner/TestRunner';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import {
+  isoDateFormat,
   logRegex,
   MockAborter,
-  setupEmptyQueryApexTestResults,
   setupExecuteAnonymous,
   setupMultipleQueryApexTestResults,
   setupQueryApexTestResults,
   setupRunTestsAsynchronous,
   testRunId,
 } from '../Setup';
-import { AggResult } from '../../src/log/BaseLogger';
 import { QueryHelper } from '../../src/query/QueryHelper';
 import { ResultCollector } from '../../src/collector/ResultCollector';
 import { TestRunnerCallbacks } from '../../src/runner/TestOptions';
-import { ApexTestResult } from '@salesforce/apex-node/lib/src/tests/types';
+import { ApexTestResult as ApexNodeTestResult } from '@salesforce/apex-node/lib/src/tests/types';
+import { ApexTestResult } from '../../src/model/ApexTestResult';
+import { Record } from 'jsforce';
 
 const $$ = testSetup();
 let mockConnection: Connection;
 let sandboxStub: SinonSandbox;
 let toolingRequestStub: SinonStub;
-let toolingQueryStub: SinonStub;
-let queryHelperStub: SinonStub;
+let queryStub: SinonStub<[string, string, string], Promise<Record<any>[]>>;
 const testData = new MockTestOrgData();
 
 jest.mock('../../src/collector/ResultCollector');
-const mockTestResult = [
+const mockTestResult: ApexTestResult[] = [
   {
-    Id: 'An id',
+    Id: 'id',
     QueueItemId: 'queue item id',
     AsyncApexJobId: 'job id',
     Outcome: 'Pass',
@@ -55,7 +55,7 @@ const mockTestResult = [
     TestTimestamp: '2022-09-07T07:38:56.000+0000',
   },
   {
-    Id: 'An id',
+    Id: 'id2',
     QueueItemId: 'queue item id',
     AsyncApexJobId: 'job id',
     Outcome: 'Fail',
@@ -71,9 +71,7 @@ const mockTestResult = [
     TestTimestamp: '2022-09-07T07:38:56.000+0000',
   },
 ];
-const gatherResult = jest
-  .spyOn(ResultCollector, 'gatherResults')
-  .mockReturnValue(Promise.resolve(mockTestResult));
+const gatherResult = jest.spyOn(ResultCollector, 'gatherResults');
 
 describe('messages', () => {
   beforeEach(async () => {
@@ -96,11 +94,10 @@ describe('messages', () => {
 
     sandboxStub.stub(StreamingClient.prototype, 'handshake').resolves();
     toolingRequestStub = sandboxStub.stub(mockConnection.tooling, 'request');
-    toolingQueryStub = sandboxStub.stub(mockConnection.tooling, 'query');
-    queryHelperStub = sandboxStub.stub(
-      QueryHelper.instance(mockConnection),
-      'query'
-    );
+    queryStub = sandboxStub.stub(QueryHelper.instance(mockConnection), 'query');
+
+    gatherResult.mockReset();
+    gatherResult.mockReturnValue(Promise.resolve(mockTestResult));
   });
 
   afterEach(() => {
@@ -113,13 +110,9 @@ describe('messages', () => {
       testLevel: TestLevel.RunSpecifiedTests,
       skipCodeCoverage: true,
     });
-    setupQueryApexTestResults(toolingQueryStub, {});
-    const aggCount: AggResult = {
-      expr0: 10,
-    };
-    queryHelperStub.onCall(0).resolves([aggCount]);
+    setupQueryApexTestResults(queryStub, {});
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner: TestRunner = AsyncTestRunner.forClasses(
       logger,
       mockConnection,
@@ -134,10 +127,10 @@ describe('messages', () => {
     expect(testRunResult.Status).to.equal('Completed');
     expect(logger.entries.length).to.equal(2);
     expect(logger.entries[0]).to.match(
-      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}$`)
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
     );
     expect(logger.entries[1]).to.match(
-      logRegex('0 have failed, 0% run, job is Completed$')
+      logRegex('\\[Completed\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
     );
   });
 
@@ -147,13 +140,9 @@ describe('messages', () => {
       testLevel: TestLevel.RunLocalTests,
       skipCodeCoverage: true,
     });
-    setupQueryApexTestResults(toolingQueryStub, {});
-    const aggCount: AggResult = {
-      expr0: 10,
-    };
-    queryHelperStub.onCall(0).resolves([aggCount]);
+    setupQueryApexTestResults(queryStub, {});
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner = new AsyncTestRunner(logger, mockConnection, [], {
       maxTestRunRetries: 1,
       testRunTimeoutMins: 10,
@@ -165,10 +154,10 @@ describe('messages', () => {
     expect(testRunResult.Status).to.equal('Completed');
     expect(logger.entries.length).to.equal(2);
     expect(logger.entries[0]).to.match(
-      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}$`)
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
     );
     expect(logger.entries[1]).to.match(
-      logRegex('0 have failed, 0% run, job is Completed$')
+      logRegex('\\[Completed\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
     );
   });
 
@@ -178,13 +167,9 @@ describe('messages', () => {
       testLevel: TestLevel.RunLocalTests,
       skipCodeCoverage: true,
     });
-    setupQueryApexTestResults(toolingQueryStub, { Status: 'Failed' });
-    const aggCount: AggResult = {
-      expr0: 10,
-    };
-    queryHelperStub.onCall(0).resolves([aggCount]);
+    setupQueryApexTestResults(queryStub, { Status: 'Failed' });
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner = new AsyncTestRunner(logger, mockConnection, [], {
       maxTestRunRetries: 1,
       testRunTimeoutMins: 10,
@@ -195,10 +180,10 @@ describe('messages', () => {
     expect(testRunResult.Status).to.equal('Failed');
     expect(logger.entries.length).to.equal(2);
     expect(logger.entries[0]).to.match(
-      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}$`)
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
     );
     expect(logger.entries[1]).to.match(
-      logRegex('0 have failed, 0% run, job is Failed$')
+      logRegex('\\[Failed\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
     );
   });
 
@@ -208,13 +193,9 @@ describe('messages', () => {
       testLevel: TestLevel.RunLocalTests,
       skipCodeCoverage: true,
     });
-    setupQueryApexTestResults(toolingQueryStub, { Status: 'Aborted' });
-    const aggCount: AggResult = {
-      expr0: 10,
-    };
-    queryHelperStub.onCall(0).resolves([aggCount]);
+    setupQueryApexTestResults(queryStub, { Status: 'Aborted' });
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner = new AsyncTestRunner(logger, mockConnection, [], {
       maxTestRunRetries: 1,
       testRunTimeoutMins: 10,
@@ -225,15 +206,15 @@ describe('messages', () => {
     expect(testRunResult.Status).to.equal('Aborted');
     expect(logger.entries.length).to.equal(2);
     expect(logger.entries[0]).to.match(
-      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}$`)
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
     );
     expect(logger.entries[1]).to.match(
-      logRegex('0 have failed, 0% run, job is Aborted$')
+      logRegex('\\[Aborted\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
     );
   });
 
   it('should throw if max retries exceeded', async () => {
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner = AsyncTestRunner.forClasses(
       logger,
       mockConnection,
@@ -266,9 +247,9 @@ describe('messages', () => {
       testLevel: TestLevel.RunSpecifiedTests,
       skipCodeCoverage: true,
     });
-    setupEmptyQueryApexTestResults(toolingQueryStub);
+    queryStub.resolves([]);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner = AsyncTestRunner.forClasses(
       logger,
       mockConnection,
@@ -301,17 +282,14 @@ describe('messages', () => {
       testLevel: TestLevel.RunSpecifiedTests,
       skipCodeCoverage: true,
     });
-    setupMultipleQueryApexTestResults(toolingQueryStub, [
+    setupMultipleQueryApexTestResults(queryStub, [
       { Status: 'Queued' },
       { Status: 'Queued' },
       {},
+      {},
     ]);
-    const aggCount: AggResult = {
-      expr0: 10,
-    };
-    queryHelperStub.resolves([aggCount]);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner = AsyncTestRunner.forClasses(
       logger,
       mockConnection,
@@ -329,16 +307,16 @@ describe('messages', () => {
     expect(testRunResult.Status).to.equal('Completed');
     expect(logger.entries.length).to.equal(4);
     expect(logger.entries[0]).to.match(
-      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}$`)
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
     );
     expect(logger.entries[1]).to.match(
-      logRegex('0 have failed, 0% run, job is Queued$')
+      logRegex('\\[Queued\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
     );
     expect(logger.entries[2]).to.match(
-      logRegex('0 have failed, 0% run, job is Queued$')
+      logRegex('\\[Queued\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
     );
     expect(logger.entries[3]).to.match(
-      logRegex('0 have failed, 0% run, job is Completed$')
+      logRegex('\\[Completed\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
     );
   });
 
@@ -348,17 +326,13 @@ describe('messages', () => {
       testLevel: TestLevel.RunSpecifiedTests,
       skipCodeCoverage: true,
     });
-    setupMultipleQueryApexTestResults(toolingQueryStub, [
+    setupMultipleQueryApexTestResults(queryStub, [
       { Status: 'Queued' },
       { Status: 'Queued' },
       {},
     ]);
-    const aggCount: AggResult = {
-      expr0: 10,
-    };
-    queryHelperStub.resolves([aggCount]);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner = AsyncTestRunner.forClasses(
       logger,
       mockConnection,
@@ -392,10 +366,12 @@ describe('messages', () => {
       testLevel: TestLevel.RunSpecifiedTests,
       skipCodeCoverage: true,
     });
-    setupMultipleQueryApexTestResults(toolingQueryStub, [
-      { Status: 'Processing' },
-      { Status: 'Processing' },
-      { Status: 'Completed' },
+    setupMultipleQueryApexTestResults(queryStub, [
+      { Status: 'Processing' }, // poll
+      { Status: 'Processing' }, // poll
+      { Status: 'Processing' }, // result
+      { Status: 'Completed' }, // poll
+      { Status: 'Completed' }, // result
     ]);
     setupExecuteAnonymous(
       sandboxStub.stub(ExecuteService.prototype, 'connectionRequest'),
@@ -409,12 +385,8 @@ describe('messages', () => {
         success: 'true',
       }
     );
-    const aggCount: AggResult = {
-      expr0: 10,
-    };
-    queryHelperStub.resolves([aggCount]);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const mockAborter = new MockAborter();
     const runner = AsyncTestRunner.forClasses(
       logger,
@@ -422,7 +394,7 @@ describe('messages', () => {
       '',
       ['TestSample'],
       {
-        maxTestRunRetries: 5,
+        maxTestRunRetries: 2,
         testRunTimeoutMins: 1,
         statusPollIntervalMs: 100, // Just for testing, to keep under timeout
         pollLimitToAssumeHangingTests: 1, // Will asumme hanging on each poll
@@ -434,37 +406,68 @@ describe('messages', () => {
     expect(mockAborter.calls).to.equal(1);
     expect(testRunResult.AsyncApexJobId).to.equal(testRunId);
     expect(testRunResult.Status).to.equal('Completed');
-    expect(logger.entries.length).to.equal(5);
+    expect(logger.entries.length).to.equal(6);
     expect(logger.entries[0]).to.match(
-      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}$`)
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
     );
     expect(logger.entries[1]).to.match(
-      logRegex('0 have failed, 0% run, job is Processing$')
+      logRegex('\\[Processing\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
     );
     expect(logger.entries[2]).to.match(
-      logRegex(
-        `Test run '${testRunId}' was not progressing, cancelling and retrying...$`
-      )
+      logRegex('\\[Processing\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
     );
     expect(logger.entries[3]).to.match(
-      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}$`)
+      logRegex(
+        `Test run '${testRunId}' was not progressing, cancelling and retrying...`
+      )
     );
     expect(logger.entries[4]).to.match(
-      logRegex('0 have failed, 0% run, job is Completed$')
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
+    );
+    expect(logger.entries[5]).to.match(
+      logRegex('\\[Completed\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
     );
   });
 
   it('should not cancel if progress detected', async () => {
+    const finalResults: ApexTestResult[] = [
+      ...mockTestResult,
+      {
+        Id: 'id3',
+        QueueItemId: 'queue item id',
+        AsyncApexJobId: 'job id',
+        Outcome: 'Pass',
+        ApexClass: {
+          Id: 'Class Id',
+          Name: 'Class1',
+          NamespacePrefix: null,
+        },
+        MethodName: 'Method3',
+        Message: null,
+        StackTrace: null,
+        RunTime: 10,
+        TestTimestamp: '2022-09-07T07:38:56.000+0000',
+      },
+    ];
+
     setupRunTestsAsynchronous(toolingRequestStub, mockConnection, {
       tests: [{ className: 'TestSample' }],
       testLevel: TestLevel.RunSpecifiedTests,
       skipCodeCoverage: true,
     });
-    setupMultipleQueryApexTestResults(toolingQueryStub, [
-      { Status: 'Processing', MethodsCompleted: 1 },
-      { Status: 'Processing', MethodsCompleted: 2 },
-      { Status: 'Completed', MethodsCompleted: 5 },
+    setupMultipleQueryApexTestResults(queryStub, [
+      { Status: 'Processing' }, // poll
+      { Status: 'Processing' }, // poll
+      { Status: 'Processing' }, // poll
+      { Status: 'Completed' }, // poll
+      { Status: 'Completed' }, // result
     ]);
+    // poll results
+    gatherResult
+      .mockReturnValueOnce(Promise.resolve([mockTestResult[0]]))
+      .mockReturnValueOnce(Promise.resolve(mockTestResult))
+      .mockReturnValueOnce(Promise.resolve(finalResults))
+      .mockReturnValueOnce(Promise.resolve(finalResults));
     setupExecuteAnonymous(
       sandboxStub.stub(ExecuteService.prototype, 'connectionRequest'),
       {
@@ -477,12 +480,8 @@ describe('messages', () => {
         success: 'true',
       }
     );
-    const aggCount: AggResult = {
-      expr0: 10,
-    };
-    queryHelperStub.resolves([aggCount]);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const mockAborter = new MockAborter();
     const runner = AsyncTestRunner.forClasses(
       logger,
@@ -490,7 +489,7 @@ describe('messages', () => {
       '',
       ['TestSample'],
       {
-        maxTestRunRetries: 5,
+        maxTestRunRetries: 1,
         testRunTimeoutMins: 1,
         statusPollIntervalMs: 100, // Just for testing, to keep under timeout
         pollLimitToAssumeHangingTests: 1, // Will asumme hanging on each poll
@@ -502,23 +501,26 @@ describe('messages', () => {
     expect(mockAborter.calls).to.equal(0);
     expect(testRunResult.AsyncApexJobId).to.equal(testRunId);
     expect(testRunResult.Status).to.equal('Completed');
-    expect(logger.entries.length).to.equal(4);
+    expect(logger.entries.length).to.equal(5);
     expect(logger.entries[0]).to.match(
-      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}$`)
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
     );
     expect(logger.entries[1]).to.match(
-      logRegex('0 have failed, 0% run, job is Processing$')
+      logRegex('\\[Processing\\] Passed: 1 \\| Failed: 0 \\| 0% Complete')
     );
     expect(logger.entries[2]).to.match(
-      logRegex('0 have failed, 0% run, job is Processing$')
+      logRegex('\\[Processing\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
     );
     expect(logger.entries[3]).to.match(
-      logRegex('0 have failed, 0% run, job is Completed$')
+      logRegex('\\[Processing\\] Passed: 2 \\| Failed: 1 \\| 0% Complete')
+    );
+    expect(logger.entries[4]).to.match(
+      logRegex('\\[Completed\\] Passed: 2 \\| Failed: 1 \\| 0% Complete')
     );
   });
 
   it('should create clone additional run', () => {
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner: TestRunner = AsyncTestRunner.forClasses(
       logger,
       mockConnection,
@@ -544,22 +546,17 @@ describe('messages', () => {
       testLevel: TestLevel.RunSpecifiedTests,
       skipCodeCoverage: true,
     });
-    setupQueryApexTestResults(toolingQueryStub, {});
-    const aggCount: AggResult = {
-      expr0: 10,
-    };
-
-    queryHelperStub.onCall(0).resolves([aggCount]);
+    setupQueryApexTestResults(queryStub, {});
 
     const mockedOnRunStart = jest.fn<void, [string, void]>();
-    const mockedOnPoll = jest.fn<void, [ApexTestResult, void]>();
+    const mockedOnPoll = jest.fn<void, [ApexNodeTestResult, void]>();
 
     const callbacks = ({
       onRunStarted: mockedOnRunStart,
       onPoll: mockedOnPoll,
     } as unknown) as TestRunnerCallbacks;
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const runner: TestRunner = AsyncTestRunner.forClasses(
       logger,
       mockConnection,
@@ -570,5 +567,54 @@ describe('messages', () => {
     await runner.run();
     expect(mockedOnRunStart.mock.calls[0][0]).to.equal(testRunId);
     expect(mockedOnPoll.mock.calls[0][0]).to.deep.equal(mockTestResult);
+  });
+
+  it('should report queue items to file on verbose logging', async () => {
+    setupRunTestsAsynchronous(toolingRequestStub, mockConnection, {
+      tests: [{ className: 'TestSample' }],
+      testLevel: TestLevel.RunSpecifiedTests,
+      skipCodeCoverage: true,
+    });
+    setupQueryApexTestResults(queryStub, {});
+    const mockQueueItems = [
+      {
+        Id: 'id',
+        ApexClassId: 'apexClassId',
+        ExtendedStatus: 'extendedStatus',
+        Status: 'status',
+        TestRunResultID: 'testRunResultId',
+        ShouldSkipCodeCoverage: true,
+      },
+    ];
+    queryStub
+      .withArgs('ApexTestQueueItem', match.any, match.any)
+      .resolves(mockQueueItems);
+
+    const logger = new CapturingLogger('', true);
+    const runner: TestRunner = AsyncTestRunner.forClasses(
+      logger,
+      mockConnection,
+      '',
+      ['TestSample'],
+      {}
+    );
+
+    const testRunResult = await runner.run();
+    expect(testRunResult.AsyncApexJobId).to.equal(testRunId);
+    expect(testRunResult.Status).to.equal('Completed');
+    expect(logger.entries.length).to.equal(2);
+    expect(logger.entries[0]).to.match(
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
+    );
+    expect(logger.entries[1]).to.match(
+      logRegex('\\[Completed\\] Passed: 1 \\| Failed: 1 \\| 0% Complete')
+    );
+    expect(logger.files.length).to.equal(1);
+    expect(logger.files[0][0]).to.match(
+      new RegExp(`^${process.cwd()}/testqueue-${isoDateFormat}.json`)
+    );
+    expect(logger.files[0][1]).to.equal(
+      JSON.stringify(mockQueueItems, undefined, 2)
+    );
   });
 });

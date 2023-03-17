@@ -23,7 +23,7 @@ async function run(
   testClasses: string[]
 ): Promise<void> {
   const connection = await getConnection(username);
-  const logger = new ConsoleLogger(connection, false);
+  const logger = new ConsoleLogger();
   const runner = new AsyncTestRunner(logger, connection, [], {});
   const methodCollector = new OrgTestMethodCollector(
     logger,

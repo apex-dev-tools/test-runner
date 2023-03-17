@@ -4,8 +4,8 @@
 
 import { Connection } from '@apexdevtools/sfdx-auth-helper';
 import { Logger } from '../log/Logger';
-import { ApexTestResult } from '../model/ApexTestResult';
-import { QueryHelper } from '../query/QueryHelper';
+import { ApexTestResult, ApexTestResultFields } from '../model/ApexTestResult';
+import { QueryHelper, QueryOptions } from '../query/QueryHelper';
 import { TestResultMatcher } from './TestResultMatcher';
 
 export interface ResultsByType {
@@ -22,8 +22,22 @@ export class ResultCollector {
     return await QueryHelper.instance(connection).query<ApexTestResult>(
       'ApexTestResult',
       `AsyncApexJobId='${testRunId}'`,
-      `Id, QueueItemId, StackTrace, Message, AsyncApexJobId, MethodName, Outcome, RunTime, TestTimestamp,
-        ApexClass.Id, ApexClass.Name, ApexClass.NamespacePrefix`
+      ApexTestResultFields.join(', ')
+    );
+  }
+
+  static async gatherResultsWithRetry(
+    connection: Connection,
+    testRunId: string,
+    logger: Logger,
+    options: QueryOptions
+  ): Promise<ApexTestResult[]> {
+    return await QueryHelper.instance(
+      connection
+    ).queryWithRetry<ApexTestResult>(logger, options)(
+      'ApexTestResult',
+      `AsyncApexJobId='${testRunId}'`,
+      ApexTestResultFields.join(', ')
     );
   }
 
@@ -47,7 +61,6 @@ export class ResultCollector {
       if (testDetail.Outcome === 'Pass') {
         results.passed.push(testDetail);
       } else if (
-        testDetail.Outcome !== 'Pass' &&
         testDetail.Outcome !== 'Skip' &&
         matcher.doesMatchAny(testMessage)
       ) {

@@ -12,7 +12,7 @@ import {
   SoapResponse,
 } from '@salesforce/apex-node/lib/src/execute/types';
 import { Connection } from '@apexdevtools/sfdx-auth-helper';
-import { SinonStub } from 'sinon';
+import { SinonStub, match } from 'sinon';
 import { TestMethodCollector } from '../src/collector/TestMethodCollector';
 import { Logger } from '../src/log/Logger';
 import { ApexTestRunResult } from '../src/model/ApexTestRunResult';
@@ -24,10 +24,11 @@ import { TestRunner } from '../src/runner/TestRunner';
 import { OutputGenerator } from '../src/results/OutputGenerator';
 import { ApexTestResult } from '../src/model/ApexTestResult';
 import { ApexClassInfo, QueryResponse } from '../src/query/ClassSymbolLoader';
+import { Record } from 'jsforce';
 
 export const testRunId = '707xx0000AGQ3jbQQD';
 
-const isoDateFormat =
+export const isoDateFormat =
   '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}Z';
 
 export function logRegex(entry: string): RegExp {
@@ -48,57 +49,49 @@ export function setupRunTestsAsynchronous(
   stub.withArgs(testAsyncRequest).returns(testRunId);
 }
 
-export interface ApexTestRunResultParams {
-  AsyncApexJobId?: string;
-  StartTime?: string;
-  EndTime?: string;
-  Status?: string;
-  TestTime?: number;
-  UserId?: string;
-  ClassesCompleted?: number;
-  ClassesEnqueued?: number;
-  MethodsCompleted?: number;
-  MethodsEnqueued?: number;
-  MethodsFailed?: number;
-}
+export type ApexTestRunResultParams = Partial<ApexTestRunResult>;
 
 export function setupQueryApexTestResults(
-  stub: SinonStub,
+  stub: SinonStub<[string, string, string], Promise<Record<any>[]>>,
   params: ApexTestRunResultParams
 ): void {
-  setupMultipleQueryApexTestResults(stub, [params]);
+  const mockTestRunResult: ApexTestRunResult = createMockRunResult(params);
+
+  stub
+    .withArgs('ApexTestRunResult', match.any, match.any)
+    .resolves([mockTestRunResult]);
 }
 
 export function setupMultipleQueryApexTestResults(
-  stub: SinonStub,
+  stub: SinonStub<[string, string, string], Promise<Record<any>[]>>,
   paramsList: ApexTestRunResultParams[]
 ): void {
-  const nowString = Date.now().toString();
   for (let i = 0; i < paramsList.length; i++) {
-    const params = paramsList[i];
-    const mockTestRunResult: ApexTestRunResult = {
-      AsyncApexJobId: params.AsyncApexJobId || testRunId,
-      StartTime: params.StartTime || nowString,
-      EndTime: params.EndTime || nowString,
-      Status: params.Status || 'Completed',
-      TestTime: params.TestTime || 0,
-      UserId: params.UserId || '',
-      ClassesCompleted: params.ClassesCompleted || 0,
-      ClassesEnqueued: params.ClassesEnqueued || 0,
-      MethodsCompleted: params.MethodsCompleted || 0,
-      MethodsEnqueued: params.MethodsEnqueued || 0,
-      MethodsFailed: params.MethodsFailed || 0,
-    };
-    if (i == paramsList.length - 1) {
-      stub.resolves({ records: [mockTestRunResult] });
-    } else {
-      stub.onCall(i).resolves({ records: [mockTestRunResult] });
-    }
+    const mockTestRunResult: ApexTestRunResult = createMockRunResult(
+      paramsList[i]
+    );
+
+    stub
+      .withArgs('ApexTestRunResult', match.any, match.any)
+      .onCall(i)
+      .resolves([mockTestRunResult]);
   }
 }
 
-export function setupEmptyQueryApexTestResults(stub: SinonStub): void {
-  stub.resolves({ records: [] });
+function createMockRunResult(params: ApexTestRunResultParams) {
+  return {
+    AsyncApexJobId: params.AsyncApexJobId || testRunId,
+    StartTime: params.StartTime || '',
+    EndTime: params.EndTime || '',
+    Status: params.Status || 'Completed',
+    TestTime: params.TestTime || 0,
+    UserId: params.UserId || '',
+    ClassesCompleted: params.ClassesCompleted || 0,
+    ClassesEnqueued: params.ClassesEnqueued || 0,
+    MethodsCompleted: params.MethodsCompleted || 0,
+    MethodsEnqueued: params.MethodsEnqueued || 0,
+    MethodsFailed: params.MethodsFailed || 0,
+  };
 }
 
 export function setupExecuteAnonymous(

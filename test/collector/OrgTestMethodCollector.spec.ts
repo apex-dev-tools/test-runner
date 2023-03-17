@@ -7,20 +7,20 @@ import {
   testSetup,
 } from '@apexdevtools/sfdx-auth-helper/lib/src/testSetup';
 import { StreamingClient } from '@salesforce/apex-node/lib/src/streaming';
-import { createSandbox, SinonSandbox, SinonStub } from 'sinon';
+import { createSandbox, SinonSandbox, SinonStub, match } from 'sinon';
 import { expect } from 'chai';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import { QueryHelper } from '../../src/query/QueryHelper';
 import { ApexClassInfo } from '../../src/query/ClassSymbolLoader';
 import { setupQueryApexClassesSOAP } from '../Setup';
 import { OrgTestMethodCollector } from '../../src/collector/OrgTestMethodCollector';
+import { Record } from 'jsforce';
 
 const $$ = testSetup();
 let mockConnection: Connection;
 let sandboxStub: SinonSandbox;
-let toolingQueryStub: SinonStub;
 let toolingRequestStub: SinonStub;
-let queryHelperStub: SinonStub;
+let queryStub: SinonStub<[string, string, string], Promise<Record<any>[]>>;
 const testData = new MockTestOrgData();
 
 describe('messages', () => {
@@ -43,12 +43,8 @@ describe('messages', () => {
     });
 
     sandboxStub.stub(StreamingClient.prototype, 'handshake').resolves();
-    toolingQueryStub = sandboxStub.stub(mockConnection.tooling, 'query');
     toolingRequestStub = sandboxStub.stub(mockConnection.tooling, 'request');
-    queryHelperStub = sandboxStub.stub(
-      QueryHelper.instance(mockConnection),
-      'query'
-    );
+    queryStub = sandboxStub.stub(QueryHelper.instance(mockConnection), 'query');
   });
 
   afterEach(() => {
@@ -64,10 +60,10 @@ describe('messages', () => {
       },
     ];
 
-    queryHelperStub.resolves(mockApexClasses);
+    queryStub.resolves(mockApexClasses);
 
     const testMethodCollector = new OrgTestMethodCollector(
-      new CapturingLogger(mockConnection, false),
+      new CapturingLogger(),
       mockConnection,
       'foo',
       []
@@ -93,11 +89,10 @@ describe('messages', () => {
       },
     ];
 
-    queryHelperStub.resolves(mockApexClasses);
-    toolingQueryStub.resolves({ records: mockApexClasses });
+    queryStub.resolves(mockApexClasses);
 
     const testMethodCollector = new OrgTestMethodCollector(
-      new CapturingLogger(mockConnection, false),
+      new CapturingLogger(),
       mockConnection,
       'foo',
       ['FooClass']
@@ -121,12 +116,12 @@ describe('messages', () => {
       });
     }
 
-    queryHelperStub.onCall(0).resolves(mockApexClasses.slice(0, 200));
-    queryHelperStub.onCall(1).resolves(mockApexClasses.slice(200, 400));
-    queryHelperStub.onCall(2).resolves(mockApexClasses.slice(400));
+    queryStub.onCall(0).resolves(mockApexClasses.slice(0, 200));
+    queryStub.onCall(1).resolves(mockApexClasses.slice(200, 400));
+    queryStub.onCall(2).resolves(mockApexClasses.slice(400));
 
     const testMethodCollector = new OrgTestMethodCollector(
-      new CapturingLogger(mockConnection, false),
+      new CapturingLogger(),
       mockConnection,
       'foo',
       mockApexClasses.map(cls => cls.Name)
@@ -191,11 +186,11 @@ describe('messages', () => {
       },
     ];
 
-    queryHelperStub.resolves(mockApexClasses);
-    toolingQueryStub.resolves({ records: mockApexClasses });
+    // Use same response for both types of ApexClass query
+    queryStub.resolves(mockApexClasses);
 
     const testMethodCollector = new OrgTestMethodCollector(
-      new CapturingLogger(mockConnection, false),
+      new CapturingLogger(),
       mockConnection,
       'foo',
       []
@@ -248,8 +243,16 @@ describe('messages', () => {
         },
       },
     ];
-    queryHelperStub.resolves(mockApexClasses);
-    toolingQueryStub.onCall(0).resolves({ records: mockApexClasses });
+    // classIdNameMap calls
+    queryStub
+      .withArgs('ApexClass', match.any, 'Id, Name')
+      .resolves(mockApexClasses);
+
+    // ClassSymbolLoader calls
+    queryStub
+      .withArgs('ApexClass', match.any, 'Id, Name, SymbolTable')
+      .onCall(0)
+      .resolves(mockApexClasses);
 
     const updatedApexClasses: ApexClassInfo[] = [
       {
@@ -276,11 +279,14 @@ describe('messages', () => {
         },
       },
     ];
-    toolingQueryStub.onCall(1).resolves({ records: updatedApexClasses });
+    queryStub
+      .withArgs('ApexClass', match.any, 'Id, Name, SymbolTable')
+      .onCall(1)
+      .resolves(updatedApexClasses);
     setupQueryApexClassesSOAP(toolingRequestStub, []);
 
     const testMethodCollector = new OrgTestMethodCollector(
-      new CapturingLogger(mockConnection, false),
+      new CapturingLogger(),
       mockConnection,
       'foo',
       []

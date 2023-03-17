@@ -72,16 +72,16 @@ describe('messages', () => {
     );
     queryHelperStub.resolves([]);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const aborter = new TestRunCancelAborter();
     await aborter.abortRun(logger, mockConnection, testRunId);
 
     expect(logger.entries.length).to.equal(2);
     expect(logger.entries[0]).to.match(
-      logRegex(`Cancelling test run '${testRunId}'$`)
+      logRegex(`Cancelling test run '${testRunId}'`)
     );
     expect(logger.entries[1]).to.match(
-      logRegex(`Test run '${testRunId}' has been cancelled$`)
+      logRegex(`Test run '${testRunId}' has been cancelled`)
     );
   });
 
@@ -101,7 +101,7 @@ describe('messages', () => {
       }
     );
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     let error;
     try {
       const aborter = new TestRunCancelAborter();
@@ -147,7 +147,7 @@ describe('messages', () => {
 
     queryHelperStub.resolves([{ Status: 'Something' }]);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     let error;
     try {
       const aborter = new TestRunCancelAborter();
@@ -184,7 +184,7 @@ describe('messages', () => {
     );
     queryHelperStub.throws(new Error('An Error'));
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     let error;
     try {
       const aborter = new TestRunCancelAborter();
@@ -220,7 +220,7 @@ describe('messages', () => {
     queryHelperStub.onCall(2).resolves([{ Status: 'Something' }]);
     queryHelperStub.onCall(3).resolves([]);
 
-    const logger = new CapturingLogger(mockConnection);
+    const logger = new CapturingLogger();
     const aborter = new TestRunCancelAborter();
     await aborter.abortRun(logger, mockConnection, testRunId, {
       cancelPollIntervalMs: 100, // Just for test so polls quickly
@@ -228,20 +228,20 @@ describe('messages', () => {
 
     expect(logger.entries.length).to.equal(4);
     expect(logger.entries[0]).to.match(
-      logRegex(`Cancelling test run '${testRunId}'$`)
+      logRegex(`Cancelling test run '${testRunId}'`)
     );
     expect(logger.entries[1]).to.match(
       logRegex(
-        `Waiting for test run '${testRunId}' to cancel... 2 tests queued$`
+        `Waiting for test run '${testRunId}' to cancel... 2 tests queued`
       )
     );
     expect(logger.entries[2]).to.match(
       logRegex(
-        `Waiting for test run '${testRunId}' to cancel... 1 tests queued$`
+        `Waiting for test run '${testRunId}' to cancel... 1 tests queued`
       )
     );
     expect(logger.entries[3]).to.match(
-      logRegex(`Test run '${testRunId}' has been cancelled$`)
+      logRegex(`Test run '${testRunId}' has been cancelled`)
     );
   });
 });

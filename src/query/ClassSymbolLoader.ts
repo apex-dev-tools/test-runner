@@ -6,6 +6,7 @@ import { Connection } from '@apexdevtools/sfdx-auth-helper';
 import { RequestData } from '@salesforce/apex-node/lib/src/execute/types';
 import { escapeXml } from '@salesforce/apex-node/lib/src/utils/authUtil';
 import { Logger } from '../log/Logger';
+import { QueryHelper } from '../query/QueryHelper';
 import * as util from 'util';
 
 export interface ApexClassInfo {
@@ -85,10 +86,14 @@ export class ClassSymbolLoader {
     classIds: string[]
   ): Promise<ApexClassInfo[]> {
     const idClause = classIds.map(id => `'${id}'`).join(', ');
-    const apexClasses = await this.connection.tooling.query<ApexClassInfo>(
-      `Select Id, Name, SymbolTable from ApexClass Where Id in (${idClause})`
+    const apexClasses = await QueryHelper.instance(
+      this.connection
+    ).query<ApexClassInfo>(
+      'ApexClass',
+      `Id IN (${idClause})`,
+      'Id, Name, SymbolTable'
     );
-    return apexClasses.records;
+    return apexClasses;
   }
 
   private async queryApexClassesWithBodySOAP(

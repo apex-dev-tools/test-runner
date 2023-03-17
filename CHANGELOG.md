@@ -1,5 +1,18 @@
 # test-runner - Changelog
 
+## 1.5.0 - 2023-03-17
+
+* **BREAKING:** BaseLogger no longer accepts a `Connection` in constructor.
+  * All logging methods are now synchronous.
+  * Has new optional `logDirPath` parameter to set a common location for log files.
+  * `logOutputFile()` will now use `path.resolve` with `logDirPath` or given parameter.
+* Add retry feature to `QueryHelper`, used in `Testall` during post-test `gatherResultsWithRetry`.
+* Update logging status message to include pass count.
+* Update logging for pattern based retries with before/after explanation.
+* Fix unhandled promise rejection on failed polling query.
+* Fix cancellation token not passed to test reruns.
+* Export `DEFAULT_TEST_RERUN_PATTERNS` from `TestResultMatcher`.
+
 ## 1.4.0 - 2023-03-02
 
 * Add support for test rerun patterns in `.apexTestRerun`.

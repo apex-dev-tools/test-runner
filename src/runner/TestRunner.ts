@@ -16,7 +16,6 @@ import {
   ApexTestRunResult,
   ApexTestRunResultFields,
 } from '../model/ApexTestRunResult';
-import { ApexTestResult } from '../model/ApexTestResult';
 import {
   getMaxTestRunRetries,
   getStatusPollIntervalMs,
@@ -26,6 +25,8 @@ import {
 } from './TestOptions';
 import TestStats from './TestStats';
 import { ResultCollector } from '../collector/ResultCollector';
+import { QueryHelper } from '../query/QueryHelper';
+import { ApexTestQueueItem } from '../model/ApexTestQueueItem';
 
 /**
  * Parallel unit test runner that includes the ability to cancel & restart a run should it not make sufficient progress
@@ -136,7 +137,7 @@ export class AsyncTestRunner implements TestRunner {
         testRunIdResult.testRunId,
         this._options
       );
-      return await this.run();
+      return await this.run(token);
     } else {
       return result;
     }
@@ -179,20 +180,12 @@ export class AsyncTestRunner implements TestRunner {
     testRunId: string,
     token?: CancellationToken
   ): Promise<void> {
-    let polledTests: Set<ApexTestResult> = new Set();
+    let polledTests: Set<string> = new Set();
     const options: PollingClient.Options = {
       poll: async () => {
         const testRunResult = await this.testRunResult(testRunId);
 
-        // Update progress
-        this._logger.logStatus(testRunResult);
-        this._stats = this._stats.update(testRunResult.MethodsCompleted);
-        polledTests = await this.getCompletedTests(testRunId, polledTests).then(
-          unSeenTests => {
-            this._options.callbacks?.onPoll?.([...unSeenTests]);
-            return new Set([...polledTests, ...unSeenTests]);
-          }
-        );
+        polledTests = await this.updateProgress(testRunResult, polledTests);
 
         if (token?.isCancellationRequested) {
           await getTestRunAborter(this._options).abortRun(
@@ -239,28 +232,54 @@ export class AsyncTestRunner implements TestRunner {
   }
 
   private async testRunResult(testRunId: string): Promise<ApexTestRunResult> {
-    const testRunResults = await this._connection.tooling.query<ApexTestRunResult>(
-      `SELECT ${ApexTestRunResultFields.join(
-        ', '
-      )} FROM ApexTestRunResult WHERE AsyncApexJobId = '${testRunId}'`
+    const testRunResults = await QueryHelper.instance(
+      this._connection
+    ).query<ApexTestRunResult>(
+      'ApexTestRunResult',
+      `AsyncApexJobId = '${testRunId}'`,
+      ApexTestRunResultFields.join(', ')
     );
-    const records = testRunResults.records;
-    if (records.length != 1)
+    if (testRunResults.length != 1)
       throw new Error(
-        `Wrong number of ApexTestRunResult records found for '${testRunId}', found ${records.length}, expected 1`
+        `Wrong number of ApexTestRunResult records found for '${testRunId}', found ${testRunResults.length}, expected 1`
       );
-    return records[0];
+    return testRunResults[0];
   }
 
-  private async getCompletedTests(
-    testRunId: string,
-    seen: Set<ApexTestResult>
-  ): Promise<Array<ApexTestResult>> {
-    return ResultCollector.gatherResults(this._connection, testRunId).then(
-      res => {
-        const newItems = res.filter(x => !seen.has(x));
-        return newItems;
-      }
+  private async updateProgress(
+    testRunResult: ApexTestRunResult,
+    seen: Set<string>
+  ): Promise<Set<string>> {
+    const runId = testRunResult.AsyncApexJobId;
+    const results = await ResultCollector.gatherResults(
+      this._connection,
+      testRunResult.AsyncApexJobId
+    );
+    const newResults = results.filter(x => !seen.has(x.Id));
+
+    this._logger.logStatus(testRunResult, results);
+    this._stats = this._stats.update(results.length);
+
+    this._options.callbacks?.onPoll?.([...newResults]);
+
+    if (this._logger.verbose) {
+      await this.reportQueueItems(runId);
+    }
+
+    return new Set([...seen, ...newResults.map(r => r.Id)]);
+  }
+
+  private async reportQueueItems(testRunId: string): Promise<void> {
+    const apexQueueItems = await QueryHelper.instance(
+      this._connection
+    ).query<ApexTestQueueItem>(
+      'ApexTestQueueItem',
+      `ParentJobId='${testRunId}'`,
+      'Id, ApexClassId, ExtendedStatus, Status, TestRunResultID, ShouldSkipCodeCoverage'
+    );
+    this._logger.logOutputFile(
+      `testqueue-${new Date().toISOString()}.json`,
+      JSON.stringify(apexQueueItems, undefined, 2)
     );
   }
 }
