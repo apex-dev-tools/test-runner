@@ -45,7 +45,7 @@ describe('messages', () => {
 
     sandboxStub.stub(StreamingClient.prototype, 'handshake').resolves();
     queryHelperStub = sandboxStub.stub(
-      QueryHelper.instance(mockConnection),
+      QueryHelper.instance(mockConnection.tooling),
       'query'
     );
   });

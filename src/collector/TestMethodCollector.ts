@@ -20,7 +20,9 @@ export async function classIdNameMapFromNames(
   let apexClasses: ApexClassInfo[] = [];
 
   if (classNames.length == 0) {
-    apexClasses = await QueryHelper.instance(connection).query<ApexClassInfo>(
+    apexClasses = await QueryHelper.instance(
+      connection.tooling
+    ).query<ApexClassInfo>(
       'ApexClass',
       `NamespacePrefix=${namespace === '' ? 'null' : `'${namespace}'`}`,
       'Id, Name'
@@ -30,7 +32,7 @@ export async function classIdNameMapFromNames(
     for (const chunk of chunks) {
       const classes = chunk.map(name => `'${name}'`).join(', ');
       apexClasses = apexClasses.concat(
-        await QueryHelper.instance(connection).query<ApexClassInfo>(
+        await QueryHelper.instance(connection.tooling).query<ApexClassInfo>(
           'ApexClass',
           `NamespacePrefix=${namespace === '' ? 'null' : `'${namespace}'`} ${
             classes.length > 0 ? `AND Name in (${classes})` : ''

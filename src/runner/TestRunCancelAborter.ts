@@ -23,7 +23,7 @@ export class TestRunCancelAborter implements TestRunAborter {
   ): Promise<string[]> {
     logger.logRunCancelling(testRunId);
     const apexQueueItems = await QueryHelper.instance(
-      connection
+      connection.tooling
     ).query<IdObject>(
       'ApexTestQueueItem',
       `Status IN ('Holding', 'Queued', 'Preparing', 'Processing') AND ParentJobId='${testRunId}'`,
@@ -71,7 +71,9 @@ export class TestRunCancelAborter implements TestRunAborter {
   ): Promise<void> {
     const client = await PollingClient.create({
       poll: async () => {
-        const testRunResults = await QueryHelper.instance(connection).query(
+        const testRunResults = await QueryHelper.instance(
+          connection.tooling
+        ).query(
           'ApexTestQueueItem',
           `Status IN ('Holding', 'Queued', 'Preparing', 'Processing') AND ParentJobId='${testRunId}'`,
           'Status'

@@ -19,7 +19,7 @@ export class ResultCollector {
     connection: Connection,
     testRunId: string
   ): Promise<ApexTestResult[]> {
-    return await QueryHelper.instance(connection).query<ApexTestResult>(
+    return await QueryHelper.instance(connection.tooling).query<ApexTestResult>(
       'ApexTestResult',
       `AsyncApexJobId='${testRunId}'`,
       ApexTestResultFields.join(', ')
@@ -33,7 +33,7 @@ export class ResultCollector {
     options: QueryOptions
   ): Promise<ApexTestResult[]> {
     return await QueryHelper.instance(
-      connection
+      connection.tooling
     ).queryWithRetry<ApexTestResult>(logger, options)(
       'ApexTestResult',
       `AsyncApexJobId='${testRunId}'`,

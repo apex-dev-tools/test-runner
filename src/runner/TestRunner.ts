@@ -233,7 +233,7 @@ export class AsyncTestRunner implements TestRunner {
 
   private async testRunResult(testRunId: string): Promise<ApexTestRunResult> {
     const testRunResults = await QueryHelper.instance(
-      this._connection
+      this._connection.tooling
     ).query<ApexTestRunResult>(
       'ApexTestRunResult',
       `AsyncApexJobId = '${testRunId}'`,
@@ -271,7 +271,7 @@ export class AsyncTestRunner implements TestRunner {
 
   private async reportQueueItems(testRunId: string): Promise<void> {
     const apexQueueItems = await QueryHelper.instance(
-      this._connection
+      this._connection.tooling
     ).query<ApexTestQueueItem>(
       'ApexTestQueueItem',
       `ParentJobId='${testRunId}'`,
