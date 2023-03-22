@@ -13,6 +13,7 @@ import { DebugLogLoader } from '../query/DebugLogLoader';
 import * as fs from 'fs';
 import { QueryHelper } from '../query/QueryHelper';
 import { TestMethodCollector } from '../collector/TestMethodCollector';
+import { TestError } from '../runner/TestError';
 
 export class TestDebugLogs {
   _logger: Logger;
@@ -137,7 +138,7 @@ export class TestDebugLogs {
       fs.rmSync(outputDir, { recursive: true });
       fs.mkdirSync(outputDir);
     } else {
-      throw new Error(
+      throw new TestError(
         `Output directory '${outputDir}' exists but is not a directory`
       );
     }
@@ -152,7 +153,7 @@ export class TestDebugLogs {
     if (users.length == 1) {
       return users[0].Id as string;
     } else {
-      throw Error(`Unknown user '${username}' on this org`);
+      throw new TestError(`Unknown user '${username}' on this org`);
     }
   }
 

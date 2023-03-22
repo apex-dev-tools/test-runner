@@ -109,7 +109,7 @@ describe('messages', () => {
     );
     expect(logger.entries[1]).to.match(
       logRegex(
-        "Error stack: Error: Unknown user 'username' on this org\n    at.*"
+        "Error stack: TestError: Unknown user 'username' on this org\n    at.*"
       )
     );
   });
