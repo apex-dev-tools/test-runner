@@ -44,15 +44,19 @@ async function runTestall(username: string, namespace: string) {
   const runner = new AsyncTestRunner(logger, connection, [], {
     testRunTimeoutMins: 240,
   });
-  await Testall.run(
-    logger,
-    connection,
-    namespace == 'unmanaged' ? '' : namespace,
-    methodCollector,
-    runner,
-    [reportGenerator, classTimeGenerator, executionMapGenerator],
-    {}
-  );
+  try {
+    await Testall.run(
+      logger,
+      connection,
+      namespace == 'unmanaged' ? '' : namespace,
+      methodCollector,
+      runner,
+      [reportGenerator, classTimeGenerator, executionMapGenerator],
+      {}
+    );
+  } catch (err) {
+    // only log errors
+  }
 }
 
 if (process.argv.length != 4) {
