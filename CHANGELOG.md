@@ -1,5 +1,16 @@
 # test-runner - Changelog
 
+## 1.6.0 - 2023-03-23
+
+* Throw the error from `Testall.run()` instead of just logging.
+* Add `TestError` type.
+  * Thrown in all local error cases, external errors may still pass through.
+  * Use built-in `Error().name` property to identify its type.
+  * Has `kind` property with enum type `TestErrorKind`
+    * `General` - 1
+    * `Timeout` - 2
+    * `Query` - 3
+
 ## 1.5.1 - 2023-03-17
 
 * Use tooling api for most sobject queries.
