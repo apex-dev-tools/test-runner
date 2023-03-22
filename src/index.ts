@@ -10,6 +10,7 @@ export { ResultCollector } from './collector/ResultCollector';
 
 export { TestRunner, AsyncTestRunner } from './runner/TestRunner';
 export { TestRunCancelAborter } from './runner/TestRunCancelAborter';
+export { TestError, TestErrorKind } from './runner/TestError';
 
 export { OutputGenerator } from './results/OutputGenerator';
 export { ReportGenerator } from './results/ReportGenerator';

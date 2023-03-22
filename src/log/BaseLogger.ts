@@ -7,12 +7,8 @@ import { getMaxErrorsForReRun, TestallOptions } from '../command/Testall';
 import { ApexTestResult } from '../model/ApexTestResult';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 import { groupByOutcome } from '../results/OutputGenerator';
+import { MaybeError } from '../runner/TestError';
 import { Logger } from './Logger';
-
-export interface MaybeError {
-  message?: string;
-  data?: any;
-}
 
 export abstract class BaseLogger implements Logger {
   readonly logDirPath: string;
