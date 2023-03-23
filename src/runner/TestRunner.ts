@@ -27,6 +27,7 @@ import TestStats from './TestStats';
 import { ResultCollector } from '../collector/ResultCollector';
 import { QueryHelper } from '../query/QueryHelper';
 import { ApexTestQueueItem } from '../model/ApexTestQueueItem';
+import { TestError, TestErrorKind } from './TestError';
 
 /**
  * Parallel unit test runner that includes the ability to cancel & restart a run should it not make sufficient progress
@@ -107,10 +108,11 @@ export class AsyncTestRunner implements TestRunner {
 
   public async run(token?: CancellationToken): Promise<ApexTestRunResult> {
     if (this.hasHitMaxNumberOfTestRunRetries()) {
-      throw new Error(
+      throw new TestError(
         `Max number of test run retries reached, max allowed retries: ${getMaxTestRunRetries(
           this._options
-        )}`
+        )}`,
+        TestErrorKind.Timeout
       );
     }
 
@@ -214,10 +216,11 @@ export class AsyncTestRunner implements TestRunner {
     } catch (err) {
       if (err instanceof Error) {
         if (err.message === 'The client has timed out.') {
-          throw new Error(
+          throw new TestError(
             `Test run '${testRunId}' has exceed test runner max allowed run time of ${getTestRunTimeoutMins(
               this._options
-            ).toString()}`
+            ).toString()}`,
+            TestErrorKind.Timeout
           );
         }
       }
@@ -240,8 +243,9 @@ export class AsyncTestRunner implements TestRunner {
       ApexTestRunResultFields.join(', ')
     );
     if (testRunResults.length != 1)
-      throw new Error(
-        `Wrong number of ApexTestRunResult records found for '${testRunId}', found ${testRunResults.length}, expected 1`
+      throw new TestError(
+        `Wrong number of ApexTestRunResult records found for '${testRunId}', found ${testRunResults.length}, expected 1`,
+        TestErrorKind.Query
       );
     return testRunResults[0];
   }

@@ -69,6 +69,7 @@ export class Testall {
       await cmd.run(runner, methodCollector, outputGenerators);
     } catch (e) {
       logger.logError(e);
+      throw e;
     }
   }
 

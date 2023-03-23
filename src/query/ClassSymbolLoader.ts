@@ -8,6 +8,7 @@ import { escapeXml } from '@salesforce/apex-node/lib/src/utils/authUtil';
 import { Logger } from '../log/Logger';
 import { QueryHelper } from '../query/QueryHelper';
 import * as util from 'util';
+import { TestError } from '../runner/TestError';
 
 export interface ApexClassInfo {
   Id: string;
@@ -44,7 +45,7 @@ export class ClassSymbolLoader {
     const failedIds: string[] = [];
 
     if (classIds.length > MAX_SYMBOLS_CHUNK_SIZE)
-      throw new Error(
+      throw new TestError(
         `Too many class symbol tables requested, ${classIds.length}, limit is ${MAX_SYMBOLS_CHUNK_SIZE}`
       );
 

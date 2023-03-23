@@ -28,6 +28,7 @@ import { TestRunnerCallbacks } from '../../src/runner/TestOptions';
 import { ApexTestResult as ApexNodeTestResult } from '@salesforce/apex-node/lib/src/tests/types';
 import { ApexTestResult } from '../../src/model/ApexTestResult';
 import { Record } from 'jsforce';
+import { TestError, TestErrorKind } from '../../src/runner/TestError';
 
 const $$ = testSetup();
 let mockConnection: Connection;
@@ -237,10 +238,13 @@ describe('messages', () => {
       error = err;
     }
     expect(error).to.be.an(Error.name);
-    if (error instanceof Error) {
+    if (error instanceof TestError) {
       expect(error.message).to.equal(
         'Max number of test run retries reached, max allowed retries: 0'
       );
+      expect(error.kind).to.equal(TestErrorKind.Timeout);
+    } else {
+      expect.fail('Not a TestError');
     }
   });
 
@@ -272,10 +276,13 @@ describe('messages', () => {
       error = err;
     }
     expect(error).to.be.an(Error.name);
-    if (error instanceof Error) {
+    if (error instanceof TestError) {
       expect(error.message).to.equal(
         "Wrong number of ApexTestRunResult records found for '707xx0000AGQ3jbQQD', found 0, expected 1"
       );
+      expect(error.kind).to.equal(TestErrorKind.Query);
+    } else {
+      expect.fail('Not a TestError');
     }
   });
 
@@ -356,10 +363,13 @@ describe('messages', () => {
       error = err;
     }
     expect(error).to.be.an(Error.name);
-    if (error instanceof Error) {
+    if (error instanceof TestError) {
       expect(error.message).to.equal(
         `Test run '${testRunId}' has exceed test runner max allowed run time of 0 minutes`
       );
+      expect(error.kind).to.equal(TestErrorKind.Timeout);
+    } else {
+      expect.fail('Not a TestError');
     }
   });
 

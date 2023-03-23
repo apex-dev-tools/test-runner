@@ -13,6 +13,7 @@ import { createSandbox, SinonSandbox, SinonStub } from 'sinon';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import { logRegex } from '../Setup';
 import { QueryHelper } from '../../src/query/QueryHelper';
+import { TestError, TestErrorKind } from '../../src/runner/TestError';
 
 const $$ = testSetup();
 let mockConnection: Connection;
@@ -142,7 +143,12 @@ describe('messages', () => {
     expect(queryMock.execute.callCount).to.equal(4);
     expect(sobjectStub.alwaysCalledWith('sobject')).to.be.true;
     expect(sobjectMock.find.alwaysCalledWith('clause', 'fields')).to.be.true;
-    expect(capturedErr).to.equal(error);
+    if (capturedErr instanceof TestError) {
+      expect(capturedErr.message).to.equal('400');
+      expect(capturedErr.kind).to.equal(TestErrorKind.Query);
+    } else {
+      expect.fail('Not a TestError');
+    }
     expect(logger.entries.length).to.equal(4);
     expect(logger.entries[0]).to.match(
       logRegex(

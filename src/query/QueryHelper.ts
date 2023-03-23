@@ -4,6 +4,7 @@
 
 import { BaseConnection as JSForceConnection, Record } from 'jsforce';
 import { Logger } from '../log/Logger';
+import { TestError, TestErrorKind } from '../runner/TestError';
 
 type QueryFunction<T> = (
   sobject: string,
@@ -86,7 +87,7 @@ export class QueryHelper {
           )}`
         );
 
-        throw err;
+        throw TestError.wrapError(err, TestErrorKind.Query);
       }
     };
   }
@@ -111,6 +112,7 @@ export class QueryHelper {
         return this.doRetry(logger, boundFn, retries - 1, delay * 2);
       }
 
+      // always internal error, no wrap needed
       throw err;
     }
   }

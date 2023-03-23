@@ -23,6 +23,7 @@ import {
 import { ApexTestRunResult } from '../../src/model/ApexTestRunResult';
 import { ApexTestResult } from '../../src/model/ApexTestResult';
 import { QueryHelper } from '../../src/query/QueryHelper';
+import { TestError, TestErrorKind } from '../../src/runner/TestError';
 
 const $$ = testSetup();
 let mockConnection: Connection;
@@ -68,6 +69,41 @@ describe('messages', () => {
 
   afterEach(() => {
     sandboxStub.restore();
+  });
+
+  it('should log and re-throw runner Error', async () => {
+    const logger = new CapturingLogger();
+    const err = new TestError('TestRunner timeout', TestErrorKind.Timeout);
+    const runner = new MockThrowingTestRunner(err);
+    const testMethods = new MockTestMethodCollector(
+      new Map<string, string>([['An Id', 'FooClass']]),
+      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
+    );
+
+    let capturedErr;
+    try {
+      await Testall.run(
+        logger,
+        mockConnection,
+        '',
+        testMethods,
+        runner,
+        [new MockOutputGenerator()],
+        {}
+      );
+    } catch (err) {
+      capturedErr = err;
+    }
+
+    expect(capturedErr).to.equal(err);
+    expect(logger.entries.length).to.be.equal(3);
+    expect(logger.entries[0]).to.match(
+      logRegex('Starting test run, with max failing tests for re-run 10')
+    );
+    expect(logger.entries[1]).to.match(logRegex('TestRunner timeout'));
+    expect(logger.entries[2]).to.match(
+      logRegex('Error stack: TestError: TestRunner timeout\n    at.*')
+    );
   });
 
   it('should log and re-throw internal Error', async () => {

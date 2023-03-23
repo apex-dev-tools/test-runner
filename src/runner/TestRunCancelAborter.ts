@@ -13,6 +13,7 @@ import {
 } from './TestOptions';
 import { QueryHelper } from '../query/QueryHelper';
 import { chunk } from '../query/Chunk';
+import { TestError, TestErrorKind } from './TestError';
 
 export class TestRunCancelAborter implements TestRunAborter {
   async abortRun(
@@ -45,7 +46,7 @@ export class TestRunCancelAborter implements TestRunAborter {
         `,
       });
       if (!result.success) {
-        throw new Error(
+        throw new TestError(
           `Anon apex to abort tests did not succeed, result='${JSON.stringify({
             success: result.success,
             compiled: result.compiled,
@@ -101,10 +102,11 @@ export class TestRunCancelAborter implements TestRunAborter {
     } catch (err) {
       if (err instanceof Error) {
         if (err.message === 'The client has timed out.') {
-          throw new Error(
+          throw new TestError(
             `Cancel of test run '${testRunId}' has exceed max allowed time of ${getCancelPollTimeoutMins(
               options
-            ).toString()}`
+            ).toString()}`,
+            TestErrorKind.Timeout
           );
         }
       }
