@@ -243,6 +243,8 @@ describe('messages', () => {
         'Max number of test run retries reached, max allowed retries: 0'
       );
       expect(error.kind).to.equal(TestErrorKind.Timeout);
+    } else {
+      expect.fail('Not a TestError');
     }
   });
 
@@ -279,6 +281,8 @@ describe('messages', () => {
         "Wrong number of ApexTestRunResult records found for '707xx0000AGQ3jbQQD', found 0, expected 1"
       );
       expect(error.kind).to.equal(TestErrorKind.Query);
+    } else {
+      expect.fail('Not a TestError');
     }
   });
 
@@ -364,6 +368,8 @@ describe('messages', () => {
         `Test run '${testRunId}' has exceed test runner max allowed run time of 0 minutes`
       );
       expect(error.kind).to.equal(TestErrorKind.Timeout);
+    } else {
+      expect.fail('Not a TestError');
     }
   });
 

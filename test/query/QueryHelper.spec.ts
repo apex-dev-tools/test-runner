@@ -146,6 +146,8 @@ describe('messages', () => {
     if (capturedErr instanceof TestError) {
       expect(capturedErr.message).to.equal('400');
       expect(capturedErr.kind).to.equal(TestErrorKind.Query);
+    } else {
+      expect.fail('Not a TestError');
     }
     expect(logger.entries.length).to.equal(4);
     expect(logger.entries[0]).to.match(
