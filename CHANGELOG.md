@@ -7,9 +7,9 @@
   * Thrown in all local error cases, external errors may still pass through.
   * Use built-in `Error().name` property to identify its type.
   * Has `kind` property with enum type `TestErrorKind`
-    * `General` - 1
-    * `Timeout` - 2
-    * `Query` - 3
+    * `General` - 0
+    * `Timeout` - 1
+    * `Query` - 2
 
 ## 1.5.1 - 2023-03-17
 
