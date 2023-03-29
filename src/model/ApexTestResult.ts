@@ -51,7 +51,7 @@ export interface ApexCodeCoverage {
   Coverage: CodeCoverage;
 }
 
-//Note ApexClassorTriggerId intentionally has smaller case 'o' in 'ApexClassorTriggerId' as this is the field name
+// Note ApexClassorTriggerId intentionally has smaller case 'o' in 'ApexClassorTriggerId' as this is the field name
 // but the result back is in upper case 'o'
 export const ApexCodeCoverageFields = [
   'Id',
@@ -85,3 +85,8 @@ export const ApexCodeCoverageAggregateFields = [
   'ApexClassorTrigger.Name', //The Name of the class or trigger under test
   'ApexClassorTrigger.Id',
 ];
+
+export interface CoverageReport {
+  table: string;
+  data?: ApexCodeCoverageAggregate[];
+}
