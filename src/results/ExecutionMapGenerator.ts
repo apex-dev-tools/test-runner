@@ -2,9 +2,7 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import { ApexTestRunResult } from '../model/ApexTestRunResult';
-import { ApexTestResult } from '../model/ApexTestResult';
-import { OutputGenerator } from './OutputGenerator';
+import { OutputGenerator, TestRunSummary } from './OutputGenerator';
 import { Logger } from '../log/Logger';
 import { SfDate } from 'jsforce';
 
@@ -26,11 +24,9 @@ export class ExecutionMapGenerator implements OutputGenerator {
   generate(
     logger: Logger,
     outputFileBase: string,
-    startRunTime: Date,
-    testResults: ApexTestResult[],
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _runResults: ApexTestRunResult
+    summary: TestRunSummary
   ): void {
+    const { testResults: testResults } = summary;
     let startTime = SfDate.parseDate(testResults[0].TestTimestamp).getTime();
     let endTime = startTime + testResults[0].RunTime;
     const classStartMap = new Map<string, number>();
