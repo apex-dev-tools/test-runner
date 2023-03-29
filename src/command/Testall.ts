@@ -10,7 +10,7 @@ import { Logger } from '../log/Logger';
 import { ApexTestResult } from '../model/ApexTestResult';
 import { TestRunnerOptions } from '../runner/TestOptions';
 import { TestRunner } from '../runner/TestRunner';
-import { OutputGenerator } from '../results/OutputGenerator';
+import { OutputGenerator, TestRunSummary } from '../results/OutputGenerator';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 import { QueryOptions } from '../query/QueryHelper';
 
@@ -121,15 +121,25 @@ export class Testall {
       Array.from(results.values())
     );
     await this.runSequentially(testResults.rerun);
-
     // Reporting
+    const summary: TestRunSummary = {
+      startTime,
+      testResults: Array.from(results.values()),
+      runResult,
+      coverageResult: undefined,
+    };
+    if (this._options.codeCoverage) {
+      const coverage = await ResultCollector.getCoverageReport(
+        this._connection,
+        summary.testResults
+      );
+      summary.coverageResult = coverage;
+    }
     outputGenerators.forEach(outputGenerator =>
       outputGenerator.generate(
         this._logger,
         getOutputFileBase(this._options),
-        startTime,
-        Array.from(results.values()),
-        runResult as ApexTestRunResult
+        summary
       )
     );
   }

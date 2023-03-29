@@ -50,11 +50,9 @@ describe('messages', () => {
     );
 
     const logger = new CapturingLogger();
-    generator.generate(
-      logger,
-      '/test-output',
-      new Date(),
-      [
+    generator.generate(logger, '/test-output', {
+      startTime: new Date(),
+      testResults: [
         {
           Id: 'An id',
           QueueItemId: 'queue item id',
@@ -120,7 +118,7 @@ describe('messages', () => {
           TestTimestamp: '2022-09-07T07:38:56.000+0000',
         },
       ],
-      {
+      runResult: {
         AsyncApexJobId: 'job Id',
         StartTime: '2020-07-10 15:00:00.000',
         EndTime: '2020-07-10 15:01:00.000',
@@ -132,8 +130,8 @@ describe('messages', () => {
         MethodsCompleted: 500,
         MethodsEnqueued: 600,
         MethodsFailed: 100,
-      }
-    );
+      },
+    });
 
     expect(logger.files.length).to.be.equal(2);
     expect(logger.files[0][0]).to.be.equal('/test-output.xml');
@@ -151,11 +149,9 @@ describe('messages', () => {
     );
 
     const logger = new CapturingLogger();
-    generator.generate(
-      logger,
-      '/test-output',
-      new Date(),
-      [
+    generator.generate(logger, '/test-output', {
+      startTime: new Date(),
+      testResults: [
         {
           Id: 'An id',
           QueueItemId: 'queue item id',
@@ -173,7 +169,7 @@ describe('messages', () => {
           TestTimestamp: '2022-09-07T07:38:56.000+0000',
         },
       ],
-      {
+      runResult: {
         AsyncApexJobId: 'job Id',
         StartTime: '2020-07-10 15:00:00.000',
         EndTime: '2020-07-10 15:01:00.000',
@@ -185,8 +181,8 @@ describe('messages', () => {
         MethodsCompleted: 500,
         MethodsEnqueued: 600,
         MethodsFailed: 0,
-      }
-    );
+      },
+    });
 
     expect(logger.files.length).to.be.equal(2);
     expect(logger.files[0][0]).to.be.equal('/test-output.xml');
@@ -204,11 +200,9 @@ describe('messages', () => {
     );
 
     const logger = new CapturingLogger();
-    generator.generate(
-      logger,
-      '/test-output',
-      new Date(),
-      [
+    generator.generate(logger, '/test-output', {
+      startTime: new Date(),
+      testResults: [
         {
           Id: 'An id',
           QueueItemId: 'queue item id',
@@ -226,7 +220,7 @@ describe('messages', () => {
           TestTimestamp: '2022-09-07T07:38:56.000+0000',
         },
       ],
-      {
+      runResult: {
         AsyncApexJobId: 'job Id',
         StartTime: '2020-07-10 15:00:00.000',
         EndTime: '2020-07-10 15:01:00.000',
@@ -238,8 +232,8 @@ describe('messages', () => {
         MethodsCompleted: 500,
         MethodsEnqueued: 600,
         MethodsFailed: 0,
-      }
-    );
+      },
+    });
 
     expect(logger.files.length).to.be.equal(2);
     expect(logger.files[0][0]).to.be.equal('/test-output.xml');
