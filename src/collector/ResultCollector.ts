@@ -5,17 +5,19 @@
 import { Connection } from '@apexdevtools/sfdx-auth-helper';
 import { Logger } from '../log/Logger';
 import {
-  ApexTestResult,
-  ApexTestResultFields,
   ApexCodeCoverage,
-  ApexCodeCoverageFields,
   ApexCodeCoverageAggregate,
   ApexCodeCoverageAggregateFields,
+  ApexCodeCoverageFields,
+  ApexTestResult,
+  ApexTestResultFields,
+  CoverageReport,
 } from '../model/ApexTestResult';
 import { QueryHelper, QueryOptions } from '../query/QueryHelper';
 import { TestResultMatcher } from './TestResultMatcher';
 import { table } from 'table';
 
+const MAX_LINES_PER_ROW = 5;
 export interface ResultsByType {
   rerun: ApexTestResult[];
   failed: ApexTestResult[];
@@ -134,12 +136,11 @@ export class ResultCollector {
     );
   }
 
-  static async getCoverageTextReport(
+  static async getCoverageReport(
     connection: Connection,
-    testRunId: string
-  ): Promise<string> {
-    const res = await ResultCollector.gatherResults(connection, testRunId);
-    const coverage = await ResultCollector.gatherCoverage(connection, res);
+    tests: ApexTestResult[]
+  ): Promise<CoverageReport> {
+    const coverage = await ResultCollector.gatherCoverage(connection, tests);
     const aggregate = await ResultCollector.gatherCodeCoverageAggregate(
       connection,
       coverage
@@ -157,13 +158,15 @@ export class ResultCollector {
             })
           : '-';
 
-      const uncoveredLines = ag.Coverage.uncoveredLines.slice(0, 5).join(','); //take 5
+      const uncoveredLines = ag.Coverage.uncoveredLines
+        .slice(0, MAX_LINES_PER_ROW)
+        .join(',');
       const uncoveredLinesStr =
-        ag.Coverage.uncoveredLines.length < 5
+        ag.Coverage.uncoveredLines.length < MAX_LINES_PER_ROW
           ? uncoveredLines
           : `${uncoveredLines}...`;
       return [ag.ApexClassOrTrigger.Name, pct, uncoveredLinesStr];
     });
-    return table([header, ...data], config);
+    return { table: table([header, ...data], config), data: aggregate };
   }
 }
