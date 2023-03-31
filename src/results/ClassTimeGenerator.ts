@@ -5,6 +5,7 @@
 import { OutputGenerator, TestRunSummary } from './OutputGenerator';
 import { Logger } from '../log/Logger';
 import { SfDate } from 'jsforce';
+import path from 'path';
 
 /*
  * Create a report (CSV) of summary stats for each test class. The report can be useful in finding long running
@@ -23,7 +24,8 @@ export class ClassTimeGenerator implements OutputGenerator {
 
   generate(
     logger: Logger,
-    outputFileBase: string,
+    outputDirBase: string,
+    fileName: string,
     summary: TestRunSummary
   ): void {
     // Collate start, end and 'sum of' times for each test class
@@ -53,7 +55,7 @@ export class ClassTimeGenerator implements OutputGenerator {
       lines.push(`${k}, ${v[0]}, ${v[1]}, ${v[2]}`);
     });
     logger.logOutputFile(
-      outputFileBase + '-time.csv',
+      path.join(outputDirBase, fileName + '-time.csv'),
       'ClassName, StartTime, EndTime, TotalTime\n' +
         `# ${this.instanceUrl} ${this.orgId} ${this.username}\n` +
         lines.join('\n')

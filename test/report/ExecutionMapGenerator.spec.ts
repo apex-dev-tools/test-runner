@@ -50,7 +50,7 @@ describe('messages', () => {
     );
 
     const logger = new CapturingLogger();
-    generator.generate(logger, '/test-output', {
+    generator.generate(logger, '', '/test-output', {
       startTime: new Date(),
       testResults: [
         {

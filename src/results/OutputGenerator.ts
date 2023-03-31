@@ -18,7 +18,8 @@ export interface TestRunSummary {
 export interface OutputGenerator {
   generate(
     logger: Logger,
-    outputFileBase: string,
+    outputDirBase: string,
+    fileName: string,
     summary: TestRunSummary
   ): void;
 }

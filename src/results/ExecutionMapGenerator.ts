@@ -5,6 +5,7 @@
 import { OutputGenerator, TestRunSummary } from './OutputGenerator';
 import { Logger } from '../log/Logger';
 import { SfDate } from 'jsforce';
+import path from 'path';
 
 /*
  * Create a report (CSV) of summary stats for each test class. The report can be useful in finding long running
@@ -23,7 +24,8 @@ export class ExecutionMapGenerator implements OutputGenerator {
 
   generate(
     logger: Logger,
-    outputFileBase: string,
+    outputDirBase: string,
+    fileName: string,
     summary: TestRunSummary
   ): void {
     const { testResults: testResults } = summary;
@@ -93,6 +95,9 @@ export class ExecutionMapGenerator implements OutputGenerator {
       lines.push(imageBits);
     });
     lines.push('');
-    logger.logOutputFile(outputFileBase + '-time.ppm', lines.join('\n'));
+    logger.logOutputFile(
+      path.join(outputDirBase, fileName + '-time.ppm'),
+      lines.join('\n')
+    );
   }
 }

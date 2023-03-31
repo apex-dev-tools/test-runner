@@ -192,7 +192,8 @@ export class MockOutputGenerator implements OutputGenerator {
   generate(
     /* eslint-disable @typescript-eslint/no-unused-vars */
     logger: Logger,
-    outputFileBase: string,
+    outputDirBase: string,
+    fileName: string,
     summary: TestRunSummary
     /* eslint-enable @typescript-eslint/no-unused-vars */
   ): void {

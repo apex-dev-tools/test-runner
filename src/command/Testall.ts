@@ -31,7 +31,8 @@ import { QueryOptions } from '../query/QueryHelper';
 
 export interface TestallOptions extends TestRunnerOptions, QueryOptions {
   maxErrorsForReRun?: number; // Don't re-run if > failed tests (excluding locking/missed tests), default 10
-  outputFileBase?: string; // Base for junit and other output files, default 'test-result*'
+  outputDirBase?: string; // Base for junit and other output files, default 'test-result*'
+  outputFileName?: string; //File name base
 }
 
 const DEFAULT_MAX_ERRORS_FOR_RERUN = 10;
@@ -43,9 +44,15 @@ export function getMaxErrorsForReRun(options: TestallOptions): number {
   else return DEFAULT_MAX_ERRORS_FOR_RERUN;
 }
 
-export function getOutputFileBase(options: TestallOptions): string {
-  if (options.outputFileBase !== undefined) return options.outputFileBase;
-  else return DEFAULT_OUTPUT_FILE_BASE;
+export function getOutputFileBase(
+  options: TestallOptions
+): { fileName: string; outputDir: string } {
+  if (options.outputDirBase && options.outputFileName)
+    return {
+      outputDir: options.outputDirBase,
+      fileName: options.outputFileName,
+    };
+  else return { outputDir: '', fileName: DEFAULT_OUTPUT_FILE_BASE };
 }
 
 export class Testall {
@@ -134,14 +141,12 @@ export class Testall {
         summary.testResults
       );
       summary.coverageResult = coverage;
+      this._logger.logMessage(coverage.table);
     }
-    outputGenerators.forEach(outputGenerator =>
-      outputGenerator.generate(
-        this._logger,
-        getOutputFileBase(this._options),
-        summary
-      )
-    );
+    outputGenerators.forEach(outputGenerator => {
+      const { fileName, outputDir } = getOutputFileBase(this._options);
+      outputGenerator.generate(this._logger, outputDir, fileName, summary);
+    });
   }
 
   public async asyncRun(

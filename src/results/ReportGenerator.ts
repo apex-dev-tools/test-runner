@@ -17,6 +17,7 @@ import { OutputGenerator, TestRunSummary } from './OutputGenerator';
 import moment from 'moment';
 import { Logger } from '../log/Logger';
 import { SfDate } from 'jsforce';
+import path = require('path');
 
 export class ReportGenerator implements OutputGenerator {
   private instanceUrl: string;
@@ -38,18 +39,19 @@ export class ReportGenerator implements OutputGenerator {
 
   generate(
     logger: Logger,
-    outputFileBase: string,
+    outputDirBase: string,
+    fileName: string,
     runSummary: TestRunSummary
   ): void {
     const { startTime, testResults: testResults, runResult } = runSummary;
     const results = testResults as ExtendedApexTestResult[];
     const summary = this.summary(startTime, results, runResult);
     logger.logOutputFile(
-      outputFileBase + '.xml',
+      path.join(outputDirBase, fileName + '.xml'),
       this.generateJunit(summary, results)
     );
     logger.logOutputFile(
-      outputFileBase + '.json',
+      path.join(outputDirBase, fileName + '.json'),
       this.generateJson(summary, results)
     );
   }

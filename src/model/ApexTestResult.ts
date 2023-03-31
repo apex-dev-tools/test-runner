@@ -88,5 +88,5 @@ export const ApexCodeCoverageAggregateFields = [
 
 export interface CoverageReport {
   table: string;
-  data?: ApexCodeCoverageAggregate[];
+  data: ApexCodeCoverageAggregate[];
 }
