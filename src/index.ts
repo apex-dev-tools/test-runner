@@ -16,6 +16,7 @@ export { OutputGenerator } from './results/OutputGenerator';
 export { ReportGenerator } from './results/ReportGenerator';
 export { ClassTimeGenerator } from './results/ClassTimeGenerator';
 export { ExecutionMapGenerator } from './results/ExecutionMapGenerator';
+export { CoverageReporter } from './results/CoverageReporter';
 
 export { BaseLogger } from './log/BaseLogger';
 export { CapturingLogger } from './log/CapturingLogger';
