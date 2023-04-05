@@ -17,7 +17,7 @@ import { OutputGenerator, TestRunSummary } from './OutputGenerator';
 import moment from 'moment';
 import { Logger } from '../log/Logger';
 import { SfDate } from 'jsforce';
-import path = require('path');
+import path from 'path';
 
 export class ReportGenerator implements OutputGenerator {
   private instanceUrl: string;

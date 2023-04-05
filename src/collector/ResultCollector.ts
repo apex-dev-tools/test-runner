@@ -15,40 +15,24 @@ import {
 } from '../model/ApexTestResult';
 import { QueryHelper, QueryOptions } from '../query/QueryHelper';
 import { TestResultMatcher } from './TestResultMatcher';
+import { TestError, TestErrorKind } from '../runner/TestError';
 import { table } from 'table';
-
-const MAX_LINES_PER_ROW = 5;
 export interface ResultsByType {
   rerun: ApexTestResult[];
   failed: ApexTestResult[];
   passed: ApexTestResult[];
 }
-
-const config = {
-  border: {
-    topBody: '',
-    topJoin: '',
-    topLeft: '',
-    topRight: '',
-
-    bottomBody: '',
-    bottomJoin: '',
-    bottomLeft: '',
-    bottomRight: '',
-
-    bodyLeft: '',
-    bodyRight: '',
-    bodyJoin: '',
-
-    joinBody: '',
-    joinLeft: '',
-    joinRight: '',
-    joinJoin: '',
-  },
-  singleLine: true,
-};
-
 export class ResultCollector {
+  private static RECORD_QUERY_LIMIT = 500;
+
+  private static chunkArrays<T>(arr: T[], chunkSize: number): T[][] {
+    const chunks = [];
+    for (let i = 0; i < arr.length; i += chunkSize) {
+      chunks.push(arr.slice(i, i + chunkSize));
+    }
+    return chunks;
+  }
+
   static async gatherResults(
     connection: Connection,
     testRunId: string
@@ -106,45 +90,83 @@ export class ResultCollector {
     return results;
   }
 
-  static async gatherCoverage(
-    connection: Connection,
-    tests: ApexTestResult[]
-  ): Promise<ApexCodeCoverage[]> {
-    const ids = tests.map(t => `'${t.ApexClass.Id}'`).join(', ');
-    return await QueryHelper.instance(
-      connection.tooling
-    ).query<ApexCodeCoverage>(
-      'ApexCodeCoverage',
-      `ApexTestClassId IN (${ids})`,
-      ApexCodeCoverageFields.join(', ')
-    );
-  }
-
-  static async gatherCodeCoverageAggregate(
-    connection: Connection,
-    coverage: ApexCodeCoverage[]
-  ): Promise<ApexCodeCoverageAggregate[]> {
-    const ids = [
-      ...new Set(coverage.map(t => `'${t.ApexClassOrTrigger.Id}'`)),
-    ].join(', ');
-    return await QueryHelper.instance(
-      connection.tooling
-    ).query<ApexCodeCoverageAggregate>(
-      'ApexCodeCoverageAggregate',
-      `ApexClassorTriggerId IN (${ids})`,
-      ApexCodeCoverageAggregateFields.join(', ')
-    );
-  }
-
   static async getCoverageReport(
     connection: Connection,
     tests: ApexTestResult[]
   ): Promise<CoverageReport> {
-    const coverage = await ResultCollector.gatherCoverage(connection, tests);
-    const aggregate = await ResultCollector.gatherCodeCoverageAggregate(
+    const aggregate: ApexCodeCoverageAggregate[] = await ResultCollector.gatherCoverage(
       connection,
-      coverage
-    );
+      tests
+    )
+      .then(coverage =>
+        ResultCollector.gatherCodeCoverageAggregate(connection, coverage)
+      )
+      .catch(e => {
+        throw TestError.wrapError(
+          e,
+          TestErrorKind.Query,
+          'Failed getting coverage data:'
+        );
+      });
+    ResultCollector.formatForApexAggregate(aggregate);
+
+    if (aggregate.length) {
+      return {
+        table: table(ResultCollector.formatForApexAggregate(aggregate)),
+        data: aggregate,
+      };
+    } else {
+      return { table: undefined, data: [] };
+    }
+  }
+
+  private static async gatherCoverage(
+    connection: Connection,
+    tests: ApexTestResult[]
+  ): Promise<ApexCodeCoverage[]> {
+    const ids = [...new Set(tests.map(t => `'${t.ApexClass.Id}'`))];
+    if (ids.length <= 0) {
+      return Promise.resolve([]);
+    }
+
+    const chunked = this.chunkArrays<string>(ids, this.RECORD_QUERY_LIMIT);
+    const promises = chunked.map(async chunk => {
+      return QueryHelper.instance(connection.tooling).query<ApexCodeCoverage>(
+        'ApexCodeCoverage',
+        `ApexTestClassId IN (${chunk.join(', ')})`,
+        ApexCodeCoverageFields.join(', ')
+      );
+    });
+    return (await Promise.all(promises)).flat();
+  }
+
+  private static async gatherCodeCoverageAggregate(
+    connection: Connection,
+    coverage: ApexCodeCoverage[]
+  ): Promise<ApexCodeCoverageAggregate[]> {
+    const ids = [...new Set(coverage.map(t => `'${t.ApexClassOrTrigger.Id}'`))];
+    if (ids.length <= 0) {
+      return Promise.resolve([]);
+    }
+    const chunked = this.chunkArrays<string>(ids, this.RECORD_QUERY_LIMIT);
+
+    const promises = chunked.map(chunk => {
+      return QueryHelper.instance(
+        connection.tooling
+      ).query<ApexCodeCoverageAggregate>(
+        'ApexCodeCoverageAggregate',
+        `ApexClassorTriggerId IN (${chunk.join(', ')})`,
+        ApexCodeCoverageAggregateFields.join(', ')
+      );
+    });
+    return (await Promise.all(promises)).flat();
+  }
+
+  private static formatForApexAggregate(
+    aggregate: ApexCodeCoverageAggregate[]
+  ) {
+    const MAX_LINES_PER_ROW = 5;
+
     const header = ['CLASSES', 'PERCENT', 'UNCOVERED LINES'];
     const data = aggregate.map(ag => {
       const pct =
@@ -167,6 +189,6 @@ export class ResultCollector {
           : `${uncoveredLines}...`;
       return [ag.ApexClassOrTrigger.Name, pct, uncoveredLinesStr];
     });
-    return { table: table([header, ...data], config), data: aggregate };
+    return [header, ...data];
   }
 }

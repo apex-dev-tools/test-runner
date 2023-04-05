@@ -8,16 +8,21 @@ import { CoverageReporter as ApexNodeCoverageReporter } from '@salesforce/apex-n
 import path from 'path';
 import fs from 'fs';
 
+/*
+ * Create a lcov.info coverage report of the given test run summary. If there is no data available nothing will be
+ * generated
+ */
 export class CoverageReporter implements OutputGenerator {
   private projectRoot: string;
 
   constructor(projectRoot: string) {
     this.projectRoot = projectRoot;
   }
+
   public generate(
-    logger: Logger,
+    _logger: Logger,
     outputDirBase: string,
-    fileName: string,
+    _fileName: string,
     summary: TestRunSummary
   ): void {
     if (summary.coverageResult) {
