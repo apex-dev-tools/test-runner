@@ -43,7 +43,7 @@ export class ReportGenerator implements OutputGenerator {
     fileName: string,
     runSummary: TestRunSummary
   ): void {
-    const { startTime, testResults: testResults, runResult } = runSummary;
+    const { startTime, testResults, runResult } = runSummary;
     const results = testResults as ExtendedApexTestResult[];
     const summary = this.summary(startTime, results, runResult);
     logger.logOutputFile(

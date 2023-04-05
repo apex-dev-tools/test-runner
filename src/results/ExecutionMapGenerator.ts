@@ -28,7 +28,7 @@ export class ExecutionMapGenerator implements OutputGenerator {
     fileName: string,
     summary: TestRunSummary
   ): void {
-    const { testResults: testResults } = summary;
+    const { testResults } = summary;
     let startTime = SfDate.parseDate(testResults[0].TestTimestamp).getTime();
     let endTime = startTime + testResults[0].RunTime;
     const classStartMap = new Map<string, number>();
