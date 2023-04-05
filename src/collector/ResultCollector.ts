@@ -16,7 +16,31 @@ import {
 import { QueryHelper, QueryOptions } from '../query/QueryHelper';
 import { TestResultMatcher } from './TestResultMatcher';
 import { TestError, TestErrorKind } from '../runner/TestError';
-import { table } from 'table';
+import { table, TableUserConfig } from 'table';
+
+const config: TableUserConfig = {
+  border: {
+    topBody: '',
+    topJoin: '',
+    topLeft: '',
+    topRight: '',
+
+    bottomBody: '',
+    bottomJoin: '',
+    bottomLeft: '',
+    bottomRight: '',
+
+    bodyLeft: '',
+    bodyRight: '',
+    bodyJoin: '',
+
+    joinBody: '',
+    joinLeft: '',
+    joinRight: '',
+    joinJoin: '',
+  },
+  singleLine: true,
+};
 export interface ResultsByType {
   rerun: ApexTestResult[];
   failed: ApexTestResult[];
@@ -112,7 +136,7 @@ export class ResultCollector {
 
     if (aggregate.length) {
       return {
-        table: table(ResultCollector.formatForApexAggregate(aggregate)),
+        table: table(ResultCollector.formatForApexAggregate(aggregate), config),
         data: aggregate,
       };
     } else {
