@@ -152,16 +152,15 @@ export class ResultCollector {
     if (ids.length <= 0) {
       return Promise.resolve([]);
     }
-
     const chunked = this.chunkArrays<string>(ids, this.RECORD_QUERY_LIMIT);
     const promises = chunked.map(async chunk => {
-      return QueryHelper.instance(connection.tooling).query<ApexCodeCoverage>(
+      return QueryHelper.instance(connection.tooling).query<ApexCodeCoverage[]>(
         'ApexCodeCoverage',
         `ApexTestClassId IN (${chunk.join(', ')})`,
         ApexCodeCoverageFields.join(', ')
       );
     });
-    return (await Promise.all(promises)).flat();
+    return (await Promise.all(promises)).flat(3);
   }
 
   private static async gatherCodeCoverageAggregate(
@@ -175,15 +174,15 @@ export class ResultCollector {
     const chunked = this.chunkArrays<string>(ids, this.RECORD_QUERY_LIMIT);
 
     const promises = chunked.map(chunk => {
-      return QueryHelper.instance(
-        connection.tooling
-      ).query<ApexCodeCoverageAggregate>(
+      return QueryHelper.instance(connection.tooling).query<
+        ApexCodeCoverageAggregate[]
+      >(
         'ApexCodeCoverageAggregate',
         `ApexClassorTriggerId IN (${chunk.join(', ')})`,
         ApexCodeCoverageAggregateFields.join(', ')
       );
     });
-    return (await Promise.all(promises)).flat();
+    return (await Promise.all(promises)).flat(3);
   }
 
   private static formatForApexAggregate(
