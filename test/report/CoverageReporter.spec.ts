@@ -31,6 +31,7 @@ describe('coverage reporter', () => {
   });
   afterEach(() => {
     jest.restoreAllMocks();
+    jest.clearAllMocks();
   });
   it('should call generate reports on CoverageReporter when there is data', () => {
     const generator = new CoverageReporter('projetRoot');
@@ -101,7 +102,7 @@ describe('coverage reporter', () => {
     });
   });
 
-  it('should not call generate reports on CoverageReporter when there is data', () => {
+  it('should not call generate reports on CoverageReporter when there is no data', () => {
     const generator = new CoverageReporter('projetRoot');
     const logger = new CapturingLogger();
     generator.generate(logger, 'dirBase', '.fileName', {
