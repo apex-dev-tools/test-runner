@@ -34,7 +34,7 @@ export class CoverageReporter implements OutputGenerator {
         totalSize: summary.coverageResult.data.length,
         records: summary.coverageResult.data,
       };
-      new ApexNodeCoverageReporter(records, fileBase, this.projectRoot, {
+      new ApexNodeCoverageReporter(records, abs, this.projectRoot, {
         reportFormats: ['lcovonly'],
         reportOptions: {
           lcovonly: {
