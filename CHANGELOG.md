@@ -1,5 +1,11 @@
 # test-runner - Changelog
 
+## 1.7.0 - 2023-04-11
+
+* Add support for collecting code coverage data
+* Refactor OutputGenerator interface to accept a path and filename as param
+* Add Cove Coverage generator that generates `locv.info` file
+
 ## 1.6.0 - 2023-03-23
 
 * Throw the error from `Testall.run()` instead of just logging.
