@@ -2,11 +2,10 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import { ApexTestRunResult } from '../model/ApexTestRunResult';
-import { ApexTestResult } from '../model/ApexTestResult';
-import { OutputGenerator } from './OutputGenerator';
+import { OutputGenerator, TestRunSummary } from './OutputGenerator';
 import { Logger } from '../log/Logger';
 import { SfDate } from 'jsforce';
+import path from 'path';
 
 /*
  * Create a report (CSV) of summary stats for each test class. The report can be useful in finding long running
@@ -25,15 +24,13 @@ export class ClassTimeGenerator implements OutputGenerator {
 
   generate(
     logger: Logger,
-    outputFileBase: string,
-    startTime: Date,
-    testResults: ApexTestResult[],
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _runResults: ApexTestRunResult
+    outputDirBase: string,
+    fileName: string,
+    summary: TestRunSummary
   ): void {
     // Collate start, end and 'sum of' times for each test class
     const classRanges = new Map<string, [number, number, number]>();
-    testResults.forEach(test => {
+    summary.testResults.forEach(test => {
       const className = test.ApexClass.Name;
       const timeStamp = SfDate.parseDate(test.TestTimestamp).getTime();
       if (!classRanges.has(className)) {
@@ -58,7 +55,7 @@ export class ClassTimeGenerator implements OutputGenerator {
       lines.push(`${k}, ${v[0]}, ${v[1]}, ${v[2]}`);
     });
     logger.logOutputFile(
-      outputFileBase + '-time.csv',
+      path.join(outputDirBase, fileName + '-time.csv'),
       'ClassName, StartTime, EndTime, TotalTime\n' +
         `# ${this.instanceUrl} ${this.orgId} ${this.username}\n` +
         lines.join('\n')

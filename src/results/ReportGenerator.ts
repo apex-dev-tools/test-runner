@@ -13,10 +13,11 @@ import _ = require('lodash');
 
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 import { ApexTestResult } from '../model/ApexTestResult';
-import { OutputGenerator } from './OutputGenerator';
+import { OutputGenerator, TestRunSummary } from './OutputGenerator';
 import moment from 'moment';
 import { Logger } from '../log/Logger';
 import { SfDate } from 'jsforce';
+import path from 'path';
 
 export class ReportGenerator implements OutputGenerator {
   private instanceUrl: string;
@@ -38,19 +39,19 @@ export class ReportGenerator implements OutputGenerator {
 
   generate(
     logger: Logger,
-    outputFileBase: string,
-    startTime: Date,
-    testResults: ApexTestResult[],
-    runResults: ApexTestRunResult
+    outputDirBase: string,
+    fileName: string,
+    runSummary: TestRunSummary
   ): void {
+    const { startTime, testResults, runResult } = runSummary;
     const results = testResults as ExtendedApexTestResult[];
-    const summary = this.summary(startTime, results, runResults);
+    const summary = this.summary(startTime, results, runResult);
     logger.logOutputFile(
-      outputFileBase + '.xml',
+      path.join(outputDirBase, fileName + '.xml'),
       this.generateJunit(summary, results)
     );
     logger.logOutputFile(
-      outputFileBase + '.json',
+      path.join(outputDirBase, fileName + '.json'),
       this.generateJson(summary, results)
     );
   }

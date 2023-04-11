@@ -24,9 +24,14 @@ export class TestError extends Error {
     this.kind = kind;
   }
 
-  static wrapError(err: unknown, type: TestErrorKind): TestError {
+  static wrapError(
+    err: unknown,
+    type: TestErrorKind,
+    preamble?: string
+  ): TestError {
     if (err instanceof Error) {
-      const runnerErr = new TestError(err.message, type);
+      const msg = preamble ? `${preamble} ${err.message}` : err.message;
+      const runnerErr = new TestError(msg, type);
 
       runnerErr.stack = err.stack;
       runnerErr.data = (err as MaybeError).data;

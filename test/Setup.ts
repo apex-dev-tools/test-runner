@@ -21,8 +21,10 @@ import {
   TestRunAborter,
 } from '../src/runner/TestOptions';
 import { TestRunner } from '../src/runner/TestRunner';
-import { OutputGenerator } from '../src/results/OutputGenerator';
-import { ApexTestResult } from '../src/model/ApexTestResult';
+import {
+  OutputGenerator,
+  TestRunSummary,
+} from '../src/results/OutputGenerator';
 import { ApexClassInfo, QueryResponse } from '../src/query/ClassSymbolLoader';
 import { Record } from 'jsforce';
 
@@ -190,10 +192,9 @@ export class MockOutputGenerator implements OutputGenerator {
   generate(
     /* eslint-disable @typescript-eslint/no-unused-vars */
     logger: Logger,
-    outputFileBase: string,
-    startTime: Date,
-    tests: ApexTestResult[],
-    runResultSummary: ApexTestRunResult
+    outputDirBase: string,
+    fileName: string,
+    summary: TestRunSummary
     /* eslint-enable @typescript-eslint/no-unused-vars */
   ): void {
     // Do nothing

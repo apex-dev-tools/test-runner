@@ -17,6 +17,7 @@ import {
 import { testRunId } from '../Setup';
 import { QueryHelper } from '../../src/query/QueryHelper';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
+import { TestError, TestErrorKind } from '../../src';
 
 const $$ = testSetup();
 let mockConnection: Connection;
@@ -211,5 +212,150 @@ describe('messages', () => {
     expect(results.rerun.length).to.equal(2);
     expect(results.rerun[0]).to.equal(mockTestRunResults[2]);
     expect(results.rerun[1]).to.equal(mockTestRunResults[3]);
+  });
+
+  describe('getCoverageReport', () => {
+    const mockTestRunResults: ApexTestResult[] = [
+      {
+        Id: 'The id',
+        QueueItemId: 'Queue id',
+        AsyncApexJobId: testRunId,
+        Outcome: 'Pass',
+        ApexClass: { Id: 'ClassId1', Name: 'FooClass', NamespacePrefix: '' },
+        MethodName: 'MethodName',
+        Message: null,
+        StackTrace: null,
+        RunTime: 1,
+        TestTimestamp: '',
+      },
+      {
+        Id: 'The id',
+        QueueItemId: 'Queue id',
+        AsyncApexJobId: testRunId,
+        Outcome: 'Fail',
+        ApexClass: { Id: 'ClassId2', Name: 'FooClass', NamespacePrefix: '' },
+        MethodName: 'MethodName',
+        Message: 'Some error message',
+        StackTrace: null,
+        RunTime: 1,
+        TestTimestamp: '',
+      },
+    ];
+    const mockCodeCoverage = [
+      {
+        Id: 'Coverage-Id',
+        ApexTestClass: {
+          Id: 'TestClassID',
+          Name: 'TestClass',
+          NamespacePrefix: '',
+        },
+        TestMethodName: 'method',
+        ApexClassOrTrigger: {
+          Id: 'ClassID',
+          Name: 'FooClass',
+          NamespacePrefix: '',
+        },
+        NumLinesCovered: 3,
+        NumLinesUncovered: 3,
+        Coverage: { coveredLines: [1, 2, 3], uncoveredLines: [4, 5, 6] },
+      },
+      {
+        Id: 'Coverage-Id',
+        ApexTestClass: {
+          Id: 'TestClassID2',
+          Name: 'TestClass',
+          NamespacePrefix: '',
+        },
+        TestMethodName: 'method',
+        ApexClassOrTrigger: {
+          Id: 'ClassID',
+          Name: 'FooClass',
+          NamespacePrefix: '',
+        },
+        NumLinesCovered: 3,
+        NumLinesUncovered: 3,
+        Coverage: { coveredLines: [1, 2, 3], uncoveredLines: [4, 5, 6] },
+      },
+    ];
+
+    const mockApexCodeCoverageAggregate = [
+      {
+        ApexClassOrTrigger: {
+          Id: 'ClassID',
+          Name: 'FooClass',
+          NamespacePrefix: '',
+        },
+        NumLinesCovered: 3,
+        NumLinesUncovered: 3,
+        Coverage: { coveredLines: [1, 2, 3], uncoveredLines: [4, 5, 6] },
+      },
+    ];
+
+    it('should collect and report code coverage', async () => {
+      queryHelperStub.onFirstCall().resolves([mockCodeCoverage]);
+      queryHelperStub.onSecondCall().resolves(mockApexCodeCoverageAggregate);
+
+      const results = await ResultCollector.getCoverageReport(
+        mockConnection,
+        mockTestRunResults
+      );
+      const expectedTableOutput = 'CLASSES PERCENT UNCOVERED LINES FooClass 50% 4,5,6'.replace(
+        /\s+/g,
+        ''
+      );
+      const actualTableOutput = results.table?.replace(/\s+/g, '');
+
+      expect(results.table).not.to.be.undefined;
+      expect(actualTableOutput).to.equal(expectedTableOutput);
+      expect(results.data).to.deep.equal(mockApexCodeCoverageAggregate);
+    });
+
+    it('should not produce table when code coverage is empty', async () => {
+      queryHelperStub.onFirstCall().resolves([mockCodeCoverage]);
+      queryHelperStub.onSecondCall().resolves([]);
+
+      const results = await ResultCollector.getCoverageReport(
+        mockConnection,
+        mockTestRunResults
+      );
+
+      expect(results.table).to.be.undefined;
+      expect(results.data).to.deep.equal([]);
+    });
+
+    it('should not produce table when first query fails', async () => {
+      queryHelperStub.onFirstCall().rejects(new Error('First Query Error'));
+
+      try {
+        await ResultCollector.getCoverageReport(
+          mockConnection,
+          mockTestRunResults
+        );
+      } catch (er) {
+        expect(er).to.be.instanceOf(TestError);
+        expect((er as TestError).message).to.equal(
+          'Failed getting coverage data: First Query Error'
+        );
+        expect((er as TestError).kind).to.equal(TestErrorKind.Query);
+      }
+    });
+
+    it('should not produce table when second query fails', async () => {
+      queryHelperStub.onFirstCall().resolves([mockCodeCoverage]);
+
+      queryHelperStub.onSecondCall().rejects(new Error('Second Query Error'));
+      try {
+        await ResultCollector.getCoverageReport(
+          mockConnection,
+          mockTestRunResults
+        );
+      } catch (er) {
+        expect(er).to.be.instanceOf(TestError);
+        expect((er as TestError).message).to.equal(
+          'Failed getting coverage data: Second Query Error'
+        );
+        expect((er as TestError).kind).to.equal(TestErrorKind.Query);
+      }
+    });
   });
 });

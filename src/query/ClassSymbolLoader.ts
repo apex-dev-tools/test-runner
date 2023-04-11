@@ -32,10 +32,10 @@ export class ClassSymbolLoader {
   /*
    * This loads SymbolTables for the provided class ids.
    * The ApexClass SymbolTable is sometimes missing when you query with REST.
-   * We can't query for the SymbolTable in SOAP for unknown reasons, but quering
+   * We can't query for the SymbolTable in SOAP for unknown reasons, but querying
    * for the Body via SOAP is known to cause that to be regenerated if it was
    * missing, and as a side effect that will make sure we can always get the
-   * SymbolTable with a REST query. The reason the fields are sometimes not availble
+   * SymbolTable with a REST query. The reason the fields are sometimes not available
    * appears to be something to do with caching. Yep, the Tooling API is Kafkaesque.
    * P.S. You need to load in small chunks, too many and the queries silently fail to
    * do what you ask.

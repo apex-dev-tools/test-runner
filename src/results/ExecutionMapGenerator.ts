@@ -2,11 +2,10 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import { ApexTestRunResult } from '../model/ApexTestRunResult';
-import { ApexTestResult } from '../model/ApexTestResult';
-import { OutputGenerator } from './OutputGenerator';
+import { OutputGenerator, TestRunSummary } from './OutputGenerator';
 import { Logger } from '../log/Logger';
 import { SfDate } from 'jsforce';
+import path from 'path';
 
 /*
  * Create a report (CSV) of summary stats for each test class. The report can be useful in finding long running
@@ -25,12 +24,11 @@ export class ExecutionMapGenerator implements OutputGenerator {
 
   generate(
     logger: Logger,
-    outputFileBase: string,
-    startRunTime: Date,
-    testResults: ApexTestResult[],
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _runResults: ApexTestRunResult
+    outputDirBase: string,
+    fileName: string,
+    summary: TestRunSummary
   ): void {
+    const { testResults } = summary;
     let startTime = SfDate.parseDate(testResults[0].TestTimestamp).getTime();
     let endTime = startTime + testResults[0].RunTime;
     const classStartMap = new Map<string, number>();
@@ -97,6 +95,9 @@ export class ExecutionMapGenerator implements OutputGenerator {
       lines.push(imageBits);
     });
     lines.push('');
-    logger.logOutputFile(outputFileBase + '-time.ppm', lines.join('\n'));
+    logger.logOutputFile(
+      path.join(outputDirBase, fileName + '-time.ppm'),
+      lines.join('\n')
+    );
   }
 }

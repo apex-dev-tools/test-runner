@@ -10,7 +10,7 @@ import { Logger } from '../log/Logger';
 import { ApexTestResult } from '../model/ApexTestResult';
 import { TestRunnerOptions } from '../runner/TestOptions';
 import { TestRunner } from '../runner/TestRunner';
-import { OutputGenerator } from '../results/OutputGenerator';
+import { OutputGenerator, TestRunSummary } from '../results/OutputGenerator';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 import { QueryOptions } from '../query/QueryHelper';
 
@@ -31,7 +31,8 @@ import { QueryOptions } from '../query/QueryHelper';
 
 export interface TestallOptions extends TestRunnerOptions, QueryOptions {
   maxErrorsForReRun?: number; // Don't re-run if > failed tests (excluding locking/missed tests), default 10
-  outputFileBase?: string; // Base for junit and other output files, default 'test-result*'
+  outputDirBase?: string; // Base for junit and other output files, default 'test-result*'
+  outputFileName?: string; //File name base
 }
 
 const DEFAULT_MAX_ERRORS_FOR_RERUN = 10;
@@ -43,9 +44,15 @@ export function getMaxErrorsForReRun(options: TestallOptions): number {
   else return DEFAULT_MAX_ERRORS_FOR_RERUN;
 }
 
-export function getOutputFileBase(options: TestallOptions): string {
-  if (options.outputFileBase !== undefined) return options.outputFileBase;
-  else return DEFAULT_OUTPUT_FILE_BASE;
+export function getOutputFileBase(
+  options: TestallOptions
+): { fileName: string; outputDir: string } {
+  if (options.outputDirBase && options.outputFileName)
+    return {
+      outputDir: options.outputDirBase,
+      fileName: options.outputFileName,
+    };
+  else return { outputDir: '', fileName: DEFAULT_OUTPUT_FILE_BASE };
 }
 
 export class Testall {
@@ -121,17 +128,25 @@ export class Testall {
       Array.from(results.values())
     );
     await this.runSequentially(testResults.rerun);
-
     // Reporting
-    outputGenerators.forEach(outputGenerator =>
-      outputGenerator.generate(
-        this._logger,
-        getOutputFileBase(this._options),
-        startTime,
-        Array.from(results.values()),
-        runResult as ApexTestRunResult
-      )
-    );
+    const summary: TestRunSummary = {
+      startTime,
+      testResults: Array.from(results.values()),
+      runResult,
+      coverageResult: undefined,
+    };
+    if (this._options.codeCoverage) {
+      const coverage = await ResultCollector.getCoverageReport(
+        this._connection,
+        summary.testResults
+      );
+      summary.coverageResult = coverage;
+      this._logger.logMessage(coverage.table);
+    }
+    outputGenerators.forEach(outputGenerator => {
+      const { fileName, outputDir } = getOutputFileBase(this._options);
+      outputGenerator.generate(this._logger, outputDir, fileName, summary);
+    });
   }
 
   public async asyncRun(
