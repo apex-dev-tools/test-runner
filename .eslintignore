@@ -1,1 +1,4 @@
 lib/
+.eslintrc.js
+jest.config.js
+webpack.config.js
