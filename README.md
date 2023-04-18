@@ -2,6 +2,8 @@
 
 Salesforce unit test runner, built over @salesforce/apex-node and jsforce. The runner provides a number of reliability features aimed at ensuring the greatest chance of obtaining a good test run.
 
+## Usage
+
 The main abstraction is a Testall command. You can use this to configure and execute a test run. The runner
 is assisted by three plugins:
 
@@ -13,18 +15,36 @@ The Testall command also handles re-running tests that failed due to locking aft
 
 You can start a Testall run by providing a set of test classes. If you don't provide any the run will execute against all the "local" (non-packaged) tests in the org.
 
-## Building
+## Development
 
-You must use **pnpm** to build the package.
+### Building
 
-    pnpm install
-    pnpm build
+This project uses the `pnpm` package manager.
 
-Jest unit tests can be run with
+```txt
+  pnpm build
+```
 
-    pnpm test
+To run unit tests:
+
+```txt
+  pnpm test
+```
+
+To test bundling using webpack:
+
+```txt
+  pnpm test:pack
+  node test-bundle/bundle.js
+```
+
+This should execute without error.
 
 See './script' for some basic scripts to aid org testing.
+
+### Git Hooks
+
+If you encounter difficulties with the installed git hooks, they can be bypassed with `--no-verify`/`-n` flag on commit. To disable them completely (after `install`) use `npx husky uninstall` or the direct command `git config --unset core.hooksPath`.
 
 ## License
 
