@@ -22,6 +22,7 @@ You can start a Testall run by providing a set of test classes. If you don't pro
 This project uses the `pnpm` package manager.
 
 ```txt
+  pnpm install
   pnpm build
 ```
 
