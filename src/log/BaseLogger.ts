@@ -90,18 +90,20 @@ export abstract class BaseLogger implements Logger {
     }
   }
 
-  logTestRetry(result: ApexTestResult, otherMessage: string | null): void {
+  logTestRetry(result: ApexTestResult, otherResult: ApexTestResult): void {
+    const firstMsg = result.Message;
+    const retryMsg = otherResult.Message;
     this.logMessage(
-      `${result.ApexClass.Name}.${result.MethodName} re-run complete, outcome = ${result.Outcome}`
+      `${result.ApexClass.Name}.${result.MethodName} re-run complete, outcome = ${otherResult.Outcome}`
     );
 
     // i.e its failed with a different message, show what happened
-    if (otherMessage && result.Message) {
-      if (otherMessage !== result.Message) {
-        this.logMessage(` [Before] ${result.Message}`);
-        this.logMessage(` [After] ${otherMessage}`);
+    if (retryMsg && firstMsg) {
+      if (retryMsg !== firstMsg) {
+        this.logMessage(` [Before] ${firstMsg}`);
+        this.logMessage(` [After] ${retryMsg}`);
       } else {
-        this.logMessage(` [Before and After] ${otherMessage}`);
+        this.logMessage(` [Before and After] ${retryMsg}`);
       }
     }
   }

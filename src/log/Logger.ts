@@ -24,7 +24,7 @@ export interface Logger {
   logTestallRerun(missing: Map<string, Set<string>>): void;
   logMaxErrorAbort(failed: ApexTestResult[]): void;
   logTestWillRetry(rerun: ApexTestResult[]): void;
-  logTestRetry(result: ApexTestResult, otherMessage: string | null): void;
+  logTestRetry(result: ApexTestResult, otherResult: ApexTestResult): void;
 
   // Test runner
   logRunStarted(testRunId: string): void;
