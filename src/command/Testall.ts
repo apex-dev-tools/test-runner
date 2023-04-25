@@ -15,7 +15,11 @@ import { Logger } from '../log/Logger';
 import { ApexTestResult } from '../model/ApexTestResult';
 import { TestRunnerOptions } from '../runner/TestOptions';
 import { TestRunner } from '../runner/TestRunner';
-import { OutputGenerator, TestRunSummary } from '../results/OutputGenerator';
+import {
+  OutputGenerator,
+  TestRetry,
+  TestRunSummary,
+} from '../results/OutputGenerator';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 import { QueryOptions } from '../query/QueryHelper';
 
@@ -141,7 +145,12 @@ export class Testall {
       this._logger,
       Array.from(results.values())
     );
-    await this.runSequentially(testResults.rerun, results, runResult, runIds);
+    const retries = await this.runSequentially(
+      testResults.rerun,
+      results,
+      runResult,
+      runIds
+    );
 
     // Reporting
     const summary: TestRunSummary = {
@@ -149,6 +158,7 @@ export class Testall {
       testResults: Array.from(results.values()),
       runResult,
       runIds,
+      retries,
       coverageResult: undefined,
     };
 
@@ -278,11 +288,11 @@ export class Testall {
     results: Map<string, ApexTestResult>,
     parentRunResult: ApexTestRunResult,
     runIds: string[]
-  ): Promise<void> {
+  ): Promise<TestRetry[]> {
     const testService = new TestService(this._connection);
     this._logger.logTestWillRetry(testsToRetry);
 
-    const retries = [];
+    const retries: TestRetry[] = [];
     for (const test of testsToRetry) {
       const retry = await this.retrySingleTest(testService, test);
 
@@ -292,17 +302,19 @@ export class Testall {
 
         // replace original test in final results
         results.set(this.getTestName(retry), retry);
-        retries.push(retry);
+        retries.push({ before: test, after: retry });
       }
     }
 
-    const time = retries.reduce((a, c) => a + c.RunTime, 0);
-    const passed = retries.filter(r => r.Outcome === 'Pass').length;
+    const time = retries.reduce((a, c) => a + c.after.RunTime, 0);
+    const passed = retries.filter(r => r.after.Outcome === 'Pass').length;
 
     // totalTime can now exceed sum of run times in summary
     // since it includes original + retry time
     parentRunResult.TestTime += time;
     parentRunResult.MethodsFailed -= passed;
+
+    return retries;
   }
 
   private async retrySingleTest(
