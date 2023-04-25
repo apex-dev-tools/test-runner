@@ -351,7 +351,7 @@ describe('messages', () => {
       }
     );
 
-    expect(result?.hasReRuns).to.be.true;
+    expect(result?.hasReRuns).to.be.false;
     expect(logger.entries.length).to.be.equal(2);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 0')
