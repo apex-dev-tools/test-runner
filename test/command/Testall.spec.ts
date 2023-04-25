@@ -172,6 +172,96 @@ describe('messages', () => {
     expect(logger.entries[1]).to.match(logRegex('Error: "TestRunner failed"'));
   });
 
+  it('should return summary after running', async () => {
+    const mockDate = new Date(1587412800000);
+    //@ts-expect-error
+    const spy = jest.spyOn(global, 'Date').mockImplementation(() => mockDate);
+
+    const logger = new CapturingLogger();
+    const runnerResult: ApexTestRunResult = {
+      AsyncApexJobId: testRunId,
+      StartTime: '',
+      EndTime: '',
+      Status: 'Passed',
+      TestTime: 1,
+      UserId: 'user',
+      ClassesCompleted: 100,
+      ClassesEnqueued: 10,
+      MethodsCompleted: 1000,
+      MethodsEnqueued: 900,
+      MethodsFailed: 0,
+    };
+    const runner = new MockTestRunner(runnerResult);
+    const testMethods = new MockTestMethodCollector(
+      new Map<string, string>([['An Id', 'FooClass']]),
+      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
+    );
+
+    const mockTestRunResult: ApexTestResult[] = [
+      {
+        Id: 'The id',
+        QueueItemId: 'Queue id',
+        AsyncApexJobId: testRunId,
+        Outcome: 'Pass',
+        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
+        MethodName: 'testMethod',
+        Message: '',
+        StackTrace: null,
+        RunTime: 1,
+        TestTimestamp: '',
+      },
+    ];
+    queryStub.resolves(mockTestRunResult);
+
+    const result = await Testall.run(
+      logger,
+      mockConnection,
+      '',
+      testMethods,
+      runner,
+      [new MockOutputGenerator()],
+      {}
+    );
+    spy.mockRestore();
+
+    expect(result).to.deep.equal({
+      startTime: new Date('2020-04-20T20:00:00.000Z'),
+      testResults: [
+        {
+          Id: 'The id',
+          QueueItemId: 'Queue id',
+          AsyncApexJobId: '707xx0000AGQ3jbQQD',
+          Outcome: 'Pass',
+          ApexClass: {
+            Id: 'Class id',
+            Name: 'FooClass',
+            NamespacePrefix: '',
+          },
+          MethodName: 'testMethod',
+          Message: '',
+          StackTrace: null,
+          RunTime: 1,
+          TestTimestamp: '',
+        },
+      ],
+      runResult: {
+        AsyncApexJobId: '707xx0000AGQ3jbQQD',
+        StartTime: '',
+        EndTime: '',
+        Status: 'Passed',
+        TestTime: 1,
+        UserId: 'user',
+        ClassesCompleted: 100,
+        ClassesEnqueued: 10,
+        MethodsCompleted: 1000,
+        MethodsEnqueued: 900,
+        MethodsFailed: 0,
+      },
+      coverageResult: undefined,
+      hasReRuns: false,
+    });
+  });
+
   it('should stop after an initial aborted test run', async () => {
     const logger = new CapturingLogger();
     const runnerResult: ApexTestRunResult = {
@@ -194,7 +284,7 @@ describe('messages', () => {
       new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
     );
 
-    await Testall.run(
+    const result = await Testall.run(
       logger,
       mockConnection,
       '',
@@ -204,6 +294,7 @@ describe('messages', () => {
       {}
     );
 
+    expect(result).to.be.undefined;
     expect(logger.entries.length).to.be.equal(2);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
@@ -248,7 +339,7 @@ describe('messages', () => {
       new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
     );
 
-    await Testall.run(
+    const result = await Testall.run(
       logger,
       mockConnection,
       '',
@@ -260,6 +351,7 @@ describe('messages', () => {
       }
     );
 
+    expect(result?.hasReRuns).to.be.true;
     expect(logger.entries.length).to.be.equal(2);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 0')
@@ -316,7 +408,7 @@ describe('messages', () => {
     } as TestResult;
     testingServiceSyncStub.resolves(mockTestResult);
 
-    await Testall.run(
+    const result = await Testall.run(
       logger,
       mockConnection,
       '',
@@ -326,6 +418,7 @@ describe('messages', () => {
       {}
     );
 
+    expect(result?.hasReRuns).to.be.true;
     expect(logger.entries.length).to.be.equal(3);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
@@ -383,7 +476,7 @@ describe('messages', () => {
     } as TestResult;
     testingServiceSyncStub.resolves(mockTestResult);
 
-    await Testall.run(
+    const result = await Testall.run(
       logger,
       mockConnection,
       '',
@@ -393,6 +486,7 @@ describe('messages', () => {
       {}
     );
 
+    expect(result?.hasReRuns).to.be.true;
     expect(logger.entries.length).to.be.equal(5);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
@@ -461,7 +555,7 @@ describe('messages', () => {
     queryStub.onCall(0).resolves([mockTestRunResult[0]]);
     queryStub.onCall(1).resolves([mockTestRunResult[1]]);
 
-    await Testall.run(
+    const result = await Testall.run(
       logger,
       mockConnection,
       '',
@@ -470,7 +564,7 @@ describe('messages', () => {
       [new MockOutputGenerator()],
       {}
     );
-
+    expect(result?.hasReRuns).to.be.true;
     expect(logger.entries.length).to.be.equal(2);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')

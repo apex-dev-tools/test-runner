@@ -137,7 +137,7 @@ export class Testall {
       Array.from(results.values())
     );
     await this.runSequentially(testResults.rerun);
-    console.log((testResults.rerun.length, runAccum.length));
+
     // Reporting
     const summary: TestRunSummary = {
       startTime,
