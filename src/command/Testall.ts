@@ -110,8 +110,16 @@ export class Testall {
     // Run them ;-)
     const results = new Map<string, ApexTestResult>();
     let runResult: ApexTestRunResult | null = null;
+    const runAccum: Array<ApexTestRunResult> = [];
     try {
-      runResult = await this.asyncRun(0, runner, testMethodMap, null, results);
+      runResult = await this.asyncRun(
+        0,
+        runner,
+        testMethodMap,
+        null,
+        results,
+        runAccum
+      );
     } catch (err) {
       // Terminate gathering test methods, its failed
       abortTestMethodCollection = true;
@@ -129,13 +137,14 @@ export class Testall {
       Array.from(results.values())
     );
     await this.runSequentially(testResults.rerun);
+    console.log((testResults.rerun.length, runAccum.length));
     // Reporting
     const summary: TestRunSummary = {
       startTime,
       testResults: Array.from(results.values()),
       runResult,
       coverageResult: undefined,
-      hasReRuns: !!testResults.rerun.length,
+      hasReRuns: !!testResults.rerun.length || runAccum.length > 1,
     };
 
     if (this._options.codeCoverage && !this._options.disableCoverageReport) {
@@ -163,7 +172,8 @@ export class Testall {
     runner: TestRunner,
     expectedTests: Promise<Map<string, Set<string>>>,
     parentRunResult: null | ApexTestRunResult,
-    results: Map<string, ApexTestResult>
+    results: Map<string, ApexTestResult>,
+    testRunAcc?: Array<ApexTestRunResult>
   ): Promise<ApexTestRunResult | null> {
     // Do a run of everything requested
     const runResult = await runner.run();
@@ -184,7 +194,7 @@ export class Testall {
 
     // If run aborted, don't try continue
     if (runResult.Status == 'Aborted') return null;
-
+    testRunAcc?.push(runResult);
     // Merge results into parent record to give aggregate for reporting
     let activeRunResult = runResult;
     if (parentRunResult != null) {
@@ -243,7 +253,8 @@ export class Testall {
         newRunner,
         Promise.resolve(missingTests),
         activeRunResult,
-        results
+        results,
+        testRunAcc
       );
       if (newResults == null) {
         return null;
