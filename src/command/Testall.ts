@@ -115,7 +115,7 @@ export class Testall {
     // Run them ;-)
     const results = new Map<string, ApexTestResult>();
     let runResult: ApexTestRunResult | null = null;
-    const runAccum: Array<ApexTestRunResult> = [];
+    const runIds: string[] = [];
     try {
       runResult = await this.asyncRun(
         0,
@@ -123,7 +123,7 @@ export class Testall {
         testMethodMap,
         null,
         results,
-        runAccum
+        runIds
       );
     } catch (err) {
       // Terminate gathering test methods, its failed
@@ -141,19 +141,19 @@ export class Testall {
       this._logger,
       Array.from(results.values())
     );
-    await this.runSequentially(testResults.rerun, results, runResult);
+    await this.runSequentially(testResults.rerun, results, runResult, runIds);
 
     // Reporting
     const summary: TestRunSummary = {
       startTime,
       testResults: Array.from(results.values()),
       runResult,
+      runIds,
       coverageResult: undefined,
-      hasReRuns: !!testResults.rerun.length || runAccum.length > 1,
     };
 
     if (this._options.codeCoverage && !this._options.disableCoverageReport) {
-      if (summary.hasReRuns) {
+      if (runIds.length > 1) {
         this._logger.logWarning(
           'Test run has reruns, so coverage report may not be complete'
         );
@@ -180,7 +180,7 @@ export class Testall {
     expectedTests: Promise<Map<string, Set<string>>>,
     parentRunResult: null | ApexTestRunResult,
     results: Map<string, ApexTestResult>,
-    testRunAcc?: Array<ApexTestRunResult>
+    runIds: string[]
   ): Promise<ApexTestRunResult | null> {
     // Do a run of everything requested
     const runResult = await runner.run();
@@ -200,7 +200,10 @@ export class Testall {
 
     // If run aborted, don't try continue
     if (runResult.Status == 'Aborted') return null;
-    testRunAcc?.push(runResult);
+
+    // Keep track of new test run ids
+    runIds.push(runResult.AsyncApexJobId);
+
     // Merge results into parent record to give aggregate for reporting
     let activeRunResult = runResult;
     if (parentRunResult != null) {
@@ -260,7 +263,7 @@ export class Testall {
         Promise.resolve(missingTests),
         activeRunResult,
         results,
-        testRunAcc
+        runIds
       );
       if (newResults == null) {
         return null;
@@ -273,7 +276,8 @@ export class Testall {
   private async runSequentially(
     testsToRetry: ApexTestResult[],
     results: Map<string, ApexTestResult>,
-    parentRunResult: ApexTestRunResult
+    parentRunResult: ApexTestRunResult,
+    runIds: string[]
   ): Promise<void> {
     const testService = new TestService(this._connection);
     this._logger.logTestWillRetry(testsToRetry);
@@ -284,6 +288,7 @@ export class Testall {
 
       if (retry) {
         this._logger.logTestRetry(test, retry);
+        runIds.push(retry.AsyncApexJobId);
 
         // replace original test in final results
         results.set(this.getTestName(retry), retry);

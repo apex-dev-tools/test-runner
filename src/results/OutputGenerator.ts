@@ -13,8 +13,8 @@ export interface TestRunSummary {
   startTime: Date;
   testResults: ApexTestResult[];
   runResult: ApexTestRunResult;
+  runIds: string[];
   coverageResult?: CoverageReport;
-  hasReRuns?: boolean;
 }
 export interface OutputGenerator {
   generate(
