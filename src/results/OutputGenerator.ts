@@ -14,6 +14,7 @@ export interface TestRunSummary {
   testResults: ApexTestResult[];
   runResult: ApexTestRunResult;
   coverageResult?: CoverageReport;
+  hasReRuns?: boolean;
 }
 export interface OutputGenerator {
   generate(

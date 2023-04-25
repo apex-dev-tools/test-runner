@@ -33,6 +33,7 @@ export interface TestallOptions extends TestRunnerOptions, QueryOptions {
   maxErrorsForReRun?: number; // Don't re-run if > failed tests (excluding locking/missed tests), default 10
   outputDirBase?: string; // Base for junit and other output files, default 'test-result*'
   outputFileName?: string; //File name base
+  disableCoverageReport?: boolean; // if enabled disables coverage collection
 }
 
 const DEFAULT_MAX_ERRORS_FOR_RERUN = 10;
@@ -69,11 +70,11 @@ export class Testall {
     runner: TestRunner,
     outputGenerators: OutputGenerator[],
     options: TestallOptions
-  ): Promise<void> {
+  ): Promise<TestRunSummary | undefined> {
     try {
       logger.logTestallStart(options);
       const cmd = new Testall(logger, connection, namespace, options);
-      await cmd.run(runner, methodCollector, outputGenerators);
+      return await cmd.run(runner, methodCollector, outputGenerators);
     } catch (e) {
       logger.logError(e);
       throw e;
@@ -96,7 +97,7 @@ export class Testall {
     runner: TestRunner,
     methodCollector: TestMethodCollector,
     outputGenerators: OutputGenerator[]
-  ): Promise<void> {
+  ): Promise<TestRunSummary | undefined> {
     const startTime = new Date();
     let abortTestMethodCollection = false;
 
@@ -109,8 +110,16 @@ export class Testall {
     // Run them ;-)
     const results = new Map<string, ApexTestResult>();
     let runResult: ApexTestRunResult | null = null;
+    const runAccum: Array<ApexTestRunResult> = [];
     try {
-      runResult = await this.asyncRun(0, runner, testMethodMap, null, results);
+      runResult = await this.asyncRun(
+        0,
+        runner,
+        testMethodMap,
+        null,
+        results,
+        runAccum
+      );
     } catch (err) {
       // Terminate gathering test methods, its failed
       abortTestMethodCollection = true;
@@ -128,14 +137,22 @@ export class Testall {
       Array.from(results.values())
     );
     await this.runSequentially(testResults.rerun);
+
     // Reporting
     const summary: TestRunSummary = {
       startTime,
       testResults: Array.from(results.values()),
       runResult,
       coverageResult: undefined,
+      hasReRuns: !!testResults.rerun.length || runAccum.length > 1,
     };
-    if (this._options.codeCoverage) {
+
+    if (this._options.codeCoverage && !this._options.disableCoverageReport) {
+      if (summary.hasReRuns) {
+        this._logger.logWarning(
+          'Test run has reruns, so coverage report may not be complete'
+        );
+      }
       const coverage = await ResultCollector.getCoverageReport(
         this._connection,
         summary.testResults
@@ -147,6 +164,7 @@ export class Testall {
       const { fileName, outputDir } = getOutputFileBase(this._options);
       outputGenerator.generate(this._logger, outputDir, fileName, summary);
     });
+    return summary;
   }
 
   public async asyncRun(
@@ -154,7 +172,8 @@ export class Testall {
     runner: TestRunner,
     expectedTests: Promise<Map<string, Set<string>>>,
     parentRunResult: null | ApexTestRunResult,
-    results: Map<string, ApexTestResult>
+    results: Map<string, ApexTestResult>,
+    testRunAcc?: Array<ApexTestRunResult>
   ): Promise<ApexTestRunResult | null> {
     // Do a run of everything requested
     const runResult = await runner.run();
@@ -175,7 +194,7 @@ export class Testall {
 
     // If run aborted, don't try continue
     if (runResult.Status == 'Aborted') return null;
-
+    testRunAcc?.push(runResult);
     // Merge results into parent record to give aggregate for reporting
     let activeRunResult = runResult;
     if (parentRunResult != null) {
@@ -234,7 +253,8 @@ export class Testall {
         newRunner,
         Promise.resolve(missingTests),
         activeRunResult,
-        results
+        results,
+        testRunAcc
       );
       if (newResults == null) {
         return null;
