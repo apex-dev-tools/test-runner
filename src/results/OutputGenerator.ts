@@ -10,6 +10,7 @@ import { ApexTestRunResult } from '../model/ApexTestRunResult';
 import { Logger } from '../log/Logger';
 
 export interface TestRetry {
+  name: string;
   before: ApexTestResult;
   after: ApexTestResult;
 }

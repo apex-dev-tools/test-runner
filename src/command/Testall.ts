@@ -301,8 +301,9 @@ export class Testall {
         runIds.push(retry.AsyncApexJobId);
 
         // replace original test in final results
-        results.set(this.getTestName(retry), retry);
-        retries.push({ before: test, after: retry });
+        const name = this.getTestName(retry);
+        results.set(name, retry);
+        retries.push({ name, before: test, after: retry });
       }
     }
 
@@ -325,7 +326,6 @@ export class Testall {
       classId: currentResult.ApexClass.Id,
       testMethods: [currentResult.MethodName],
     };
-    const name = this.getTestName(currentResult);
 
     try {
       const result = await testService.runTestSynchronous({
@@ -336,7 +336,9 @@ export class Testall {
       return this.convertSyncResult(result);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      this._logger.logMessage(`${name} re-run failed, cause: ${msg}`);
+      this._logger.logMessage(
+        `${this.getTestName(currentResult)} re-run failed, cause: ${msg}`
+      );
     }
 
     return undefined;
@@ -357,9 +359,9 @@ export class Testall {
           AsyncApexJobId: test.asyncApexJobId,
           Outcome: test.outcome,
           ApexClass: {
-            Id: test.apexClass.id,
-            Name: test.apexClass.name,
-            NamespacePrefix: test.apexClass.namespacePrefix,
+            Id: test.apexClass?.id,
+            Name: test.apexClass?.name,
+            NamespacePrefix: test.apexClass?.namespacePrefix,
           },
           MethodName: test.methodName,
           Message: test.message,

@@ -23,7 +23,7 @@ type ReportTestResult = Omit<ApexTestResult, 'ApexClass' | 'TestTimestamp'> & {
   StartTime: number;
 };
 
-export class RetryReportReporter implements OutputGenerator {
+export class RetryReportGenerator implements OutputGenerator {
   public generate(
     logger: Logger,
     outputDirBase: string,
@@ -38,7 +38,7 @@ export class RetryReportReporter implements OutputGenerator {
 
   private generateJson(retries: TestRetry[]): string {
     const report: ReportTestRetry[] = retries.map(r => ({
-      name: `${r.before.ApexClass.Name}.${r.before.MethodName}`,
+      name: r.name,
       before: this.convertTestResult(r.before),
       after: this.convertTestResult(r.after),
     }));
