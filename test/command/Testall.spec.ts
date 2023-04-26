@@ -257,8 +257,9 @@ describe('messages', () => {
         MethodsEnqueued: 900,
         MethodsFailed: 0,
       },
+      retries: [],
+      runIds: ['707xx0000AGQ3jbQQD'],
       coverageResult: undefined,
-      hasReRuns: false,
     });
   });
 
@@ -351,7 +352,7 @@ describe('messages', () => {
       }
     );
 
-    expect(result?.hasReRuns).to.be.false;
+    expect(result?.runIds.length).to.be.equal(1);
     expect(logger.entries.length).to.be.equal(2);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 0')
@@ -401,10 +402,7 @@ describe('messages', () => {
     queryStub.resolves(mockTestRunResult);
 
     const mockTestResult = {
-      summary: {
-        outcome: 'Passed',
-      },
-      tests: [{ message: null }],
+      tests: [{ asyncApexJobId: 'retryId', outcome: 'Pass', message: null }],
     } as TestResult;
     testingServiceSyncStub.resolves(mockTestResult);
 
@@ -418,8 +416,11 @@ describe('messages', () => {
       {}
     );
 
-    expect(result?.hasReRuns).to.be.true;
-    expect(logger.entries.length).to.be.equal(3);
+    expect(result?.runIds.length).to.equal(2);
+    expect(result?.retries.length).to.equal(1);
+    expect(result?.retries[0].after.Outcome).to.equal('Pass');
+    expect(result?.retries[0].after.Message).to.equal(null);
+    expect(logger.entries.length).to.equal(3);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
@@ -469,10 +470,9 @@ describe('messages', () => {
     queryStub.resolves(mockTestRunResult);
 
     const mockTestResult = {
-      summary: {
-        outcome: 'Failed',
-      },
-      tests: [{ message: 'Other Error' }],
+      tests: [
+        { asyncApexJobId: 'retryId', outcome: 'Fail', message: 'Other Error' },
+      ],
     } as TestResult;
     testingServiceSyncStub.resolves(mockTestResult);
 
@@ -486,7 +486,10 @@ describe('messages', () => {
       {}
     );
 
-    expect(result?.hasReRuns).to.be.true;
+    expect(result?.runIds.length).to.be.equal(2);
+    expect(result?.retries.length).to.equal(1);
+    expect(result?.retries[0].after.Outcome).to.equal('Fail');
+    expect(result?.retries[0].after.Message).to.equal('Other Error');
     expect(logger.entries.length).to.be.equal(5);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
@@ -501,6 +504,69 @@ describe('messages', () => {
       logRegex(' \\[Before\\] UNABLE_TO_LOCK_ROW')
     );
     expect(logger.entries[4]).to.match(logRegex(' \\[After\\] Other Error'));
+  });
+
+  it('should ignore and log failed retry request of test', async () => {
+    const logger = new CapturingLogger();
+    const runnerResult: ApexTestRunResult = {
+      AsyncApexJobId: testRunId,
+      StartTime: '',
+      EndTime: '',
+      Status: 'Failed',
+      TestTime: 1,
+      UserId: 'user',
+      ClassesCompleted: 100,
+      ClassesEnqueued: 10,
+      MethodsCompleted: 1000,
+      MethodsEnqueued: 900,
+      MethodsFailed: 0,
+    };
+    const runner = new MockTestRunner(runnerResult);
+    const testMethods = new MockTestMethodCollector(
+      new Map<string, string>([['An Id', 'FooClass']]),
+      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
+    );
+
+    const mockTestRunResult: ApexTestResult[] = [
+      {
+        Id: 'The id',
+        QueueItemId: 'Queue id',
+        AsyncApexJobId: testRunId,
+        Outcome: 'Fail',
+        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
+        MethodName: 'testMethod',
+        Message: 'UNABLE_TO_LOCK_ROW',
+        StackTrace: null,
+        RunTime: 1,
+        TestTimestamp: '',
+      },
+    ];
+    queryStub.resolves(mockTestRunResult);
+
+    testingServiceSyncStub.rejects(new Error('Request Error'));
+
+    const result = await Testall.run(
+      logger,
+      mockConnection,
+      '',
+      testMethods,
+      runner,
+      [new MockOutputGenerator()],
+      {}
+    );
+
+    expect(result?.runIds.length).to.be.equal(1);
+    expect(result?.retries.length).to.equal(0);
+    expect(logger.entries.length).to.be.equal(3);
+    expect(logger.entries[0]).to.match(
+      logRegex('Starting test run, with max failing tests for re-run 10')
+    );
+    expect(logger.entries[1]).to.match(
+      logRegex('Failed tests matched patterns, running 1 tests sequentially')
+    );
+    expect(logger.entries[2]).to.match(
+      logRegex('FooClass.testMethod re-run failed, cause: Request Error')
+    );
   });
 
   it('should re-run missing tests', async () => {
@@ -564,7 +630,7 @@ describe('messages', () => {
       [new MockOutputGenerator()],
       {}
     );
-    expect(result?.hasReRuns).to.be.true;
+    expect(result?.runIds.length).to.be.equal(2);
     expect(logger.entries.length).to.be.equal(2);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
