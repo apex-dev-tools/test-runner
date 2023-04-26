@@ -1,5 +1,10 @@
 # test-runner - Changelog
 
+## 1.7.1 - 2023-04-26
+
+* Return `TestRunSummary` for `TestAll`
+* Add `hasReRun` flag to result summary
+
 ## 1.7.0 - 2023-04-11
 
 * Add support for collecting code coverage data
