@@ -131,6 +131,8 @@ describe('messages', () => {
         MethodsEnqueued: 600,
         MethodsFailed: 100,
       },
+      runIds: ['job Id'],
+      retries: [],
     });
 
     expect(logger.files.length).to.equal(1);

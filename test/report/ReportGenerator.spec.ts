@@ -131,6 +131,8 @@ describe('messages', () => {
         MethodsEnqueued: 600,
         MethodsFailed: 100,
       },
+      runIds: ['job Id'],
+      retries: [],
     });
 
     expect(logger.files.length).to.be.equal(2);
@@ -182,6 +184,8 @@ describe('messages', () => {
         MethodsEnqueued: 600,
         MethodsFailed: 0,
       },
+      runIds: ['job Id'],
+      retries: [],
     });
 
     expect(logger.files.length).to.be.equal(2);
@@ -233,6 +237,8 @@ describe('messages', () => {
         MethodsEnqueued: 600,
         MethodsFailed: 0,
       },
+      runIds: ['job Id'],
+      retries: [],
     });
 
     expect(logger.files.length).to.be.equal(2);

@@ -52,6 +52,8 @@ describe('coverage reporter', () => {
         MethodsEnqueued: 600,
         MethodsFailed: 100,
       },
+      runIds: ['job Id'],
+      retries: [],
       coverageResult: {
         table: '',
         data: [
@@ -121,6 +123,8 @@ describe('coverage reporter', () => {
         MethodsEnqueued: 600,
         MethodsFailed: 100,
       },
+      runIds: ['job Id'],
+      retries: [],
       coverageResult: undefined,
     });
 

@@ -2,7 +2,12 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import { TestItem, TestResult, TestService } from '@salesforce/apex-node';
+import {
+  TestItem,
+  TestResult,
+  TestRunIdResult,
+  TestService,
+} from '@salesforce/apex-node';
 import { Connection } from '@apexdevtools/sfdx-auth-helper';
 import { ResultCollector } from '../collector/ResultCollector';
 import { TestMethodCollector } from '../collector/TestMethodCollector';
@@ -10,7 +15,11 @@ import { Logger } from '../log/Logger';
 import { ApexTestResult } from '../model/ApexTestResult';
 import { TestRunnerOptions } from '../runner/TestOptions';
 import { TestRunner } from '../runner/TestRunner';
-import { OutputGenerator, TestRunSummary } from '../results/OutputGenerator';
+import {
+  OutputGenerator,
+  TestRetry,
+  TestRunSummary,
+} from '../results/OutputGenerator';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 import { QueryOptions } from '../query/QueryHelper';
 
@@ -110,7 +119,7 @@ export class Testall {
     // Run them ;-)
     const results = new Map<string, ApexTestResult>();
     let runResult: ApexTestRunResult | null = null;
-    const runAccum: Array<ApexTestRunResult> = [];
+    const runIds: string[] = [];
     try {
       runResult = await this.asyncRun(
         0,
@@ -118,7 +127,7 @@ export class Testall {
         testMethodMap,
         null,
         results,
-        runAccum
+        runIds
       );
     } catch (err) {
       // Terminate gathering test methods, its failed
@@ -136,19 +145,25 @@ export class Testall {
       this._logger,
       Array.from(results.values())
     );
-    await this.runSequentially(testResults.rerun);
+    const retries = await this.runSequentially(
+      testResults.rerun,
+      results,
+      runResult,
+      runIds
+    );
 
     // Reporting
     const summary: TestRunSummary = {
       startTime,
       testResults: Array.from(results.values()),
       runResult,
+      runIds,
+      retries,
       coverageResult: undefined,
-      hasReRuns: !!testResults.rerun.length || runAccum.length > 1,
     };
 
     if (this._options.codeCoverage && !this._options.disableCoverageReport) {
-      if (summary.hasReRuns) {
+      if (runIds.length > 1) {
         this._logger.logWarning(
           'Test run has reruns, so coverage report may not be complete'
         );
@@ -160,10 +175,12 @@ export class Testall {
       summary.coverageResult = coverage;
       this._logger.logMessage(coverage.table);
     }
+
     outputGenerators.forEach(outputGenerator => {
       const { fileName, outputDir } = getOutputFileBase(this._options);
       outputGenerator.generate(this._logger, outputDir, fileName, summary);
     });
+
     return summary;
   }
 
@@ -173,7 +190,7 @@ export class Testall {
     expectedTests: Promise<Map<string, Set<string>>>,
     parentRunResult: null | ApexTestRunResult,
     results: Map<string, ApexTestResult>,
-    testRunAcc?: Array<ApexTestRunResult>
+    runIds: string[]
   ): Promise<ApexTestRunResult | null> {
     // Do a run of everything requested
     const runResult = await runner.run();
@@ -188,13 +205,15 @@ export class Testall {
 
     // Update rolling results for tests that did run
     rawTestResults.forEach(test => {
-      const name = `${test.ApexClass.Name}.${test.MethodName}`;
-      results.set(name, test);
+      results.set(this.getTestName(test), test);
     });
 
     // If run aborted, don't try continue
     if (runResult.Status == 'Aborted') return null;
-    testRunAcc?.push(runResult);
+
+    // Keep track of new test run ids
+    runIds.push(runResult.AsyncApexJobId);
+
     // Merge results into parent record to give aggregate for reporting
     let activeRunResult = runResult;
     if (parentRunResult != null) {
@@ -254,7 +273,7 @@ export class Testall {
         Promise.resolve(missingTests),
         activeRunResult,
         results,
-        testRunAcc
+        runIds
       );
       if (newResults == null) {
         return null;
@@ -264,23 +283,92 @@ export class Testall {
     return activeRunResult;
   }
 
-  private async runSequentially(tests: ApexTestResult[]): Promise<void> {
+  private async runSequentially(
+    testsToRetry: ApexTestResult[],
+    results: Map<string, ApexTestResult>,
+    parentRunResult: ApexTestRunResult,
+    runIds: string[]
+  ): Promise<TestRetry[]> {
     const testService = new TestService(this._connection);
-    this._logger.logTestWillRetry(tests);
-    for (const detail of tests) {
-      const item: TestItem = {
-        classId: detail.ApexClass.Id,
-        testMethods: [detail.MethodName],
-      };
-      const result = (await testService.runTestSynchronous({
+    this._logger.logTestWillRetry(testsToRetry);
+
+    const retries: TestRetry[] = [];
+    for (const test of testsToRetry) {
+      const retry = await this.retrySingleTest(testService, test);
+
+      if (retry) {
+        this._logger.logTestRetry(test, retry);
+        runIds.push(retry.AsyncApexJobId);
+
+        // replace original test in final results
+        const name = this.getTestName(retry);
+        results.set(name, retry);
+        retries.push({ name, before: test, after: retry });
+      }
+    }
+
+    const time = retries.reduce((a, c) => a + c.after.RunTime, 0);
+    const passed = retries.filter(r => r.after.Outcome === 'Pass').length;
+
+    // totalTime can now exceed sum of run times in summary
+    // since it includes original + retry time
+    parentRunResult.TestTime += time;
+    parentRunResult.MethodsFailed -= passed;
+
+    return retries;
+  }
+
+  private async retrySingleTest(
+    testService: TestService,
+    currentResult: ApexTestResult
+  ): Promise<ApexTestResult | undefined> {
+    const item: TestItem = {
+      classId: currentResult.ApexClass.Id,
+      testMethods: [currentResult.MethodName],
+    };
+
+    try {
+      const result = await testService.runTestSynchronous({
         tests: [item],
         skipCodeCoverage: !(this._options.codeCoverage == true),
-      })) as TestResult;
-      if (result.summary.outcome == 'Passed') {
-        // Only flip outcome so still considerd a 'locked test' via message
-        detail.Outcome = 'Pass';
-      }
-      this._logger.logTestRetry(detail, result.tests[0]?.message);
+      });
+
+      return this.convertSyncResult(result);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this._logger.logMessage(
+        `${this.getTestName(currentResult)} re-run failed, cause: ${msg}`
+      );
     }
+
+    return undefined;
+  }
+
+  private getTestName(test: ApexTestResult): string {
+    return `${test.ApexClass.Name}.${test.MethodName}`;
+  }
+
+  private convertSyncResult(
+    result: TestResult | TestRunIdResult
+  ): ApexTestResult | undefined {
+    const test = !('testRunId' in result) ? result.tests[0] : undefined;
+    return test
+      ? {
+          Id: test.id,
+          QueueItemId: test.queueItemId,
+          AsyncApexJobId: test.asyncApexJobId,
+          Outcome: test.outcome,
+          ApexClass: {
+            Id: test.apexClass?.id,
+            Name: test.apexClass?.name,
+            NamespacePrefix: test.apexClass?.namespacePrefix,
+          },
+          MethodName: test.methodName,
+          Message: test.message,
+          StackTrace: test.stackTrace,
+          RunTime: test.runTime,
+          TestTimestamp: test.testTimestamp,
+        }
+      : test;
   }
 }
