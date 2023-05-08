@@ -83,17 +83,19 @@ export abstract class BaseLogger implements Logger {
   }
 
   logTestWillRerun(tests: ApexTestResult[], matches: number): void {
+    let msg = 'No matching test failures to re-run';
+
     if (tests.length > 0) {
-      let msg = `Running ${tests.length} failed tests sequentially`;
+      msg = `Running ${tests.length} failed tests sequentially`;
 
       if (matches == tests.length) {
         msg += ' (matched patterns)';
       } else {
         msg += ` (${matches} tests matched patterns)`;
       }
-
-      this.logMessage(msg);
     }
+
+    this.logMessage(msg);
   }
 
   logTestRerun(result: ApexTestResult, otherResult: ApexTestResult): void {

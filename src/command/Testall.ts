@@ -335,8 +335,12 @@ export class Testall {
         break;
       case RerunOption.Limit:
         if (failed.length <= getMaxErrorsForReRun(this._options)) {
-          // max is rerun + 10 (by default)
+          // max count is rerun + 10 (by default)
           tests = rerun.concat(failed);
+        } else {
+          this._logger.logMessage(
+            'Max re-run limit exceeded, running pattern matched tests only'
+          );
         }
         break;
       case RerunOption.All:
