@@ -359,7 +359,7 @@ describe('messages', () => {
     );
     expect(logger.entries[1]).to.match(
       logRegex(
-        'Aborting missing test check as 1 failed - max re-run limit reached'
+        'Aborting missing test check as 1 failed - max re-run limit exceeded'
       )
     );
   });

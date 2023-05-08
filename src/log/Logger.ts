@@ -23,7 +23,7 @@ export interface Logger {
   logTestallAbort(options: TestallOptions): void;
   logTestallRerun(missing: Map<string, Set<string>>): void;
   logMaxErrorAbort(failed: ApexTestResult[]): void;
-  logTestWillRerun(rerun: ApexTestResult[]): void;
+  logTestWillRerun(tests: ApexTestResult[], matches: number): void;
   logTestRerun(result: ApexTestResult, otherResult: ApexTestResult): void;
 
   // Test runner

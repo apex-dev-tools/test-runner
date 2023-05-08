@@ -3,7 +3,7 @@
  */
 
 import path from 'path';
-import { getMaxErrorsForReRun, TestallOptions } from '../command/Testall';
+import { TestallOptions, getMaxErrorsForReRun } from '../command/Testall';
 import { ApexTestResult } from '../model/ApexTestResult';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 import { groupByOutcome } from '../results/OutputGenerator';
@@ -78,15 +78,21 @@ export abstract class BaseLogger implements Logger {
 
   logMaxErrorAbort(failed: ApexTestResult[]): void {
     this.logMessage(
-      `Aborting missing test check as ${failed.length} failed - max re-run limit reached`
+      `Aborting missing test check as ${failed.length} failed - max re-run limit exceeded`
     );
   }
 
-  logTestWillRerun(rerun: ApexTestResult[]): void {
-    if (rerun.length > 0) {
-      this.logMessage(
-        `Failed tests matched patterns, running ${rerun.length} tests sequentially`
-      );
+  logTestWillRerun(tests: ApexTestResult[], matches: number): void {
+    if (tests.length > 0) {
+      let msg = `Running ${tests.length} failed tests sequentially`;
+
+      if (matches == tests.length) {
+        msg += ' (matched patterns)';
+      } else {
+        msg += ` (${matches} tests matched patterns)`;
+      }
+
+      this.logMessage(msg);
     }
   }
 
