@@ -9,7 +9,7 @@ import {
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 import { Logger } from '../log/Logger';
 
-export interface TestRetry {
+export interface TestRerun {
   name: string;
   before: ApexTestResult;
   after: ApexTestResult;
@@ -20,7 +20,7 @@ export interface TestRunSummary {
   testResults: ApexTestResult[];
   runResult: ApexTestRunResult;
   runIds: string[];
-  retries: TestRetry[];
+  reruns: TestRerun[];
   coverageResult?: CoverageReport;
 }
 

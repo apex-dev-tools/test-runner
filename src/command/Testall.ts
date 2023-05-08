@@ -17,7 +17,7 @@ import { TestRunnerOptions } from '../runner/TestOptions';
 import { TestRunner } from '../runner/TestRunner';
 import {
   OutputGenerator,
-  TestRetry,
+  TestRerun,
   TestRunSummary,
 } from '../results/OutputGenerator';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
@@ -145,7 +145,7 @@ export class Testall {
       this._logger,
       Array.from(results.values())
     );
-    const retries = await this.runSequentially(
+    const reruns = await this.syncRun(
       testResults.rerun,
       results,
       runResult,
@@ -158,7 +158,7 @@ export class Testall {
       testResults: Array.from(results.values()),
       runResult,
       runIds,
-      retries,
+      reruns,
       coverageResult: undefined,
     };
 
@@ -283,42 +283,42 @@ export class Testall {
     return activeRunResult;
   }
 
-  private async runSequentially(
-    testsToRetry: ApexTestResult[],
+  private async syncRun(
+    tests: ApexTestResult[],
     results: Map<string, ApexTestResult>,
     parentRunResult: ApexTestRunResult,
     runIds: string[]
-  ): Promise<TestRetry[]> {
+  ): Promise<TestRerun[]> {
     const testService = new TestService(this._connection);
-    this._logger.logTestWillRetry(testsToRetry);
+    this._logger.logTestWillRerun(tests);
 
-    const retries: TestRetry[] = [];
-    for (const test of testsToRetry) {
-      const retry = await this.retrySingleTest(testService, test);
+    const reruns: TestRerun[] = [];
+    for (const test of tests) {
+      const rerun = await this.runSingleTest(testService, test);
 
-      if (retry) {
-        this._logger.logTestRetry(test, retry);
-        runIds.push(retry.AsyncApexJobId);
+      if (rerun) {
+        this._logger.logTestRerun(test, rerun);
+        runIds.push(rerun.AsyncApexJobId);
 
         // replace original test in final results
-        const name = this.getTestName(retry);
-        results.set(name, retry);
-        retries.push({ name, before: test, after: retry });
+        const name = this.getTestName(rerun);
+        results.set(name, rerun);
+        reruns.push({ name, before: test, after: rerun });
       }
     }
 
-    const time = retries.reduce((a, c) => a + c.after.RunTime, 0);
-    const passed = retries.filter(r => r.after.Outcome === 'Pass').length;
+    const time = reruns.reduce((a, c) => a + c.after.RunTime, 0);
+    const passed = reruns.filter(r => r.after.Outcome === 'Pass').length;
 
     // totalTime can now exceed sum of run times in summary
-    // since it includes original + retry time
+    // since it includes original + rerun time
     parentRunResult.TestTime += time;
     parentRunResult.MethodsFailed -= passed;
 
-    return retries;
+    return reruns;
   }
 
-  private async retrySingleTest(
+  private async runSingleTest(
     testService: TestService,
     currentResult: ApexTestResult
   ): Promise<ApexTestResult | undefined> {

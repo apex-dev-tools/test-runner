@@ -4,11 +4,11 @@
 
 import { expect } from 'chai';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
-import { RetryReportGenerator } from '../../src/results/RetryReportGenerator';
+import { RerunReportGenerator } from '../../src/results/RerunReportGenerator';
 
 describe('messages', () => {
   it('should create json & xml output on failing report', () => {
-    const generator = new RetryReportGenerator();
+    const generator = new RerunReportGenerator();
 
     const logger = new CapturingLogger();
     generator.generate(logger, '', '/test-output', {
@@ -27,8 +27,8 @@ describe('messages', () => {
         MethodsEnqueued: 600,
         MethodsFailed: 100,
       },
-      runIds: ['job Id', 'retry job Id'],
-      retries: [
+      runIds: ['job Id', 'rerun job Id'],
+      reruns: [
         {
           name: 'Class.Method',
           before: {
@@ -68,7 +68,7 @@ describe('messages', () => {
     });
 
     expect(logger.files.length).to.be.equal(1);
-    expect(logger.files[0][0]).to.be.equal('/test-output-retries.json');
+    expect(logger.files[0][0]).to.be.equal('/test-output-reruns.json');
     expect(logger.files[0][1].length > 0).to.be.true;
   });
 });

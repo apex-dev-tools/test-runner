@@ -78,11 +78,11 @@ export abstract class BaseLogger implements Logger {
 
   logMaxErrorAbort(failed: ApexTestResult[]): void {
     this.logMessage(
-      `Aborting re-testing as ${failed.length} failed (excluding pattern matches) which is above the max limit`
+      `Aborting missing test check as ${failed.length} failed - max re-run limit reached`
     );
   }
 
-  logTestWillRetry(rerun: ApexTestResult[]): void {
+  logTestWillRerun(rerun: ApexTestResult[]): void {
     if (rerun.length > 0) {
       this.logMessage(
         `Failed tests matched patterns, running ${rerun.length} tests sequentially`
@@ -90,20 +90,20 @@ export abstract class BaseLogger implements Logger {
     }
   }
 
-  logTestRetry(result: ApexTestResult, otherResult: ApexTestResult): void {
+  logTestRerun(result: ApexTestResult, otherResult: ApexTestResult): void {
     const firstMsg = result.Message;
-    const retryMsg = otherResult.Message;
+    const rerunMsg = otherResult.Message;
     this.logMessage(
       `${result.ApexClass.Name}.${result.MethodName} re-run complete, outcome = ${otherResult.Outcome}`
     );
 
     // i.e its failed with a different message, show what happened
-    if (retryMsg && firstMsg) {
-      if (retryMsg !== firstMsg) {
+    if (rerunMsg && firstMsg) {
+      if (rerunMsg !== firstMsg) {
         this.logMessage(` [Before] ${firstMsg}`);
-        this.logMessage(` [After] ${retryMsg}`);
+        this.logMessage(` [After] ${rerunMsg}`);
       } else {
-        this.logMessage(` [Before and After] ${retryMsg}`);
+        this.logMessage(` [Before and After] ${rerunMsg}`);
       }
     }
   }

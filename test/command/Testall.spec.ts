@@ -359,7 +359,7 @@ describe('messages', () => {
     );
     expect(logger.entries[1]).to.match(
       logRegex(
-        'Aborting re-testing as 1 failed \\(excluding pattern matches\\) which is above the max limit'
+        'Aborting missing test check as 1 failed - max re-run limit reached'
       )
     );
   });
@@ -417,9 +417,9 @@ describe('messages', () => {
     );
 
     expect(result?.runIds.length).to.equal(2);
-    expect(result?.retries.length).to.equal(1);
-    expect(result?.retries[0].after.Outcome).to.equal('Pass');
-    expect(result?.retries[0].after.Message).to.equal(null);
+    expect(result?.reruns.length).to.equal(1);
+    expect(result?.reruns[0].after.Outcome).to.equal('Pass');
+    expect(result?.reruns[0].after.Message).to.equal(null);
     expect(logger.entries.length).to.equal(3);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
@@ -487,9 +487,9 @@ describe('messages', () => {
     );
 
     expect(result?.runIds.length).to.be.equal(2);
-    expect(result?.retries.length).to.equal(1);
-    expect(result?.retries[0].after.Outcome).to.equal('Fail');
-    expect(result?.retries[0].after.Message).to.equal('Other Error');
+    expect(result?.reruns.length).to.equal(1);
+    expect(result?.reruns[0].after.Outcome).to.equal('Fail');
+    expect(result?.reruns[0].after.Message).to.equal('Other Error');
     expect(logger.entries.length).to.be.equal(5);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
@@ -556,7 +556,7 @@ describe('messages', () => {
     );
 
     expect(result?.runIds.length).to.be.equal(1);
-    expect(result?.retries.length).to.equal(0);
+    expect(result?.reruns.length).to.equal(0);
     expect(logger.entries.length).to.be.equal(3);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
