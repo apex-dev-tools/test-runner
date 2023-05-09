@@ -53,7 +53,7 @@ describe('coverage reporter', () => {
         MethodsFailed: 100,
       },
       runIds: ['job Id'],
-      retries: [],
+      reruns: [],
       coverageResult: {
         table: '',
         data: [
@@ -124,7 +124,7 @@ describe('coverage reporter', () => {
         MethodsFailed: 100,
       },
       runIds: ['job Id'],
-      retries: [],
+      reruns: [],
       coverageResult: undefined,
     });
 
