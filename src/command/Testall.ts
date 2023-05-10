@@ -2,26 +2,26 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
+import { Connection } from '@apexdevtools/sfdx-auth-helper';
 import {
   TestItem,
   TestResult,
   TestRunIdResult,
   TestService,
 } from '@salesforce/apex-node';
-import { Connection } from '@apexdevtools/sfdx-auth-helper';
 import { ResultCollector } from '../collector/ResultCollector';
 import { TestMethodCollector } from '../collector/TestMethodCollector';
 import { Logger } from '../log/Logger';
 import { ApexTestResult } from '../model/ApexTestResult';
-import { TestRunnerOptions } from '../runner/TestOptions';
-import { TestRunner } from '../runner/TestRunner';
-import {
-  OutputGenerator,
-  TestRetry,
-  TestRunSummary,
-} from '../results/OutputGenerator';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 import { QueryOptions } from '../query/QueryHelper';
+import {
+  OutputGenerator,
+  TestRerun,
+  TestRunSummary,
+} from '../results/OutputGenerator';
+import { TestRunnerOptions } from '../runner/TestOptions';
+import { TestRunner } from '../runner/TestRunner';
 
 /**
  * Parallel unit test runner that can hide intermitant failures caused by UNABLE_TO_LOCK_ROW, deadlock errors and
@@ -39,14 +39,22 @@ import { QueryOptions } from '../query/QueryHelper';
  */
 
 export interface TestallOptions extends TestRunnerOptions, QueryOptions {
-  maxErrorsForReRun?: number; // Don't re-run if > failed tests (excluding locking/missed tests), default 10
+  maxErrorsForReRun?: number; // Don't re-run if > failed tests (excluding pattern matched tests), default 10
   outputDirBase?: string; // Base for junit and other output files, default 'test-result*'
   outputFileName?: string; //File name base
   disableCoverageReport?: boolean; // if enabled disables coverage collection
+  rerunOption?: RerunOption; // see RerunOption - default 'pattern'
+}
+
+export enum RerunOption {
+  Pattern = 'pattern', // only rerun from defined patterns (default)
+  Limit = 'limit', // rerun patterns + fails when <= maxErrorsForReRun limit
+  All = 'all', // always rerun all
 }
 
 const DEFAULT_MAX_ERRORS_FOR_RERUN = 10;
 const DEFAULT_OUTPUT_FILE_BASE = 'test-result';
+const DEFAULT_RERUN_OPTION = RerunOption.Pattern;
 
 export function getMaxErrorsForReRun(options: TestallOptions): number {
   if (options.maxErrorsForReRun !== undefined && options.maxErrorsForReRun >= 0)
@@ -63,6 +71,12 @@ export function getOutputFileBase(
       fileName: options.outputFileName,
     };
   else return { outputDir: '', fileName: DEFAULT_OUTPUT_FILE_BASE };
+}
+
+export function getReRunOption(options: TestallOptions): RerunOption {
+  const opt = options.rerunOption;
+  if (opt && Object.values(RerunOption).find(v => v === opt)) return opt;
+  return DEFAULT_RERUN_OPTION;
 }
 
 export class Testall {
@@ -140,17 +154,8 @@ export class Testall {
       return;
     }
 
-    // Do sequential re-run of matched patterns to try and get more passes
-    const testResults = ResultCollector.groupRecords(
-      this._logger,
-      Array.from(results.values())
-    );
-    const retries = await this.runSequentially(
-      testResults.rerun,
-      results,
-      runResult,
-      runIds
-    );
+    // Do sequential re-runs to try and get more passes
+    const reruns = await this.syncRun(results, runResult, runIds);
 
     // Reporting
     const summary: TestRunSummary = {
@@ -158,7 +163,7 @@ export class Testall {
       testResults: Array.from(results.values()),
       runResult,
       runIds,
-      retries,
+      reruns,
       coverageResult: undefined,
     };
 
@@ -283,42 +288,72 @@ export class Testall {
     return activeRunResult;
   }
 
-  private async runSequentially(
-    testsToRetry: ApexTestResult[],
+  private async syncRun(
     results: Map<string, ApexTestResult>,
     parentRunResult: ApexTestRunResult,
     runIds: string[]
-  ): Promise<TestRetry[]> {
+  ): Promise<TestRerun[]> {
     const testService = new TestService(this._connection);
-    this._logger.logTestWillRetry(testsToRetry);
+    const reruns: TestRerun[] = [];
+    const tests = this.getTestsToRerun(Array.from(results.values()));
 
-    const retries: TestRetry[] = [];
-    for (const test of testsToRetry) {
-      const retry = await this.retrySingleTest(testService, test);
+    for (const test of tests) {
+      const rerun = await this.runSingleTest(testService, test);
 
-      if (retry) {
-        this._logger.logTestRetry(test, retry);
-        runIds.push(retry.AsyncApexJobId);
+      if (rerun) {
+        this._logger.logTestRerun(test, rerun);
+        runIds.push(rerun.AsyncApexJobId);
 
         // replace original test in final results
-        const name = this.getTestName(retry);
-        results.set(name, retry);
-        retries.push({ name, before: test, after: retry });
+        const name = this.getTestName(rerun);
+        results.set(name, rerun);
+        reruns.push({ name, before: test, after: rerun });
       }
     }
 
-    const time = retries.reduce((a, c) => a + c.after.RunTime, 0);
-    const passed = retries.filter(r => r.after.Outcome === 'Pass').length;
+    const time = reruns.reduce((a, c) => a + c.after.RunTime, 0);
+    const passed = reruns.filter(r => r.after.Outcome === 'Pass').length;
 
     // totalTime can now exceed sum of run times in summary
-    // since it includes original + retry time
+    // since it includes original + rerun time
     parentRunResult.TestTime += time;
     parentRunResult.MethodsFailed -= passed;
 
-    return retries;
+    return reruns;
   }
 
-  private async retrySingleTest(
+  private getTestsToRerun(results: ApexTestResult[]): ApexTestResult[] {
+    const { rerun, failed } = ResultCollector.groupRecords(
+      this._logger,
+      results
+    );
+    const runOption = getReRunOption(this._options);
+    let tests = rerun;
+
+    switch (runOption) {
+      case RerunOption.Pattern:
+        break;
+      case RerunOption.Limit:
+        if (failed.length <= getMaxErrorsForReRun(this._options)) {
+          // max count is rerun + 10 (by default)
+          tests = rerun.concat(failed);
+        } else {
+          this._logger.logMessage(
+            'Max re-run limit exceeded, running pattern matched tests only'
+          );
+        }
+        break;
+      case RerunOption.All:
+        tests = rerun.concat(failed);
+        break;
+    }
+
+    this._logger.logTestWillRerun(tests, rerun.length);
+
+    return tests;
+  }
+
+  private async runSingleTest(
     testService: TestService,
     currentResult: ApexTestResult
   ): Promise<ApexTestResult | undefined> {

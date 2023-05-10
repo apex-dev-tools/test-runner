@@ -9,7 +9,7 @@ import {
 import { StreamingClient } from '@salesforce/apex-node/lib/src/streaming';
 import { createSandbox, SinonSandbox, SinonStub } from 'sinon';
 import { expect } from 'chai';
-import { Testall } from '../../src/command/Testall';
+import { RerunOption, Testall } from '../../src/command/Testall';
 import { TestResult, TestService } from '@salesforce/apex-node';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import {
@@ -257,7 +257,7 @@ describe('messages', () => {
         MethodsEnqueued: 900,
         MethodsFailed: 0,
       },
-      retries: [],
+      reruns: [],
       runIds: ['707xx0000AGQ3jbQQD'],
       coverageResult: undefined,
     });
@@ -353,18 +353,21 @@ describe('messages', () => {
     );
 
     expect(result?.runIds.length).to.be.equal(1);
-    expect(logger.entries.length).to.be.equal(2);
+    expect(logger.entries.length).to.be.equal(3);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 0')
     );
     expect(logger.entries[1]).to.match(
       logRegex(
-        'Aborting re-testing as 1 failed \\(excluding pattern matches\\) which is above the max limit'
+        'Aborting missing test check as 1 failed - max re-run limit exceeded'
       )
+    );
+    expect(logger.entries[2]).to.match(
+      logRegex('No matching test failures to re-run')
     );
   });
 
-  it('should complete after passed sequential re-run of locked tests', async () => {
+  it('should complete after passed sequential re-run of tests', async () => {
     const logger = new CapturingLogger();
     const runnerResult: ApexTestRunResult = {
       AsyncApexJobId: testRunId,
@@ -417,22 +420,22 @@ describe('messages', () => {
     );
 
     expect(result?.runIds.length).to.equal(2);
-    expect(result?.retries.length).to.equal(1);
-    expect(result?.retries[0].after.Outcome).to.equal('Pass');
-    expect(result?.retries[0].after.Message).to.equal(null);
+    expect(result?.reruns.length).to.equal(1);
+    expect(result?.reruns[0].after.Outcome).to.equal('Pass');
+    expect(result?.reruns[0].after.Message).to.equal(null);
     expect(logger.entries.length).to.equal(3);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
     expect(logger.entries[1]).to.match(
-      logRegex('Failed tests matched patterns, running 1 tests sequentially')
+      logRegex('Running 1 failed tests sequentially \\(matched patterns\\)')
     );
     expect(logger.entries[2]).to.match(
       logRegex('FooClass.testMethod re-run complete, outcome = Pass')
     );
   });
 
-  it('should complete after failed sequential re-run of locked tests', async () => {
+  it('should complete after failed sequential re-run of tests', async () => {
     const logger = new CapturingLogger();
     const runnerResult: ApexTestRunResult = {
       AsyncApexJobId: testRunId,
@@ -487,15 +490,15 @@ describe('messages', () => {
     );
 
     expect(result?.runIds.length).to.be.equal(2);
-    expect(result?.retries.length).to.equal(1);
-    expect(result?.retries[0].after.Outcome).to.equal('Fail');
-    expect(result?.retries[0].after.Message).to.equal('Other Error');
+    expect(result?.reruns.length).to.equal(1);
+    expect(result?.reruns[0].after.Outcome).to.equal('Fail');
+    expect(result?.reruns[0].after.Message).to.equal('Other Error');
     expect(logger.entries.length).to.be.equal(5);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
     expect(logger.entries[1]).to.match(
-      logRegex('Failed tests matched patterns, running 1 tests sequentially')
+      logRegex('Running 1 failed tests sequentially \\(matched patterns\\)')
     );
     expect(logger.entries[2]).to.match(
       logRegex('FooClass.testMethod re-run complete, outcome = Fail')
@@ -556,16 +559,275 @@ describe('messages', () => {
     );
 
     expect(result?.runIds.length).to.be.equal(1);
-    expect(result?.retries.length).to.equal(0);
+    expect(result?.reruns.length).to.equal(0);
     expect(logger.entries.length).to.be.equal(3);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
     expect(logger.entries[1]).to.match(
-      logRegex('Failed tests matched patterns, running 1 tests sequentially')
+      logRegex('Running 1 failed tests sequentially \\(matched patterns\\)')
     );
     expect(logger.entries[2]).to.match(
       logRegex('FooClass.testMethod re-run failed, cause: Request Error')
+    );
+  });
+
+  it('should complete after limited sequential re-run of tests', async () => {
+    const logger = new CapturingLogger();
+    const runnerResult: ApexTestRunResult = {
+      AsyncApexJobId: testRunId,
+      StartTime: '',
+      EndTime: '',
+      Status: 'Failed',
+      TestTime: 1,
+      UserId: 'user',
+      ClassesCompleted: 100,
+      ClassesEnqueued: 10,
+      MethodsCompleted: 1000,
+      MethodsEnqueued: 900,
+      MethodsFailed: 0,
+    };
+    const runner = new MockTestRunner(runnerResult);
+    const testMethods = new MockTestMethodCollector(
+      new Map<string, string>([['An Id', 'FooClass']]),
+      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
+    );
+
+    const mockTestRunResult: ApexTestResult[] = [
+      {
+        Id: 'The id',
+        QueueItemId: 'Queue id',
+        AsyncApexJobId: testRunId,
+        Outcome: 'Fail',
+        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
+        MethodName: 'testMethod',
+        Message: 'Not matching Error',
+        StackTrace: null,
+        RunTime: 1,
+        TestTimestamp: '',
+      },
+    ];
+    queryStub.resolves(mockTestRunResult);
+
+    const mockTestResult = {
+      tests: [{ asyncApexJobId: 'retryId', outcome: 'Pass', message: null }],
+    } as TestResult;
+    testingServiceSyncStub.resolves(mockTestResult);
+
+    const result = await Testall.run(
+      logger,
+      mockConnection,
+      '',
+      testMethods,
+      runner,
+      [new MockOutputGenerator()],
+      {
+        rerunOption: RerunOption.Limit,
+        maxErrorsForReRun: 1,
+      }
+    );
+
+    expect(result?.runIds.length).to.equal(2);
+    expect(result?.reruns.length).to.equal(1);
+    expect(result?.reruns[0].after.Outcome).to.equal('Pass');
+    expect(result?.reruns[0].after.Message).to.equal(null);
+    expect(logger.entries.length).to.equal(3);
+    expect(logger.entries[0]).to.match(
+      logRegex('Starting test run, with max failing tests for re-run 1')
+    );
+    expect(logger.entries[1]).to.match(
+      logRegex(
+        'Running 1 failed tests sequentially \\(0 tests matched patterns\\)'
+      )
+    );
+    expect(logger.entries[2]).to.match(
+      logRegex('FooClass.testMethod re-run complete, outcome = Pass')
+    );
+  });
+
+  it('should complete after exceeding limit on sequential re-run of tests', async () => {
+    const logger = new CapturingLogger();
+    const runnerResult: ApexTestRunResult = {
+      AsyncApexJobId: testRunId,
+      StartTime: '',
+      EndTime: '',
+      Status: 'Failed',
+      TestTime: 1,
+      UserId: 'user',
+      ClassesCompleted: 100,
+      ClassesEnqueued: 10,
+      MethodsCompleted: 1000,
+      MethodsEnqueued: 900,
+      MethodsFailed: 0,
+    };
+    const runner = new MockTestRunner(runnerResult);
+    const testMethods = new MockTestMethodCollector(
+      new Map<string, string>([['An Id', 'FooClass']]),
+      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
+    );
+
+    const mockTestRunResult: ApexTestResult[] = [
+      {
+        Id: 'The id',
+        QueueItemId: 'Queue id',
+        AsyncApexJobId: testRunId,
+        Outcome: 'Fail',
+        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
+        MethodName: 'testMethod',
+        Message: 'Not matching Error',
+        StackTrace: null,
+        RunTime: 1,
+        TestTimestamp: '',
+      },
+      {
+        Id: 'The id',
+        QueueItemId: 'Queue id',
+        AsyncApexJobId: testRunId,
+        Outcome: 'Fail',
+        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
+        MethodName: 'testMethod2',
+        Message: 'Not matching Error 2',
+        StackTrace: null,
+        RunTime: 1,
+        TestTimestamp: '',
+      },
+    ];
+    queryStub.resolves(mockTestRunResult);
+
+    const mockTestResult = {
+      tests: [{ asyncApexJobId: 'retryId', outcome: 'Pass', message: null }],
+    } as TestResult;
+    testingServiceSyncStub.resolves(mockTestResult);
+
+    const result = await Testall.run(
+      logger,
+      mockConnection,
+      '',
+      testMethods,
+      runner,
+      [new MockOutputGenerator()],
+      {
+        rerunOption: RerunOption.Limit,
+        maxErrorsForReRun: 1,
+      }
+    );
+
+    expect(result?.runIds.length).to.equal(1);
+    expect(result?.reruns.length).to.equal(0);
+    expect(logger.entries.length).to.equal(4);
+    expect(logger.entries[0]).to.match(
+      logRegex('Starting test run, with max failing tests for re-run 1')
+    );
+    expect(logger.entries[1]).to.match(
+      logRegex(
+        'Aborting missing test check as 2 failed - max re-run limit exceeded'
+      )
+    );
+    expect(logger.entries[2]).to.match(
+      logRegex('Max re-run limit exceeded, running pattern matched tests only')
+    );
+    expect(logger.entries[3]).to.match(
+      logRegex('No matching test failures to re-run')
+    );
+  });
+
+  it('should complete after sequential re-run of all failed tests', async () => {
+    const logger = new CapturingLogger();
+    const runnerResult: ApexTestRunResult = {
+      AsyncApexJobId: testRunId,
+      StartTime: '',
+      EndTime: '',
+      Status: 'Failed',
+      TestTime: 1,
+      UserId: 'user',
+      ClassesCompleted: 100,
+      ClassesEnqueued: 10,
+      MethodsCompleted: 1000,
+      MethodsEnqueued: 900,
+      MethodsFailed: 0,
+    };
+    const runner = new MockTestRunner(runnerResult);
+    const testMethods = new MockTestMethodCollector(
+      new Map<string, string>([['An Id', 'FooClass']]),
+      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
+    );
+
+    const mockTestRunResult: ApexTestResult[] = [
+      {
+        Id: 'The id',
+        QueueItemId: 'Queue id',
+        AsyncApexJobId: testRunId,
+        Outcome: 'Fail',
+        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
+        MethodName: 'testMethod',
+        Message: 'UNABLE_TO_LOCK_ROW',
+        StackTrace: null,
+        RunTime: 1,
+        TestTimestamp: '',
+      },
+      {
+        Id: 'The id',
+        QueueItemId: 'Queue id',
+        AsyncApexJobId: testRunId,
+        Outcome: 'Fail',
+        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
+        MethodName: 'testMethod2',
+        Message: 'Not matching Error',
+        StackTrace: null,
+        RunTime: 1,
+        TestTimestamp: '',
+      },
+      {
+        Id: 'The id',
+        QueueItemId: 'Queue id',
+        AsyncApexJobId: testRunId,
+        Outcome: 'Fail',
+        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
+        MethodName: 'testMethod3',
+        Message: 'Not matching Error 2',
+        StackTrace: null,
+        RunTime: 1,
+        TestTimestamp: '',
+      },
+    ];
+    queryStub.resolves(mockTestRunResult);
+
+    const mockTestResult = {
+      tests: [{ asyncApexJobId: 'retryId', outcome: 'Pass', message: null }],
+    } as TestResult;
+    testingServiceSyncStub.resolves(mockTestResult);
+
+    const result = await Testall.run(
+      logger,
+      mockConnection,
+      '',
+      testMethods,
+      runner,
+      [new MockOutputGenerator()],
+      {
+        rerunOption: RerunOption.All,
+      }
+    );
+
+    expect(result?.runIds.length).to.equal(4);
+    expect(result?.reruns.length).to.equal(3);
+    expect(logger.entries.length).to.equal(5);
+    expect(logger.entries[0]).to.match(
+      logRegex('Starting test run, with max failing tests for re-run 10')
+    );
+    expect(logger.entries[1]).to.match(
+      logRegex(
+        'Running 3 failed tests sequentially \\(1 tests matched patterns\\)'
+      )
+    );
+    expect(logger.entries[2]).to.match(
+      logRegex('FooClass.testMethod re-run complete, outcome = Pass')
+    );
+    expect(logger.entries[3]).to.match(
+      logRegex('FooClass.testMethod2 re-run complete, outcome = Pass')
+    );
+    expect(logger.entries[4]).to.match(
+      logRegex('FooClass.testMethod3 re-run complete, outcome = Pass')
     );
   });
 
@@ -631,12 +893,15 @@ describe('messages', () => {
       {}
     );
     expect(result?.runIds.length).to.be.equal(2);
-    expect(logger.entries.length).to.be.equal(2);
+    expect(logger.entries.length).to.be.equal(3);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
     expect(logger.entries[1]).to.match(
       logRegex('Found 1 methods in 1 classes were not run, trying again...')
+    );
+    expect(logger.entries[2]).to.match(
+      logRegex('No matching test failures to re-run')
     );
   });
 });

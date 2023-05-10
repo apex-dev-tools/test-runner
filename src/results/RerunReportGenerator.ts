@@ -6,13 +6,13 @@ import { SfDate } from 'jsforce';
 import path from 'path';
 import { Logger } from '../log/Logger';
 import { ApexClass, ApexTestResult } from '../model/ApexTestResult';
-import { OutputGenerator, TestRetry, TestRunSummary } from './OutputGenerator';
+import { OutputGenerator, TestRerun, TestRunSummary } from './OutputGenerator';
 
 type RequiredNotNull<T> = {
   [P in keyof T]: NonNullable<T[P]>;
 };
 
-interface ReportTestRetry {
+interface ReportTestRerun {
   name: string;
   before: ReportTestResult;
   after: ReportTestResult;
@@ -23,7 +23,7 @@ type ReportTestResult = Omit<ApexTestResult, 'ApexClass' | 'TestTimestamp'> & {
   StartTime: number;
 };
 
-export class RetryReportGenerator implements OutputGenerator {
+export class RerunReportGenerator implements OutputGenerator {
   public generate(
     logger: Logger,
     outputDirBase: string,
@@ -31,13 +31,13 @@ export class RetryReportGenerator implements OutputGenerator {
     summary: TestRunSummary
   ): void {
     logger.logOutputFile(
-      path.join(outputDirBase, fileName + '-retries.json'),
-      this.generateJson(summary.retries)
+      path.join(outputDirBase, fileName + '-reruns.json'),
+      this.generateJson(summary.reruns)
     );
   }
 
-  private generateJson(retries: TestRetry[]): string {
-    const report: ReportTestRetry[] = retries.map(r => ({
+  private generateJson(retries: TestRerun[]): string {
+    const report: ReportTestRerun[] = retries.map(r => ({
       name: r.name,
       before: this.convertTestResult(r.before),
       after: this.convertTestResult(r.after),
