@@ -277,7 +277,7 @@ describe('messages', () => {
       // Ignore
     }
 
-    expect(logger.entries.length).to.be.equal(7);
+    expect(logger.entries.length).to.be.equal(8);
     expect(logger.entries[0]).to.match(
       logRegex(`Removing & recreating output directory '${tmpDir}'`)
     );
@@ -292,6 +292,9 @@ describe('messages', () => {
     );
     expect(logger.entries[6]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
+    );
+    expect(logger.entries[7]).to.match(
+      logRegex('No matching test failures to re-run')
     );
 
     const logFile = path.join(tmpDir, 'LogId.log');

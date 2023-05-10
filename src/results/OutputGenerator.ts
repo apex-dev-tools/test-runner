@@ -9,13 +9,21 @@ import {
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 import { Logger } from '../log/Logger';
 
+export interface TestRerun {
+  name: string;
+  before: ApexTestResult;
+  after: ApexTestResult;
+}
+
 export interface TestRunSummary {
   startTime: Date;
   testResults: ApexTestResult[];
   runResult: ApexTestRunResult;
+  runIds: string[];
+  reruns: TestRerun[];
   coverageResult?: CoverageReport;
-  hasReRuns?: boolean;
 }
+
 export interface OutputGenerator {
   generate(
     logger: Logger,

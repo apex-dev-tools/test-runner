@@ -3,7 +3,7 @@
  */
 
 import path from 'path';
-import { getMaxErrorsForReRun, TestallOptions } from '../command/Testall';
+import { TestallOptions, getMaxErrorsForReRun } from '../command/Testall';
 import { ApexTestResult } from '../model/ApexTestResult';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 import { groupByOutcome } from '../results/OutputGenerator';
@@ -78,30 +78,40 @@ export abstract class BaseLogger implements Logger {
 
   logMaxErrorAbort(failed: ApexTestResult[]): void {
     this.logMessage(
-      `Aborting re-testing as ${failed.length} failed (excluding pattern matches) which is above the max limit`
+      `Aborting missing test check as ${failed.length} failed - max re-run limit exceeded`
     );
   }
 
-  logTestWillRetry(rerun: ApexTestResult[]): void {
-    if (rerun.length > 0) {
-      this.logMessage(
-        `Failed tests matched patterns, running ${rerun.length} tests sequentially`
-      );
+  logTestWillRerun(tests: ApexTestResult[], matches: number): void {
+    let msg = 'No matching test failures to re-run';
+
+    if (tests.length > 0) {
+      msg = `Running ${tests.length} failed tests sequentially`;
+
+      if (matches == tests.length) {
+        msg += ' (matched patterns)';
+      } else {
+        msg += ` (${matches} tests matched patterns)`;
+      }
     }
+
+    this.logMessage(msg);
   }
 
-  logTestRetry(result: ApexTestResult, otherMessage: string | null): void {
+  logTestRerun(result: ApexTestResult, otherResult: ApexTestResult): void {
+    const firstMsg = result.Message;
+    const rerunMsg = otherResult.Message;
     this.logMessage(
-      `${result.ApexClass.Name}.${result.MethodName} re-run complete, outcome = ${result.Outcome}`
+      `${result.ApexClass.Name}.${result.MethodName} re-run complete, outcome = ${otherResult.Outcome}`
     );
 
     // i.e its failed with a different message, show what happened
-    if (otherMessage && result.Message) {
-      if (otherMessage !== result.Message) {
-        this.logMessage(` [Before] ${result.Message}`);
-        this.logMessage(` [After] ${otherMessage}`);
+    if (rerunMsg && firstMsg) {
+      if (rerunMsg !== firstMsg) {
+        this.logMessage(` [Before] ${firstMsg}`);
+        this.logMessage(` [After] ${rerunMsg}`);
       } else {
-        this.logMessage(` [Before and After] ${otherMessage}`);
+        this.logMessage(` [Before and After] ${rerunMsg}`);
       }
     }
   }
