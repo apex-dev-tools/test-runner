@@ -1,9 +1,19 @@
 # test-runner - Changelog
 
-## 1.7.1 - 2023-04-26
+## 1.8.0 - 2023-05-11
 
-* Return `TestRunSummary` for `TestAll`
-* Add `hasReRun` flag to result summary
+* Return `TestRunSummary` for `TestAll`.
+* Add properties to result summary:
+  * `reruns` is a list of before/after test results.
+  * `runIds` is all the job Ids involved in a run.
+* Add new `TestallOptions`:
+  * `disableCoverageReport` to disable print out of coverage when enabled for org.
+  * `rerunOption` to select different rerun behaviour, possible values:
+    * `'pattern'` - default, rerun tests based on pattern file entries.
+    * `'limit'` - will rerun all failed tests only when under `maxErrorsForReRun` limit.
+    * `'all'` - rerun all failed tests.
+* Add report generator to detail reruns to a file.
+* Catch and skip reruns on error.
 
 ## 1.7.0 - 2023-04-11
 
