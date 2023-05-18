@@ -3,7 +3,7 @@
  */
 
 import { TestallOptions } from '../command/Testall';
-import { ApexTestResult } from '../model/ApexTestResult';
+import { ApexTestResult, BaseTestResult } from '../model/ApexTestResult';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 
 export interface Logger {
@@ -24,7 +24,11 @@ export interface Logger {
   logTestallRerun(missing: Map<string, Set<string>>): void;
   logMaxErrorAbort(failed: ApexTestResult[]): void;
   logTestWillRerun(tests: ApexTestResult[], matches: number): void;
-  logTestRerun(result: ApexTestResult, otherResult: ApexTestResult): void;
+  logTestRerun(
+    name: string,
+    result: BaseTestResult,
+    otherResult: BaseTestResult
+  ): void;
 
   // Test runner
   logRunStarted(testRunId: string): void;
