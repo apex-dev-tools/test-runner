@@ -3,20 +3,19 @@
  */
 
 import { Connection } from '@apexdevtools/sfdx-auth-helper';
+import { TableUserConfig, table } from 'table';
 import { Logger } from '../log/Logger';
 import {
   ApexCodeCoverage,
   ApexCodeCoverageAggregate,
   ApexCodeCoverageAggregateFields,
   ApexCodeCoverageFields,
-  ApexTestResult,
-  ApexTestResultFields,
   CoverageReport,
-} from '../model/ApexTestResult';
+} from '../model/ApexCodeCoverage';
+import { ApexTestResult, ApexTestResultFields } from '../model/ApexTestResult';
 import { QueryHelper, QueryOptions } from '../query/QueryHelper';
-import { TestResultMatcher } from './TestResultMatcher';
 import { TestError, TestErrorKind } from '../runner/TestError';
-import { table, TableUserConfig } from 'table';
+import { TestResultMatcher } from './TestResultMatcher';
 
 const config: TableUserConfig = {
   border: {
