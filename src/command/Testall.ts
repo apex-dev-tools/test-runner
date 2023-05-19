@@ -305,8 +305,7 @@ export class Testall {
         this._logger.logTestRerun(fullName, test, syncTest);
 
         // replace original test in final results
-        const rerun = this.mergeSyncResult(test, syncTest);
-        results.set(fullName, rerun);
+        results.set(fullName, this.mergeSyncResult(test, syncTest));
 
         reruns.push({ fullName, before: test, after: syncTest });
       }
