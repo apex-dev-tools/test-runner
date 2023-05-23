@@ -4,7 +4,7 @@
 
 import path from 'path';
 import { TestallOptions, getMaxErrorsForReRun } from '../command/Testall';
-import { ApexTestResult } from '../model/ApexTestResult';
+import { ApexTestResult, BaseTestResult } from '../model/ApexTestResult';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 import { groupByOutcome } from '../results/OutputGenerator';
 import { MaybeError } from '../runner/TestError';
@@ -98,11 +98,15 @@ export abstract class BaseLogger implements Logger {
     this.logMessage(msg);
   }
 
-  logTestRerun(result: ApexTestResult, otherResult: ApexTestResult): void {
+  logTestRerun(
+    name: string,
+    result: BaseTestResult,
+    otherResult: BaseTestResult
+  ): void {
     const firstMsg = result.Message;
     const rerunMsg = otherResult.Message;
     this.logMessage(
-      `${result.ApexClass.Name}.${result.MethodName} re-run complete, outcome = ${otherResult.Outcome}`
+      `${name} re-run complete, outcome = ${otherResult.Outcome}`
     );
 
     // i.e its failed with a different message, show what happened

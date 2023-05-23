@@ -5,23 +5,27 @@
 import { SfDate } from 'jsforce';
 import path from 'path';
 import { Logger } from '../log/Logger';
-import { ApexClass, ApexTestResult } from '../model/ApexTestResult';
+import { BaseTestResult, Outcome } from '../model/ApexTestResult';
 import { OutputGenerator, TestRerun, TestRunSummary } from './OutputGenerator';
 
-type RequiredNotNull<T> = {
-  [P in keyof T]: NonNullable<T[P]>;
-};
-
-interface ReportTestRerun {
-  name: string;
-  before: ReportTestResult;
-  after: ReportTestResult;
+interface ReportTestResult {
+  outcome: Outcome;
+  message: string | null;
+  stackTrace: string | null;
+  runTime: number;
+  startTime: number;
 }
 
-type ReportTestResult = Omit<ApexTestResult, 'ApexClass' | 'TestTimestamp'> & {
-  ApexClass: RequiredNotNull<ApexClass>;
-  StartTime: number;
-};
+interface RerunReport {
+  fullName: string;
+  apexClass: {
+    id: string;
+    name: string;
+    namespacePrefix: string;
+  };
+  methodName: string;
+  results: ReportTestResult[];
+}
 
 export class RerunReportGenerator implements OutputGenerator {
   public generate(
@@ -31,31 +35,37 @@ export class RerunReportGenerator implements OutputGenerator {
     summary: TestRunSummary
   ): void {
     logger.logOutputFile(
-      path.join(outputDirBase, fileName + '-reruns.json'),
+      path.join(outputDirBase, fileName + '-reruns'),
       this.generateJson(summary.reruns)
     );
   }
 
-  private generateJson(retries: TestRerun[]): string {
-    const report: ReportTestRerun[] = retries.map(r => ({
-      name: r.name,
-      before: this.convertTestResult(r.before),
-      after: this.convertTestResult(r.after),
-    }));
+  private generateJson(reruns: TestRerun[]): string {
+    const report: RerunReport[] = reruns.map(r => {
+      const cls = r.before.ApexClass;
+
+      return {
+        fullName: r.fullName,
+        apexClass: {
+          id: cls.Id,
+          name: cls.Name,
+          namespacePrefix: cls.NamespacePrefix ? cls.NamespacePrefix : '',
+        },
+        methodName: r.before.MethodName,
+        results: [this.convertResult(r.before), this.convertResult(r.after)],
+      };
+    });
 
     return JSON.stringify(report, undefined, 2);
   }
 
-  private convertTestResult(r: ApexTestResult): ReportTestResult {
-    const { ApexClass: ac, TestTimestamp: ts, ...copy } = r;
+  private convertResult(r: BaseTestResult): ReportTestResult {
     return {
-      ...copy,
-      ApexClass: {
-        Id: ac.Id,
-        Name: ac.Name,
-        NamespacePrefix: ac.NamespacePrefix ? ac.NamespacePrefix : '',
-      },
-      StartTime: SfDate.parseDate(ts).getTime(),
+      outcome: r.Outcome,
+      message: r.Message,
+      stackTrace: r.StackTrace,
+      runTime: r.RunTime,
+      startTime: SfDate.parseDate(r.TestTimestamp).getTime(),
     };
   }
 }

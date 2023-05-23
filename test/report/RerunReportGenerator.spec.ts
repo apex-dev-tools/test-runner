@@ -30,7 +30,7 @@ describe('messages', () => {
       runIds: ['job Id', 'rerun job Id'],
       reruns: [
         {
-          name: 'Class.Method',
+          fullName: 'ns__Class.Method',
           before: {
             Id: 'An id',
             QueueItemId: 'queue item id',
@@ -48,9 +48,6 @@ describe('messages', () => {
             TestTimestamp: '2022-09-07T07:38:56.000+0000',
           },
           after: {
-            Id: 'An id',
-            QueueItemId: 'queue item id',
-            AsyncApexJobId: 'job id',
             Outcome: 'Pass',
             ApexClass: {
               Id: 'Class Id',
@@ -68,7 +65,7 @@ describe('messages', () => {
     });
 
     expect(logger.files.length).to.be.equal(1);
-    expect(logger.files[0][0]).to.be.equal('/test-output-reruns.json');
+    expect(logger.files[0][0]).to.be.equal('/test-output-reruns');
     expect(logger.files[0][1].length > 0).to.be.true;
   });
 });

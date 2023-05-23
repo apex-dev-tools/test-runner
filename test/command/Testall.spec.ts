@@ -419,7 +419,6 @@ describe('messages', () => {
       {}
     );
 
-    expect(result?.runIds.length).to.equal(2);
     expect(result?.reruns.length).to.equal(1);
     expect(result?.reruns[0].after.Outcome).to.equal('Pass');
     expect(result?.reruns[0].after.Message).to.equal(null);
@@ -489,7 +488,6 @@ describe('messages', () => {
       {}
     );
 
-    expect(result?.runIds.length).to.be.equal(2);
     expect(result?.reruns.length).to.equal(1);
     expect(result?.reruns[0].after.Outcome).to.equal('Fail');
     expect(result?.reruns[0].after.Message).to.equal('Other Error');
@@ -558,7 +556,6 @@ describe('messages', () => {
       {}
     );
 
-    expect(result?.runIds.length).to.be.equal(1);
     expect(result?.reruns.length).to.equal(0);
     expect(logger.entries.length).to.be.equal(3);
     expect(logger.entries[0]).to.match(
@@ -627,7 +624,6 @@ describe('messages', () => {
       }
     );
 
-    expect(result?.runIds.length).to.equal(2);
     expect(result?.reruns.length).to.equal(1);
     expect(result?.reruns[0].after.Outcome).to.equal('Pass');
     expect(result?.reruns[0].after.Message).to.equal(null);
@@ -712,7 +708,6 @@ describe('messages', () => {
       }
     );
 
-    expect(result?.runIds.length).to.equal(1);
     expect(result?.reruns.length).to.equal(0);
     expect(logger.entries.length).to.equal(4);
     expect(logger.entries[0]).to.match(
@@ -809,7 +804,6 @@ describe('messages', () => {
       }
     );
 
-    expect(result?.runIds.length).to.equal(4);
     expect(result?.reruns.length).to.equal(3);
     expect(logger.entries.length).to.equal(5);
     expect(logger.entries[0]).to.match(

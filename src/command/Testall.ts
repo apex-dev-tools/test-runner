@@ -2,6 +2,7 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
+import { SfDate } from 'jsforce';
 import { Connection } from '@apexdevtools/sfdx-auth-helper';
 import {
   TestItem,
@@ -12,7 +13,7 @@ import {
 import { ResultCollector } from '../collector/ResultCollector';
 import { TestMethodCollector } from '../collector/TestMethodCollector';
 import { Logger } from '../log/Logger';
-import { ApexTestResult } from '../model/ApexTestResult';
+import { ApexTestResult, BaseTestResult } from '../model/ApexTestResult';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 import { QueryOptions } from '../query/QueryHelper';
 import {
@@ -155,7 +156,7 @@ export class Testall {
     }
 
     // Do sequential re-runs to try and get more passes
-    const reruns = await this.syncRun(results, runResult, runIds);
+    const reruns = await this.syncRun(results, runResult);
 
     // Reporting
     const summary: TestRunSummary = {
@@ -290,24 +291,23 @@ export class Testall {
 
   private async syncRun(
     results: Map<string, ApexTestResult>,
-    parentRunResult: ApexTestRunResult,
-    runIds: string[]
+    parentRunResult: ApexTestRunResult
   ): Promise<TestRerun[]> {
     const testService = new TestService(this._connection);
     const reruns: TestRerun[] = [];
     const tests = this.getTestsToRerun(Array.from(results.values()));
 
     for (const test of tests) {
-      const rerun = await this.runSingleTest(testService, test);
+      const syncTest = await this.runSingleTest(testService, test);
 
-      if (rerun) {
-        this._logger.logTestRerun(test, rerun);
-        runIds.push(rerun.AsyncApexJobId);
+      if (syncTest) {
+        const fullName = this.getTestName(test);
+        this._logger.logTestRerun(fullName, test, syncTest);
 
         // replace original test in final results
-        const name = this.getTestName(rerun);
-        results.set(name, rerun);
-        reruns.push({ name, before: test, after: rerun });
+        results.set(fullName, this.mergeSyncResult(test, syncTest));
+
+        reruns.push({ fullName, before: test, after: syncTest });
       }
     }
 
@@ -356,19 +356,20 @@ export class Testall {
   private async runSingleTest(
     testService: TestService,
     currentResult: ApexTestResult
-  ): Promise<ApexTestResult | undefined> {
+  ): Promise<BaseTestResult | undefined> {
     const item: TestItem = {
       classId: currentResult.ApexClass.Id,
       testMethods: [currentResult.MethodName],
     };
 
     try {
+      const timestamp = SfDate.toDateTimeLiteral(new Date()).toString();
       const result = await testService.runTestSynchronous({
         tests: [item],
         skipCodeCoverage: !(this._options.codeCoverage == true),
       });
 
-      return this.convertSyncResult(result);
+      return this.convertToSyncResult(result, timestamp);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this._logger.logMessage(
@@ -379,19 +380,21 @@ export class Testall {
     return undefined;
   }
 
-  private getTestName(test: ApexTestResult): string {
-    return `${test.ApexClass.Name}.${test.MethodName}`;
+  private getTestName(test: BaseTestResult): string {
+    return `${
+      test.ApexClass.NamespacePrefix
+        ? `${test.ApexClass.NamespacePrefix}__`
+        : ''
+    }${test.ApexClass.Name}.${test.MethodName}`;
   }
 
-  private convertSyncResult(
-    result: TestResult | TestRunIdResult
-  ): ApexTestResult | undefined {
+  private convertToSyncResult(
+    result: TestResult | TestRunIdResult,
+    timestamp: string
+  ): BaseTestResult | undefined {
     const test = !('testRunId' in result) ? result.tests[0] : undefined;
     return test
       ? {
-          Id: test.id,
-          QueueItemId: test.queueItemId,
-          AsyncApexJobId: test.asyncApexJobId,
           Outcome: test.outcome,
           ApexClass: {
             Id: test.apexClass?.id,
@@ -402,8 +405,22 @@ export class Testall {
           Message: test.message,
           StackTrace: test.stackTrace,
           RunTime: test.runTime,
-          TestTimestamp: test.testTimestamp,
+          TestTimestamp: timestamp,
         }
       : test;
+  }
+
+  private mergeSyncResult(
+    before: ApexTestResult,
+    after: BaseTestResult
+  ): ApexTestResult {
+    return {
+      ...before,
+      Outcome: after.Outcome,
+      Message: after.Message,
+      StackTrace: after.StackTrace,
+      RunTime: after.RunTime,
+      TestTimestamp: after.TestTimestamp,
+    };
   }
 }

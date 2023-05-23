@@ -1,18 +1,19 @@
 /*
  * Copyright (c) 2019, FinancialForce.com, inc. All rights reserved.
  */
+import { Logger } from '../log/Logger';
+import { CoverageReport } from '../model/ApexCodeCoverage';
 import {
   ApexTestResult,
+  BaseTestResult,
   OutcomeMap,
-  CoverageReport,
 } from '../model/ApexTestResult';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
-import { Logger } from '../log/Logger';
 
 export interface TestRerun {
-  name: string;
+  fullName: string;
   before: ApexTestResult;
-  after: ApexTestResult;
+  after: BaseTestResult;
 }
 
 export interface TestRunSummary {

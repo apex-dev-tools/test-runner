@@ -1,5 +1,11 @@
 # test-runner - Changelog
 
+## 1.9.0 - 2023-05-19
+
+* Fix report output crash on tests that were rerun.
+* Update rerun report format and remove file extension.
+  * To avoid being recognised as a test result file.
+
 ## 1.8.0 - 2023-05-11
 
 * Return `TestRunSummary` for `TestAll`.
