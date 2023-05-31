@@ -9,7 +9,7 @@
  */
 
 import { Moment } from 'moment';
-import _ = require('lodash');
+import _ from 'lodash';
 
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 import { ApexTestResult } from '../model/ApexTestResult';
