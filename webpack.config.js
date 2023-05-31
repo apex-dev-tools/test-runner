@@ -21,10 +21,5 @@ const config = {
         mainFields: ['main'],
         extensions: ['.js']
     },
-    ignoreWarnings: [
-        {
-            module: /@salesforce\/core\/lib\/messages.js/,
-        },
-    ],
 };
 module.exports = config;
