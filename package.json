@@ -41,9 +41,8 @@
     "@apexdevtools/sfdx-auth-helper": "^2.0.0",
     "@salesforce/apex-node": "^1.6.1",
     "@salesforce/core": "^3.34.6",
-    "@salesforce/kit": "^3.0.2",
+    "@salesforce/kit": "^1.9.2",
     "jsforce": "^1.11.0",
-    "lodash": "^4.17.21",
     "moment": "^2.29.4",
     "table": "^6.8.1"
   },
