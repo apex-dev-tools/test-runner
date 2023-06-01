@@ -1,5 +1,9 @@
 # test-runner - Changelog
 
+## 1.9.1 - 2023-06-01
+
+* Fix bug with missed test detection.
+
 ## 1.9.0 - 2023-05-19
 
 * Fix report output crash on tests that were rerun.

@@ -251,7 +251,13 @@ export class Testall {
     const missingTests = new Map<string, Set<string>>();
     (await expectedTests).forEach((methods, className) => {
       methods.forEach(methodName => {
-        if (!results.has(`${className}.${methodName}`)) {
+        const testName = this.formatTestName(
+          className,
+          methodName,
+          this._namespace
+        );
+
+        if (!results.has(testName)) {
           let missingMethods = missingTests.get(className);
           if (missingMethods === undefined) missingMethods = new Set();
           missingMethods.add(methodName);
@@ -381,11 +387,20 @@ export class Testall {
   }
 
   private getTestName(test: BaseTestResult): string {
-    return `${
+    return this.formatTestName(
+      test.ApexClass.Name,
+      test.MethodName,
       test.ApexClass.NamespacePrefix
-        ? `${test.ApexClass.NamespacePrefix}__`
-        : ''
-    }${test.ApexClass.Name}.${test.MethodName}`;
+    );
+  }
+
+  private formatTestName(
+    className: string,
+    methodName: string,
+    ns: string | null
+  ): string {
+    const namespace = ns ? (ns.endsWith('__') ? ns : `${ns}__`) : '';
+    return `${namespace}${className}.${methodName}`;
   }
 
   private convertToSyncResult(
