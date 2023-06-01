@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
-import { Connection } from '@apexdevtools/sfdx-auth-helper';
+import { Connection } from '@salesforce/core';
 import { TestItem } from '@salesforce/apex-node';
 import { Logger } from '../log/Logger';
 import {

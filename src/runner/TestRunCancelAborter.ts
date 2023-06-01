@@ -3,7 +3,7 @@
  */
 
 import { Logger } from '../log/Logger';
-import { Connection, PollingClient } from '@apexdevtools/sfdx-auth-helper';
+import { Connection, PollingClient } from '@salesforce/core';
 import { ExecuteService } from '@salesforce/apex-node';
 import {
   CancelTestRunOptions,
@@ -24,7 +24,7 @@ export class TestRunCancelAborter implements TestRunAborter {
   ): Promise<string[]> {
     logger.logRunCancelling(testRunId);
     const apexQueueItems = await QueryHelper.instance(
-      connection.tooling
+      connection
     ).query<IdObject>(
       'ApexTestQueueItem',
       `Status IN ('Holding', 'Queued', 'Preparing', 'Processing') AND ParentJobId='${testRunId}'`,
@@ -72,9 +72,7 @@ export class TestRunCancelAborter implements TestRunAborter {
   ): Promise<void> {
     const client = await PollingClient.create({
       poll: async () => {
-        const testRunResults = await QueryHelper.instance(
-          connection.tooling
-        ).query(
+        const testRunResults = await QueryHelper.instance(connection).query(
           'ApexTestQueueItem',
           `Status IN ('Holding', 'Queued', 'Preparing', 'Processing') AND ParentJobId='${testRunId}'`,
           'Status'

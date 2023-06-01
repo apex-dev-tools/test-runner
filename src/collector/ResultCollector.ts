@@ -2,7 +2,7 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import { Connection } from '@apexdevtools/sfdx-auth-helper';
+import { Connection } from '@salesforce/core';
 import { TableUserConfig, table } from 'table';
 import { Logger } from '../log/Logger';
 import {
@@ -40,11 +40,13 @@ const config: TableUserConfig = {
   },
   singleLine: true,
 };
+
 export interface ResultsByType {
   rerun: ApexTestResult[];
   failed: ApexTestResult[];
   passed: ApexTestResult[];
 }
+
 export class ResultCollector {
   private static RECORD_QUERY_LIMIT = 500;
 
@@ -60,7 +62,7 @@ export class ResultCollector {
     connection: Connection,
     testRunId: string
   ): Promise<ApexTestResult[]> {
-    return await QueryHelper.instance(connection.tooling).query<ApexTestResult>(
+    return await QueryHelper.instance(connection).query<ApexTestResult>(
       'ApexTestResult',
       `AsyncApexJobId='${testRunId}'`,
       ApexTestResultFields.join(', ')
@@ -74,7 +76,7 @@ export class ResultCollector {
     options: QueryOptions
   ): Promise<ApexTestResult[]> {
     return await QueryHelper.instance(
-      connection.tooling
+      connection
     ).queryWithRetry<ApexTestResult>(logger, options)(
       'ApexTestResult',
       `AsyncApexJobId='${testRunId}'`,
@@ -117,20 +119,18 @@ export class ResultCollector {
     connection: Connection,
     tests: ApexTestResult[]
   ): Promise<CoverageReport> {
-    const aggregate: ApexCodeCoverageAggregate[] = await ResultCollector.gatherCoverage(
-      connection,
-      tests
-    )
-      .then(coverage =>
-        ResultCollector.gatherCodeCoverageAggregate(connection, coverage)
-      )
-      .catch(e => {
-        throw TestError.wrapError(
-          e,
-          TestErrorKind.Query,
-          'Failed getting coverage data:'
-        );
-      });
+    const aggregate: ApexCodeCoverageAggregate[] =
+      await ResultCollector.gatherCoverage(connection, tests)
+        .then(coverage =>
+          ResultCollector.gatherCodeCoverageAggregate(connection, coverage)
+        )
+        .catch(e => {
+          throw TestError.wrapError(
+            e,
+            TestErrorKind.Query,
+            'Failed getting coverage data:'
+          );
+        });
     ResultCollector.formatForApexAggregate(aggregate);
 
     if (aggregate.length) {
@@ -153,7 +153,7 @@ export class ResultCollector {
     }
     const chunked = this.chunkArrays<string>(ids, this.RECORD_QUERY_LIMIT);
     const promises = chunked.map(async chunk => {
-      return QueryHelper.instance(connection.tooling).query<ApexCodeCoverage[]>(
+      return QueryHelper.instance(connection).query<ApexCodeCoverage[]>(
         'ApexCodeCoverage',
         `ApexTestClassId IN (${chunk.join(', ')})`,
         ApexCodeCoverageFields.join(', ')
@@ -173,7 +173,7 @@ export class ResultCollector {
     const chunked = this.chunkArrays<string>(ids, this.RECORD_QUERY_LIMIT);
 
     const promises = chunked.map(chunk => {
-      return QueryHelper.instance(connection.tooling).query<
+      return QueryHelper.instance(connection).query<
         ApexCodeCoverageAggregate[]
       >(
         'ApexCodeCoverageAggregate',

@@ -5,7 +5,7 @@
  */
 
 import { ResultCollector } from '../collector/ResultCollector';
-import { Connection, AuthInfo } from '@apexdevtools/sfdx-auth-helper';
+import { Connection, AuthInfo } from '@salesforce/core';
 
 async function getConnection(username: string): Promise<Connection> {
   return await Connection.create({

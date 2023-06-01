@@ -8,16 +8,14 @@
  * For full license text, see LICENSE.txt file in the repo root  or https://opensource.org/licenses/BSD-3-Clause
  */
 
-import { Moment } from 'moment';
-import _ from 'lodash';
-
-import { ApexTestRunResult } from '../model/ApexTestRunResult';
-import { ApexTestResult } from '../model/ApexTestResult';
-import { OutputGenerator, TestRunSummary } from './OutputGenerator';
-import moment from 'moment';
-import { Logger } from '../log/Logger';
+import { escapeXml } from '@salesforce/apex-node/lib/src/utils/authUtil';
 import { SfDate } from 'jsforce';
+import moment, { Moment } from 'moment';
 import path from 'path';
+import { Logger } from '../log/Logger';
+import { ApexTestResult } from '../model/ApexTestResult';
+import { ApexTestRunResult } from '../model/ApexTestRunResult';
+import { OutputGenerator, TestRunSummary } from './OutputGenerator';
 
 export class ReportGenerator implements OutputGenerator {
   private instanceUrl: string;
@@ -137,8 +135,8 @@ export class ReportGenerator implements OutputGenerator {
     summary: SummaryData,
     testResults: ExtendedApexTestResult[]
   ): string {
-    function msToSeconds(ms: number): number {
-      return _.round(ms / 1000, 2);
+    function msToSeconds(ms: number): string {
+      return (ms / 1000).toFixed(2);
     }
     // reference schema https://github.com/windyroad/JUnit-Schema/blob/master/JUnit.xsd
     let junit = '<?xml version="1.0" encoding="UTF-8"?>\n';
@@ -180,17 +178,17 @@ export class ReportGenerator implements OutputGenerator {
     junit += '        </properties>\n';
     testResults.forEach(test => {
       const success = test.Outcome === 'Pass';
-      let classname = _.escape(test.ApexClass.Name);
+      let classname = escapeXml(test.ApexClass.Name);
       if (test.ApexClass.NamespacePrefix) {
         classname = test.ApexClass.NamespacePrefix + '.' + classname;
       }
-      const methodName = _.escape(test.MethodName);
+      const methodName = escapeXml(test.MethodName);
       junit += `        <testcase name="${methodName}" classname="${classname}" time="${msToSeconds(
         test.RunTime
       )}">\n`;
       if (!success) {
         const message = test.Message ? test.Message : 'No failure message!';
-        junit += `            <failure message="${_.escape(message)}">`;
+        junit += `            <failure message="${escapeXml(message)}">`;
         if (test.StackTrace) {
           junit += `<![CDATA[${test.StackTrace}]]>`;
         }

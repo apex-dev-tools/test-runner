@@ -2,7 +2,7 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import { Connection } from '@apexdevtools/sfdx-auth-helper';
+import { Connection } from '@salesforce/core';
 import { RecordResult, SfDate } from 'jsforce';
 
 export interface TraceFlag {

@@ -2,7 +2,7 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import { Connection } from '@apexdevtools/sfdx-auth-helper';
+import { Connection } from '@salesforce/core';
 import { Logger } from '../log/Logger';
 import { TestItem } from '@salesforce/apex-node';
 import { TestRunner } from '../runner/TestRunner';
@@ -145,7 +145,7 @@ export class TestDebugLogs {
   }
 
   async getUserId(username: string, connection: Connection): Promise<string> {
-    const users = await QueryHelper.instance(connection.tooling).query(
+    const users = await QueryHelper.instance(connection).query(
       'User',
       "Username = '${username}'",
       'Id'

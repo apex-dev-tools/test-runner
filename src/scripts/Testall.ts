@@ -4,7 +4,7 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import { Connection, AuthInfo } from '@apexdevtools/sfdx-auth-helper';
+import { Connection, AuthInfo } from '@salesforce/core';
 import { OrgTestMethodCollector } from '../collector/OrgTestMethodCollector';
 import { Testall } from '../command/Testall';
 import { ClassTimeGenerator } from '../results/ClassTimeGenerator';

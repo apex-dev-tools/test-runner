@@ -2,7 +2,7 @@
  * Copyright (c) 2019, FinancialForce.com, inc. All rights reserved.
  */
 
-import { Connection, PollingClient } from '@apexdevtools/sfdx-auth-helper';
+import { Connection, PollingClient } from '@salesforce/core';
 import {
   TestRunIdResult,
   TestService,
@@ -236,7 +236,7 @@ export class AsyncTestRunner implements TestRunner {
 
   private async testRunResult(testRunId: string): Promise<ApexTestRunResult> {
     const testRunResults = await QueryHelper.instance(
-      this._connection.tooling
+      this._connection
     ).query<ApexTestRunResult>(
       'ApexTestRunResult',
       `AsyncApexJobId = '${testRunId}'`,
@@ -275,7 +275,7 @@ export class AsyncTestRunner implements TestRunner {
 
   private async reportQueueItems(testRunId: string): Promise<void> {
     const apexQueueItems = await QueryHelper.instance(
-      this._connection.tooling
+      this._connection
     ).query<ApexTestQueueItem>(
       'ApexTestQueueItem',
       `ParentJobId='${testRunId}'`,

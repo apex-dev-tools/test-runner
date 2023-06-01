@@ -3,7 +3,7 @@
  */
 
 import { SfDate } from 'jsforce';
-import { Connection } from '@apexdevtools/sfdx-auth-helper';
+import { Connection } from '@salesforce/core';
 import {
   TestItem,
   TestResult,
@@ -63,9 +63,10 @@ export function getMaxErrorsForReRun(options: TestallOptions): number {
   else return DEFAULT_MAX_ERRORS_FOR_RERUN;
 }
 
-export function getOutputFileBase(
-  options: TestallOptions
-): { fileName: string; outputDir: string } {
+export function getOutputFileBase(options: TestallOptions): {
+  fileName: string;
+  outputDir: string;
+} {
   if (options.outputDirBase && options.outputFileName)
     return {
       outputDir: options.outputDirBase,

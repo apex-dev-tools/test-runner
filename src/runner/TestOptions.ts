@@ -2,7 +2,7 @@
  * Copyright (c) 2019, FinancialForce.com, inc. All rights reserved.
  */
 
-import { Connection } from '@apexdevtools/sfdx-auth-helper';
+import { Connection } from '@salesforce/core';
 import { Duration } from '@salesforce/kit';
 import { Logger } from '../log/Logger';
 import { TestRunCancelAborter } from './TestRunCancelAborter';
