@@ -59,7 +59,7 @@ export class QueryHelper {
     this.connection = AuthHelper.toJsForceConnection(connection);
   }
 
-  async request<T>(req: RequestInfo): Promise<T> {
+  async request<T>(req: string | RequestInfo): Promise<T> {
     return this.connection.tooling.request<T>(req);
   }
 

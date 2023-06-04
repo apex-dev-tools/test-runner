@@ -1,46 +1,13 @@
 /*
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
-import { AuthInfo, Connection } from '@apexdevtools/sfdx-auth-helper';
-import {
-  MockTestOrgData,
-  testSetup,
-} from '@apexdevtools/sfdx-auth-helper/lib/src/testSetup';
-import { createSandbox, SinonSandbox } from 'sinon';
+
+import { expect } from 'chai';
+import { SfDate } from 'jsforce';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import { ClassTimeGenerator } from '../../src/results/ClassTimeGenerator';
-import { SfDate } from 'jsforce';
-import { expect } from 'chai';
 
-const $$ = testSetup();
-let mockConnection: Connection;
-let sandboxStub: SinonSandbox;
-const testData = new MockTestOrgData();
-
-describe('messages', () => {
-  beforeEach(async () => {
-    sandboxStub = createSandbox();
-    $$.setConfigStubContents('AuthInfoConfig', {
-      contents: await testData.getConfig(),
-    });
-    // Stub retrieveMaxApiVersion to get over "Domain Not Found: The org cannot be found" error
-    sandboxStub
-      .stub(Connection.prototype, 'retrieveMaxApiVersion')
-      .resolves('50.0');
-    mockConnection = await Connection.create({
-      authInfo: await AuthInfo.create({
-        username: testData.username,
-      }),
-    });
-    sandboxStub.stub(mockConnection, 'instanceUrl').get(() => {
-      return 'https://na139.salesforce.com';
-    });
-  });
-
-  afterEach(() => {
-    sandboxStub.restore();
-  });
-
+describe('ClassTimeGenerator', () => {
   it('should create csv output', () => {
     const now = Date.now();
     const generator = new ClassTimeGenerator(

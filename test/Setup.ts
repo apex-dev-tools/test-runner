@@ -2,59 +2,61 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import {
-  AsyncTestArrayConfiguration,
-  AsyncTestConfiguration,
-  TestItem,
-} from '@salesforce/apex-node';
+import { TestItem } from '@salesforce/apex-node';
 import {
   ExecAnonApiResponse,
   SoapResponse,
 } from '@salesforce/apex-node/lib/src/execute/types';
-import { Connection } from '@apexdevtools/sfdx-auth-helper';
-import { SinonStub, match } from 'sinon';
+import { Connection } from '@salesforce/core';
+import { MockTestOrgData, TestContext } from '@salesforce/core/lib/testSetup';
+import { SinonSandbox, SinonStub, match } from 'sinon';
 import { TestMethodCollector } from '../src/collector/TestMethodCollector';
 import { Logger } from '../src/log/Logger';
 import { ApexTestRunResult } from '../src/model/ApexTestRunResult';
+import { ApexClassInfo, QueryResponse } from '../src/query/ClassSymbolLoader';
+import {
+  OutputGenerator,
+  TestRunSummary,
+} from '../src/results/OutputGenerator';
 import {
   CancelTestRunOptions,
   TestRunAborter,
 } from '../src/runner/TestOptions';
 import { TestRunner } from '../src/runner/TestRunner';
-import {
-  OutputGenerator,
-  TestRunSummary,
-} from '../src/results/OutputGenerator';
-import { ApexClassInfo, QueryResponse } from '../src/query/ClassSymbolLoader';
-import { Record } from 'jsforce';
 
 export const testRunId = '707xx0000AGQ3jbQQD';
 
 export const isoDateFormat =
   '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}Z';
 
-export function logRegex(entry: string): RegExp {
-  return new RegExp(`^${isoDateFormat} - ${entry}$`, 'gm');
+export async function createMockConnection(
+  $$: TestContext,
+  sandbox: SinonSandbox,
+  testData = new MockTestOrgData()
+): Promise<Connection> {
+  // stub api version to avoid request failure
+  $$.SANDBOX.stub(Connection.prototype, 'retrieveMaxApiVersion').resolves(
+    '50.0'
+  );
+
+  await $$.stubAuths(testData);
+  const mockConnection = await testData.getConnection();
+
+  sandbox.stub(mockConnection, 'instanceUrl').get(() => {
+    return 'https://na139.salesforce.com';
+  });
+
+  return mockConnection;
 }
 
-export function setupRunTestsAsynchronous(
-  stub: SinonStub,
-  mockConnection: Connection,
-  config: AsyncTestArrayConfiguration | AsyncTestConfiguration
-): void {
-  const testAsyncRequest = {
-    method: 'POST',
-    url: `${mockConnection.tooling._baseUrl()}/runTestsAsynchronous`,
-    body: JSON.stringify(config),
-    headers: { 'content-type': 'application/json' },
-  };
-  stub.withArgs(testAsyncRequest).returns(testRunId);
+export function logRegex(entry: string): RegExp {
+  return new RegExp(`^${isoDateFormat} - ${entry}$`, 'gm');
 }
 
 export type ApexTestRunResultParams = Partial<ApexTestRunResult>;
 
 export function setupQueryApexTestResults(
-  stub: SinonStub<[string, string, string], Promise<Record<any>[]>>,
+  stub: SinonStub,
   params: ApexTestRunResultParams
 ): void {
   const mockTestRunResult: ApexTestRunResult = createMockRunResult(params);
@@ -65,7 +67,7 @@ export function setupQueryApexTestResults(
 }
 
 export function setupMultipleQueryApexTestResults(
-  stub: SinonStub<[string, string, string], Promise<Record<any>[]>>,
+  stub: SinonStub,
   paramsList: ApexTestRunResultParams[]
 ): void {
   for (let i = 0; i < paramsList.length; i++) {

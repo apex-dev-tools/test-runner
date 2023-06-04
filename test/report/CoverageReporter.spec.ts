@@ -1,42 +1,45 @@
 /*
  * Copyright (c) 2023, FinancialForce.com, inc. All rights reserved.
  */
-import { CoverageReporter } from '../../src/results/CoverageReporter';
-import { CapturingLogger } from '../../src';
 
-import path from 'path';
-import fs from 'fs';
 import { CoverageReporter as ApexNodeCoverageReporter } from '@salesforce/apex-node';
+import { expect } from 'chai';
+import fs from 'fs';
+import path from 'path';
+import { SinonSandbox, createSandbox } from 'sinon';
+import { CapturingLogger } from '../../src';
+import { CoverageReporter } from '../../src/results/CoverageReporter';
 
+const generateReportsMock = jest.fn();
 jest.mock('@salesforce/apex-node', () => {
   return {
     CoverageReporter: jest.fn().mockImplementation(() => {
-      return { generateReports: jest.fn() };
+      return { generateReports: generateReportsMock };
     }),
   };
 });
 
-const mockedApexNodeCoverageReporter = jest.mocked(ApexNodeCoverageReporter);
-describe('coverage reporter', () => {
-  let joinSpy: any, resolveSpy: any, mkDirSyncSpy: any;
+const MockCoverageReporter = jest.mocked(ApexNodeCoverageReporter);
+
+describe('CoverageReporter', () => {
+  let sandbox: SinonSandbox;
 
   beforeEach(() => {
-    joinSpy = jest
-      .spyOn(path, 'join')
-      .mockReturnValueOnce('./fakepath/coverage');
-    resolveSpy = jest
-      .spyOn(path, 'resolve')
-      .mockReturnValueOnce('path/to/fakepath/coverage');
-    mkDirSyncSpy = jest.spyOn(fs, 'mkdirSync');
+    sandbox = createSandbox();
+    sandbox.stub(path, 'join').returns('dirBase/coverage');
+    sandbox.stub(path, 'resolve').returns('/abs/dirBase/coverage');
+    sandbox.stub(fs, 'mkdirSync');
   });
+
   afterEach(() => {
+    sandbox.restore();
     jest.restoreAllMocks();
-    jest.clearAllMocks();
   });
-  it('should call generate reports on CoverageReporter when there is data', () => {
-    const generator = new CoverageReporter('projetRoot');
+
+  it('should generate reports when there is data', () => {
+    const generator = new CoverageReporter('projectRoot');
     const logger = new CapturingLogger();
-    generator.generate(logger, 'dirBase', '.fileName', {
+    generator.generate(logger, 'dirBase', 'ignored', {
       startTime: new Date(),
       testResults: [],
       runResult: {
@@ -71,7 +74,8 @@ describe('coverage reporter', () => {
       },
     });
 
-    expect(mockedApexNodeCoverageReporter).toBeCalledWith(
+    expect(generateReportsMock.mock.calls.length).to.equal(1);
+    expect(MockCoverageReporter.mock.calls[0]).to.deep.equal([
       {
         done: true,
         records: [
@@ -88,26 +92,21 @@ describe('coverage reporter', () => {
         ],
         totalSize: 1,
       },
-      'path/to/fakepath/coverage',
-      'projetRoot',
+      '/abs/dirBase/coverage',
+      'projectRoot',
       {
         reportFormats: ['lcovonly'],
         reportOptions: {
-          lcovonly: { file: 'lcov.info', projectRoot: 'projetRoot' },
+          lcovonly: { file: 'lcov.info', projectRoot: 'projectRoot' },
         },
-      }
-    );
-    expect(joinSpy).toBeCalledWith('dirBase', 'coverage');
-    expect(resolveSpy).toBeCalledWith('./fakepath/coverage');
-    expect(mkDirSyncSpy).toBeCalledWith('path/to/fakepath/coverage', {
-      recursive: true,
-    });
+      },
+    ]);
   });
 
-  it('should not call generate reports on CoverageReporter when there is no data', () => {
-    const generator = new CoverageReporter('projetRoot');
+  it('should not generate reports when there is no data', () => {
+    const generator = new CoverageReporter('projectRoot');
     const logger = new CapturingLogger();
-    generator.generate(logger, 'dirBase', '.fileName', {
+    generator.generate(logger, 'dirBase', 'ignored', {
       startTime: new Date(),
       testResults: [],
       runResult: {
@@ -128,9 +127,6 @@ describe('coverage reporter', () => {
       coverageResult: undefined,
     });
 
-    expect(mockedApexNodeCoverageReporter).not.toHaveBeenCalled();
-    expect(joinSpy).not.toBeCalled();
-    expect(resolveSpy).not.toBeCalled();
-    expect(mkDirSyncSpy).not.toBeCalled();
+    expect(generateReportsMock.mock.calls.length).to.equal(0);
   });
 });

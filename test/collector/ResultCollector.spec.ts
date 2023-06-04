@@ -1,58 +1,36 @@
 /*
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
-import { AuthInfo, Connection } from '@apexdevtools/sfdx-auth-helper';
-import {
-  MockTestOrgData,
-  testSetup,
-} from '@apexdevtools/sfdx-auth-helper/lib/src/testSetup';
-import { StreamingClient } from '@salesforce/apex-node/lib/src/streaming';
-import { createSandbox, SinonSandbox, SinonStub } from 'sinon';
+
+import { Connection } from '@salesforce/core';
+import { TestContext } from '@salesforce/core/lib/testSetup';
 import { expect } from 'chai';
-import { ApexTestResult } from '../../src/model/ApexTestResult';
+import { SinonSandbox, SinonStub, createSandbox } from 'sinon';
+import { TestError, TestErrorKind } from '../../src';
 import {
   ResultCollector,
   ResultsByType,
 } from '../../src/collector/ResultCollector';
-import { testRunId } from '../Setup';
-import { QueryHelper } from '../../src/query/QueryHelper';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
-import { TestError, TestErrorKind } from '../../src';
+import { ApexTestResult } from '../../src/model/ApexTestResult';
+import { QueryHelper } from '../../src/query/QueryHelper';
+import { createMockConnection, testRunId } from '../Setup';
 
-const $$ = testSetup();
-let mockConnection: Connection;
-let sandboxStub: SinonSandbox;
-let queryHelperStub: SinonStub;
-const testData = new MockTestOrgData();
+describe('ResultCollector', () => {
+  const $$ = new TestContext();
+  let sandbox: SinonSandbox;
 
-describe('messages', () => {
+  let mockConnection: Connection;
+  let queryStub: SinonStub;
+
   beforeEach(async () => {
-    sandboxStub = createSandbox();
-    $$.setConfigStubContents('AuthInfoConfig', {
-      contents: await testData.getConfig(),
-    });
-    // Stub retrieveMaxApiVersion to get over "Domain Not Found: The org cannot be found" error
-    sandboxStub
-      .stub(Connection.prototype, 'retrieveMaxApiVersion')
-      .resolves('50.0');
-    mockConnection = await Connection.create({
-      authInfo: await AuthInfo.create({
-        username: testData.username,
-      }),
-    });
-    sandboxStub.stub(mockConnection, 'instanceUrl').get(() => {
-      return 'https://na139.salesforce.com';
-    });
-
-    sandboxStub.stub(StreamingClient.prototype, 'handshake').resolves();
-    queryHelperStub = sandboxStub.stub(
-      QueryHelper.instance(mockConnection.tooling),
-      'query'
-    );
+    sandbox = createSandbox();
+    mockConnection = await createMockConnection($$, sandbox);
+    queryStub = sandbox.stub(QueryHelper.instance(mockConnection), 'query');
   });
 
   afterEach(() => {
-    sandboxStub.restore();
+    sandbox.restore();
   });
 
   it('should return test results', async () => {
@@ -69,7 +47,7 @@ describe('messages', () => {
       TestTimestamp: '',
     };
 
-    queryHelperStub.resolves([mockTestRunResult]);
+    queryStub.resolves([mockTestRunResult]);
 
     const results = await ResultCollector.gatherResults(
       mockConnection,
@@ -292,17 +270,18 @@ describe('messages', () => {
     ];
 
     it('should collect and report code coverage', async () => {
-      queryHelperStub.onFirstCall().resolves([mockCodeCoverage]);
-      queryHelperStub.onSecondCall().resolves(mockApexCodeCoverageAggregate);
+      queryStub.onFirstCall().resolves([mockCodeCoverage]);
+      queryStub.onSecondCall().resolves(mockApexCodeCoverageAggregate);
 
       const results = await ResultCollector.getCoverageReport(
         mockConnection,
         mockTestRunResults
       );
-      const expectedTableOutput = 'CLASSES PERCENT UNCOVERED LINES FooClass 50% 4,5,6'.replace(
-        /\s+/g,
-        ''
-      );
+      const expectedTableOutput =
+        'CLASSES PERCENT UNCOVERED LINES FooClass 50% 4,5,6'.replace(
+          /\s+/g,
+          ''
+        );
       const actualTableOutput = results.table?.replace(/\s+/g, '');
 
       expect(results.table).not.to.be.undefined;
@@ -311,8 +290,8 @@ describe('messages', () => {
     });
 
     it('should not produce table when code coverage is empty', async () => {
-      queryHelperStub.onFirstCall().resolves([mockCodeCoverage]);
-      queryHelperStub.onSecondCall().resolves([]);
+      queryStub.onFirstCall().resolves([mockCodeCoverage]);
+      queryStub.onSecondCall().resolves([]);
 
       const results = await ResultCollector.getCoverageReport(
         mockConnection,
@@ -324,7 +303,7 @@ describe('messages', () => {
     });
 
     it('should not produce table when first query fails', async () => {
-      queryHelperStub.onFirstCall().rejects(new Error('First Query Error'));
+      queryStub.onFirstCall().rejects(new Error('First Query Error'));
 
       try {
         await ResultCollector.getCoverageReport(
@@ -341,9 +320,9 @@ describe('messages', () => {
     });
 
     it('should not produce table when second query fails', async () => {
-      queryHelperStub.onFirstCall().resolves([mockCodeCoverage]);
+      queryStub.onFirstCall().resolves([mockCodeCoverage]);
+      queryStub.onSecondCall().rejects(new Error('Second Query Error'));
 
-      queryHelperStub.onSecondCall().rejects(new Error('Second Query Error'));
       try {
         await ResultCollector.getCoverageReport(
           mockConnection,

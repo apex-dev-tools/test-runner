@@ -2,51 +2,33 @@
  * Copyright (c) 2023, FinancialForce.com, inc. All rights reserved.
  */
 
-import { AuthInfo, Connection } from '@apexdevtools/sfdx-auth-helper';
-import {
-  MockTestOrgData,
-  testSetup,
-} from '@apexdevtools/sfdx-auth-helper/lib/src/testSetup';
-import { StreamingClient } from '@salesforce/apex-node/lib/src/streaming';
+import { Connection } from '@salesforce/core';
+import { TestContext } from '@salesforce/core/lib/testSetup';
 import { expect } from 'chai';
-import { createSandbox, SinonSandbox, SinonStub } from 'sinon';
+import { SinonSandbox, SinonStub, createSandbox } from 'sinon';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
-import { logRegex } from '../Setup';
 import { QueryHelper } from '../../src/query/QueryHelper';
 import { TestError, TestErrorKind } from '../../src/runner/TestError';
+import { createMockConnection, logRegex } from '../Setup';
+import { AuthHelper } from '@apexdevtools/sfdx-auth-helper';
 
-const $$ = testSetup();
-let mockConnection: Connection;
-let sandboxStub: SinonSandbox;
-let sobjectStub: SinonStub<[string], any>;
-let sobjectMock: {
-  find: SinonStub;
-};
-let queryMock: {
-  execute: SinonStub;
-};
-let timeoutSpy: jest.SpyInstance;
+describe('QueryHelper', () => {
+  const $$ = new TestContext();
+  let sandbox: SinonSandbox;
 
-const testData = new MockTestOrgData();
+  let mockConnection: Connection;
+  let sobjectStub: SinonStub;
+  let sobjectMock: {
+    find: SinonStub;
+  };
+  let queryMock: {
+    execute: SinonStub;
+  };
+  let timeoutSpy: jest.SpyInstance;
 
-describe('messages', () => {
   beforeEach(async () => {
-    sandboxStub = createSandbox();
-    $$.setConfigStubContents('AuthInfoConfig', {
-      contents: await testData.getConfig(),
-    });
-    // Stub retrieveMaxApiVersion to get over "Domain Not Found: The org cannot be found" error
-    sandboxStub
-      .stub(Connection.prototype, 'retrieveMaxApiVersion')
-      .resolves('50.0');
-    mockConnection = await Connection.create({
-      authInfo: await AuthInfo.create({
-        username: testData.username,
-      }),
-    });
-    sandboxStub.stub(mockConnection, 'instanceUrl').get(() => {
-      return 'https://na139.salesforce.com';
-    });
+    sandbox = createSandbox();
+    mockConnection = await createMockConnection($$, sandbox);
 
     // always call timeouts immediately
     timeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation(cb => {
@@ -54,21 +36,22 @@ describe('messages', () => {
       return {} as NodeJS.Timeout;
     });
 
-    sandboxStub.stub(StreamingClient.prototype, 'handshake').resolves();
     sobjectMock = {
-      find: sandboxStub.stub(),
+      find: sandbox.stub(),
     };
     queryMock = {
-      execute: sandboxStub.stub(),
+      execute: sandbox.stub(),
     };
 
-    sobjectStub = sandboxStub.stub(mockConnection, 'sobject');
+    const conn = AuthHelper.toJsForceConnection(mockConnection);
+    sobjectStub = sandbox.stub(conn.tooling, 'sobject');
     sobjectStub.returns(sobjectMock);
     sobjectMock.find.returns(queryMock);
+    sandbox.stub(AuthHelper, 'toJsForceConnection').returns(conn);
   });
 
   afterEach(() => {
-    sandboxStub.restore();
+    sandbox.restore();
     timeoutSpy.mockRestore();
   });
 

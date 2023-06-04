@@ -1,55 +1,37 @@
 /*
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
-import { AuthInfo, Connection } from '@apexdevtools/sfdx-auth-helper';
-import {
-  MockTestOrgData,
-  testSetup,
-} from '@apexdevtools/sfdx-auth-helper/lib/src/testSetup';
-import { StreamingClient } from '@salesforce/apex-node/lib/src/streaming';
 import { ExecuteService } from '@salesforce/apex-node';
-import { createSandbox, SinonSandbox, SinonStub } from 'sinon';
+import { Connection } from '@salesforce/core';
+import { TestContext } from '@salesforce/core/lib/testSetup';
 import { expect } from 'chai';
+import { SinonSandbox, SinonStub, createSandbox } from 'sinon';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
-import { logRegex, setupExecuteAnonymous, testRunId } from '../Setup';
-import { TestRunCancelAborter } from '../../src/runner/TestRunCancelAborter';
-import { getTestRunAborter } from '../../src/runner/TestOptions';
 import { QueryHelper } from '../../src/query/QueryHelper';
+import { getTestRunAborter } from '../../src/runner/TestOptions';
+import { TestRunCancelAborter } from '../../src/runner/TestRunCancelAborter';
+import {
+  createMockConnection,
+  logRegex,
+  setupExecuteAnonymous,
+  testRunId,
+} from '../Setup';
 
-const $$ = testSetup();
-let mockConnection: Connection;
-let sandboxStub: SinonSandbox;
-let queryHelperStub: SinonStub;
-const testData = new MockTestOrgData();
+describe('TestRunCancelAborter', () => {
+  const $$ = new TestContext();
+  let sandbox: SinonSandbox;
 
-describe('messages', () => {
+  let mockConnection: Connection;
+  let queryStub: SinonStub;
+
   beforeEach(async () => {
-    sandboxStub = createSandbox();
-    $$.setConfigStubContents('AuthInfoConfig', {
-      contents: await testData.getConfig(),
-    });
-    // Stub retrieveMaxApiVersion to get over "Domain Not Found: The org cannot be found" error
-    sandboxStub
-      .stub(Connection.prototype, 'retrieveMaxApiVersion')
-      .resolves('50.0');
-    mockConnection = await Connection.create({
-      authInfo: await AuthInfo.create({
-        username: testData.username,
-      }),
-    });
-    sandboxStub.stub(mockConnection, 'instanceUrl').get(() => {
-      return 'https://na139.salesforce.com';
-    });
-
-    sandboxStub.stub(StreamingClient.prototype, 'handshake').resolves();
-    queryHelperStub = sandboxStub.stub(
-      QueryHelper.instance(mockConnection.tooling),
-      'query'
-    );
+    sandbox = createSandbox();
+    mockConnection = await createMockConnection($$, sandbox);
+    queryStub = sandbox.stub(QueryHelper.instance(mockConnection), 'query');
   });
 
   afterEach(() => {
-    sandboxStub.restore();
+    sandbox.restore();
   });
 
   it('should be the default aborter', () => {
@@ -59,7 +41,7 @@ describe('messages', () => {
 
   it('should cancel when no tests still running', async () => {
     setupExecuteAnonymous(
-      sandboxStub.stub(ExecuteService.prototype, 'connectionRequest'),
+      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
       {
         column: -1,
         line: -1,
@@ -70,7 +52,7 @@ describe('messages', () => {
         success: 'true',
       }
     );
-    queryHelperStub.resolves([]);
+    queryStub.resolves([]);
 
     const logger = new CapturingLogger();
     const aborter = new TestRunCancelAborter();
@@ -86,10 +68,10 @@ describe('messages', () => {
   });
 
   it('should throw if execute anon to cancel tests fails', async () => {
-    queryHelperStub.onCall(0).resolves([{ Id: 'Some Id' }]);
+    queryStub.onCall(0).resolves([{ Id: 'Some Id' }]);
 
     setupExecuteAnonymous(
-      sandboxStub.stub(ExecuteService.prototype, 'connectionRequest'),
+      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
       {
         column: -1,
         line: -1,
@@ -131,9 +113,9 @@ describe('messages', () => {
   });
 
   it('should time out after polling too long for tests to cancel', async () => {
-    queryHelperStub.onCall(0).resolves([{ Id: 'Some Id' }]);
+    queryStub.onCall(0).resolves([{ Id: 'Some Id' }]);
     setupExecuteAnonymous(
-      sandboxStub.stub(ExecuteService.prototype, 'connectionRequest'),
+      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
       {
         column: -1,
         line: -1,
@@ -145,7 +127,7 @@ describe('messages', () => {
       }
     );
 
-    queryHelperStub.resolves([{ Status: 'Something' }]);
+    queryStub.resolves([{ Status: 'Something' }]);
 
     const logger = new CapturingLogger();
     let error;
@@ -169,9 +151,9 @@ describe('messages', () => {
   });
 
   it('should rethrow and unexpected exception', async () => {
-    queryHelperStub.onCall(0).resolves([{ Id: 'Some Id' }]);
+    queryStub.onCall(0).resolves([{ Id: 'Some Id' }]);
     setupExecuteAnonymous(
-      sandboxStub.stub(ExecuteService.prototype, 'connectionRequest'),
+      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
       {
         column: -1,
         line: -1,
@@ -182,7 +164,7 @@ describe('messages', () => {
         success: 'true',
       }
     );
-    queryHelperStub.throws(new Error('An Error'));
+    queryStub.throws(new Error('An Error'));
 
     const logger = new CapturingLogger();
     let error;
@@ -201,9 +183,9 @@ describe('messages', () => {
   });
 
   it('should poll while tests still running', async () => {
-    queryHelperStub.onCall(0).resolves([{ Id: 'Some Id' }]);
+    queryStub.onCall(0).resolves([{ Id: 'Some Id' }]);
     setupExecuteAnonymous(
-      sandboxStub.stub(ExecuteService.prototype, 'connectionRequest'),
+      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
       {
         column: -1,
         line: -1,
@@ -214,11 +196,11 @@ describe('messages', () => {
         success: 'true',
       }
     );
-    queryHelperStub
+    queryStub
       .onCall(1)
       .resolves([{ Status: 'Something' }, { Status: 'Something' }]);
-    queryHelperStub.onCall(2).resolves([{ Status: 'Something' }]);
-    queryHelperStub.onCall(3).resolves([]);
+    queryStub.onCall(2).resolves([{ Status: 'Something' }]);
+    queryStub.onCall(3).resolves([]);
 
     const logger = new CapturingLogger();
     const aborter = new TestRunCancelAborter();
