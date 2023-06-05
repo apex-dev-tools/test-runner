@@ -8,21 +8,31 @@
       "name": "Attach",
       "port": 9229,
       "request": "attach",
-      "skipFiles": ["<node_internals>/**"],
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
       "type": "node"
     },
-
     {
       "name": "Current TS File",
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "node",
-      "args": ["${relativeFile}"],
-      "runtimeArgs": ["--nolazy", "-r", "ts-node/register/transpile-only"],
+      "args": [
+        "${relativeFile}"
+      ],
+      "runtimeArgs": [
+        "--nolazy",
+        "-r",
+        "ts-node/register/transpile-only"
+      ],
       "envFile": "${workspaceFolder}/.env",
       "cwd": "${workspaceRoot}",
       "internalConsoleOptions": "openOnSessionStart",
-      "skipFiles": ["<node_internals>/**", "node_modules/**"]
+      "skipFiles": [
+        "<node_internals>/**",
+        "node_modules/**"
+      ]
     },
     {
       "name": "Debug Jest Tests",
@@ -45,8 +55,18 @@
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "test"],
-      "args": ["--", "-i", "${relativeFile}", "-t", "${selectedText}"],
+      "runtimeArgs": [
+        "run-script",
+        "test"
+      ],
+      "args": [
+        "--",
+        "-i",
+        "${relativeFile}",
+        "-t",
+        "${selectedText}",
+        "--testTimeout=300000"
+      ],
       "envFile": "${workspaceFolder}/.env",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
@@ -54,13 +74,16 @@
         "program": "${workspaceFolder}/node_modules/jest/bin/jest"
       }
     },
-
     {
       "name": "Debug Jest Current File",
       "type": "node",
       "request": "launch",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": ["${relativeFile}", "--config", "jest.config.js"],
+      "args": [
+        "${relativeFile}",
+        "--config",
+        "jest.config.js"
+      ],
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "windows": {
