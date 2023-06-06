@@ -13,6 +13,15 @@ dependencies:
   '@salesforce/kit':
     specifier: ^1.9.2
     version: 1.9.2
+  istanbul-lib-coverage:
+    specifier: ^3.2.0
+    version: 3.2.0
+  istanbul-lib-report:
+    specifier: ^3.0.0
+    version: 3.0.0
+  istanbul-reports:
+    specifier: ^3.1.4
+    version: 3.1.5
   jsforce:
     specifier: ^1.11.0
     version: 1.11.0
@@ -36,6 +45,15 @@ devDependencies:
   '@types/chai':
     specifier: ^4.3.5
     version: 4.3.5
+  '@types/istanbul-lib-coverage':
+    specifier: ^2.0.4
+    version: 2.0.4
+  '@types/istanbul-lib-report':
+    specifier: ^3.0.0
+    version: 3.0.0
+  '@types/istanbul-reports':
+    specifier: ^3.0.1
+    version: 3.0.1
   '@types/jest':
     specifier: ^29.5.0
     version: 29.5.0
