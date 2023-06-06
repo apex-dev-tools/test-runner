@@ -83,10 +83,5 @@
   },
   "lint-staged": {
     "*.ts": "eslint --cache --cache-location .eslintcache --fix"
-  },
-  "pnpm": {
-    "patchedDependencies": {
-      "istanbul-reports@3.1.5": "patches/istanbul-reports@3.1.5.patch"
-    }
   }
 }

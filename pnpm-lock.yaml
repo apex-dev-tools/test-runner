@@ -1,10 +1,5 @@
 lockfileVersion: '6.0'
 
-patchedDependencies:
-  istanbul-reports@3.1.5:
-    hash: kh2zdrwjfvxl6a5l6ozgm732d4
-    path: patches/istanbul-reports@3.1.5.patch
-
 dependencies:
   '@apexdevtools/sfdx-auth-helper':
     specifier: ^2.0.0
@@ -853,7 +848,7 @@ packages:
       istanbul-lib-instrument: 5.2.0
       istanbul-lib-report: 3.0.0
       istanbul-lib-source-maps: 4.0.1
-      istanbul-reports: 3.1.5(patch_hash=kh2zdrwjfvxl6a5l6ozgm732d4)
+      istanbul-reports: 3.1.5
       jest-message-util: 29.5.0
       jest-util: 29.5.0
       jest-worker: 29.5.0
@@ -1059,7 +1054,7 @@ packages:
       glob: 8.0.3
       istanbul-lib-coverage: 3.2.0
       istanbul-lib-report: 3.0.0
-      istanbul-reports: 3.1.5(patch_hash=kh2zdrwjfvxl6a5l6ozgm732d4)
+      istanbul-reports: 3.1.5
     transitivePeerDependencies:
       - '@swc/core'
       - '@swc/wasm'
@@ -3659,13 +3654,12 @@ packages:
       - supports-color
     dev: true
 
-  /istanbul-reports@3.1.5(patch_hash=kh2zdrwjfvxl6a5l6ozgm732d4):
+  /istanbul-reports@3.1.5:
     resolution: {integrity: sha512-nUsEMa9pBt/NOHqbcbeJEgqIlY/K7rVWUX6Lql2orY5e9roQOthbR3vtY4zzf2orPELg80fnxxk9zUyPlgwD1w==}
     engines: {node: '>=8'}
     dependencies:
       html-escaper: 2.0.2
       istanbul-lib-report: 3.0.0
-    patched: true
 
   /jest-changed-files@29.5.0:
     resolution: {integrity: sha512-IFG34IUMUaNBIxjQXF/iu7g6EcdMrGRRxaUSw92I/2g2YC6vCdTltl4nHvt7Ci5nSJwXIkCu8Ka1DKF+X7Z1Ag==}
