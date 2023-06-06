@@ -27,15 +27,14 @@ const config = {
       // message refs are now transformed so the require won't be called
       module: /@salesforce\/core\/lib\/messages.js/,
     },
+    {
+      // ignore istanbul dynamic report load as we override this
+      // see src/results/coverage/LcovCoverageReporter
+      module: /istanbul-reports\/index.js/,
+    },
   ],
   plugins: [
-    // exclude html based cov reports to avoid adding css/image loaders
-    // uses the patched module to fix context detection
-    new webpack.ContextReplacementPlugin(
-      /istanbul-reports[/\\]lib$/,
-      /none|lcovonly|text|json/
-    ),
-    // ignore encoding import from node-fetch
+    // ignore dynamic encoding import from node-fetch
     new webpack.IgnorePlugin({
       resourceRegExp: /^encoding$/,
       contextRegExp: /node-fetch[/\\]lib$/,
