@@ -8,8 +8,8 @@ import {
   DefaultWatermarks,
 } from '@salesforce/apex-node';
 import { nls } from '@salesforce/apex-node/lib/src/i18n';
-import * as libCoverage from 'istanbul-lib-coverage';
-import * as libReport from 'istanbul-lib-report';
+import { CoverageMap } from 'istanbul-lib-coverage';
+import { createContext, Context } from 'istanbul-lib-report';
 import { LcovOnlyOptions } from 'istanbul-reports';
 import LcovOnlyReport from 'istanbul-reports/lib/lcovonly';
 
@@ -40,14 +40,7 @@ export class LcovCoverageReporter extends CoverageReporter {
 
   public generateReports(): void {
     try {
-      new LcovOnlyReport(this.lcovOptions).execute(
-        libReport.createContext({
-          dir: this.dir,
-          defaultSummarizer: 'nested',
-          watermarks: DefaultWatermarks,
-          coverageMap: this.getCoverageMap(),
-        })
-      );
+      new LcovOnlyReport(this.lcovOptions).execute(this.getContext());
     } catch (e) {
       if (e instanceof Error) {
         e.message = this.localizeErrorMessage(e.message);
@@ -56,13 +49,20 @@ export class LcovCoverageReporter extends CoverageReporter {
     }
   }
 
-  public getCoverageMap(): libCoverage.CoverageMap {
+  public getContext(): Context {
     // apex-node private method needs to be called
     // type checking must be disabled to access
 
     //@ts-ignore
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return
-    return this.buildCoverageMap();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    const coverageMap: CoverageMap = this.buildCoverageMap();
+
+    return createContext({
+      dir: this.dir,
+      defaultSummarizer: 'nested',
+      watermarks: DefaultWatermarks,
+      coverageMap,
+    });
   }
 
   public localizeErrorMessage(message: string): string {

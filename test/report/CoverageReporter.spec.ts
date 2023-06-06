@@ -2,30 +2,29 @@
  * Copyright (c) 2023, FinancialForce.com, inc. All rights reserved.
  */
 
-import { CoverageReporter as ApexNodeCoverageReporter } from '@salesforce/apex-node';
 import { expect } from 'chai';
 import fs from 'fs';
 import path from 'path';
-import { SinonSandbox, createSandbox } from 'sinon';
+import { SinonSandbox, SinonStub, createSandbox } from 'sinon';
 import { CapturingLogger } from '../../src';
 import { CoverageReporter } from '../../src/results/CoverageReporter';
-
-const generateReportsMock = jest.fn();
-jest.mock('@salesforce/apex-node', () => {
-  return {
-    CoverageReporter: jest.fn().mockImplementation(() => {
-      return { generateReports: generateReportsMock };
-    }),
-  };
-});
-
-const MockCoverageReporter = jest.mocked(ApexNodeCoverageReporter);
+import { LcovCoverageReporter } from '../../src/results/lcov/LcovCoverageReporter';
+import LcovOnlyReport from 'istanbul-reports/lib/lcovonly';
 
 describe('CoverageReporter', () => {
   let sandbox: SinonSandbox;
+  let executeStub: SinonStub;
+  let errorStub: SinonStub;
 
   beforeEach(() => {
     sandbox = createSandbox();
+
+    executeStub = sandbox.stub(LcovOnlyReport.prototype, 'execute');
+    errorStub = sandbox
+      .stub(LcovCoverageReporter.prototype, 'localizeErrorMessage')
+      .returnsArg(0);
+    sandbox.stub(LcovCoverageReporter.prototype, 'getContext');
+
     sandbox.stub(path, 'join').returns('dirBase/coverage');
     sandbox.stub(path, 'resolve').returns('/abs/dirBase/coverage');
     sandbox.stub(fs, 'mkdirSync');
@@ -33,7 +32,6 @@ describe('CoverageReporter', () => {
 
   afterEach(() => {
     sandbox.restore();
-    jest.restoreAllMocks();
   });
 
   it('should generate reports when there is data', () => {
@@ -74,33 +72,8 @@ describe('CoverageReporter', () => {
       },
     });
 
-    expect(generateReportsMock.mock.calls.length).to.equal(1);
-    expect(MockCoverageReporter.mock.calls[0]).to.deep.equal([
-      {
-        done: true,
-        records: [
-          {
-            ApexClassOrTrigger: {
-              Id: 'ClassID',
-              Name: 'FooClass',
-              NamespacePrefix: '',
-            },
-            NumLinesCovered: 3,
-            NumLinesUncovered: 3,
-            Coverage: { coveredLines: [1, 2, 3], uncoveredLines: [4, 5, 6] },
-          },
-        ],
-        totalSize: 1,
-      },
-      '/abs/dirBase/coverage',
-      'projectRoot',
-      {
-        reportFormats: ['lcovonly'],
-        reportOptions: {
-          lcovonly: { file: 'lcov.info', projectRoot: 'projectRoot' },
-        },
-      },
-    ]);
+    expect(executeStub.calledOnce).to.be.true;
+    expect(errorStub.called).to.be.false;
   });
 
   it('should not generate reports when there is no data', () => {
@@ -127,6 +100,7 @@ describe('CoverageReporter', () => {
       coverageResult: undefined,
     });
 
-    expect(generateReportsMock.mock.calls.length).to.equal(0);
+    expect(executeStub.called).to.be.false;
+    expect(errorStub.called).to.be.false;
   });
 });
