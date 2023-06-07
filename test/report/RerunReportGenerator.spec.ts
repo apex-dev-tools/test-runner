@@ -65,7 +65,7 @@ describe('messages', () => {
     });
 
     expect(logger.files.length).to.be.equal(1);
-    expect(logger.files[0][0]).to.be.equal('/test-output-reruns');
+    expect(logger.files[0][0]).to.be.equal('/test-output-reruns.json');
     expect(logger.files[0][1].length > 0).to.be.true;
   });
 });
