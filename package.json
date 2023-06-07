@@ -19,6 +19,7 @@
     "commit": "cz",
     "lint": "eslint ./src/ --fix",
     "prepare": "husky install",
+    "run:script": "ts-node-transpile-only",
     "test": "jest --coverage --runInBand",
     "test:pack": "webpack --mode production --devtool hidden-source-map",
     "test:watch": "jest --watch"

@@ -41,7 +41,12 @@ To test bundling using webpack:
 
 This should execute without error.
 
-See './script' for some basic scripts to aid org testing.
+See `./script` for some basic scripts to aid org testing. Execute them with [`ts-node`](https://github.com/TypeStrong/ts-node#usage) using the run script:
+
+```txt
+  # Run Testall with default settings
+  pnpm run:script -- ./src/scripts/Testall.ts <username> <namespace | unmanaged>
+```
 
 ### Git Hooks
 
