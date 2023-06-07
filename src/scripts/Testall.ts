@@ -12,6 +12,7 @@ import { ExecutionMapGenerator } from '../results/ExecutionMapGenerator';
 import { ReportGenerator } from '../results/ReportGenerator';
 import { AsyncTestRunner } from '../runner/TestRunner';
 import { ConsoleLogger } from './ConsoleLogger';
+import { RerunReportGenerator } from '../results/RerunReportGenerator';
 
 async function getConnection(username: string): Promise<Connection> {
   return await Connection.create({
@@ -33,6 +34,7 @@ async function runTestall(username: string, namespace: string) {
     'orgId',
     'username'
   );
+  const rerunReportGenerator = new RerunReportGenerator();
 
   const logger = new ConsoleLogger();
   const methodCollector = new OrgTestMethodCollector(
@@ -51,7 +53,12 @@ async function runTestall(username: string, namespace: string) {
       namespace == 'unmanaged' ? '' : namespace,
       methodCollector,
       runner,
-      [reportGenerator, classTimeGenerator, executionMapGenerator],
+      [
+        reportGenerator,
+        classTimeGenerator,
+        executionMapGenerator,
+        rerunReportGenerator,
+      ],
       {}
     );
   } catch (err) {
