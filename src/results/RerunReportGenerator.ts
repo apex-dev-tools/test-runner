@@ -35,7 +35,7 @@ export class RerunReportGenerator implements OutputGenerator {
     summary: TestRunSummary
   ): void {
     logger.logOutputFile(
-      path.join(outputDirBase, fileName + '-reruns'),
+      path.join(outputDirBase, fileName + '-reruns.json'),
       this.generateJson(summary.reruns)
     );
   }

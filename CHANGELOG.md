@@ -1,5 +1,9 @@
 # test-runner - Changelog
 
+## 1.9.2 - 2023-06-07
+
+* Add file extension back to reruns report.
+
 ## 1.9.1 - 2023-06-01
 
 * Fix bug with missed test detection.
