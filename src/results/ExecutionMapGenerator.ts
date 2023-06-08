@@ -29,6 +29,14 @@ export class ExecutionMapGenerator implements OutputGenerator {
     summary: TestRunSummary
   ): void {
     const { testResults } = summary;
+
+    if (!testResults.length) {
+      logger.logMessage(
+        'Skipping class time image generation, no test results'
+      );
+      return;
+    }
+
     let startTime = SfDate.parseDate(testResults[0].TestTimestamp).getTime();
     let endTime = startTime + testResults[0].RunTime;
     const classStartMap = new Map<string, number>();
@@ -56,7 +64,7 @@ export class ExecutionMapGenerator implements OutputGenerator {
     const classesOrdered = Array.from(classStartMap.keys());
     const results: boolean[][] = [];
     for (let i = 0; i < classesOrdered.length; i++)
-      results.push(Array(length).fill(false));
+      results.push(Array<boolean>(length).fill(false));
 
     testResults.forEach(test => {
       const idx = classStart.findIndex(v => v == test.ApexClass.Name);
