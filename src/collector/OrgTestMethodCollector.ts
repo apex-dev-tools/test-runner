@@ -2,7 +2,7 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import { Connection } from '@apexdevtools/sfdx-auth-helper';
+import { Connection } from '@salesforce/core';
 import { Logger } from '../log/Logger';
 import {
   ApexClassInfo,
@@ -76,7 +76,6 @@ export class OrgTestMethodCollector implements TestMethodCollector {
 
       if (
         symbolTable != null &&
-        /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
         symbolTable.tableDeclaration.modifiers.includes('testMethod')
       ) {
         const methods = symbolTable.methods;
@@ -89,7 +88,6 @@ export class OrgTestMethodCollector implements TestMethodCollector {
           }
         }
       }
-      /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
       if (testMethods.size !== 0)
         testMethodsByClassName.set(classInfo.Name, testMethods);
     }

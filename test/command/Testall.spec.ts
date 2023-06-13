@@ -1,74 +1,57 @@
 /*
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
-import { AuthInfo, Connection } from '@apexdevtools/sfdx-auth-helper';
-import {
-  MockTestOrgData,
-  testSetup,
-} from '@apexdevtools/sfdx-auth-helper/lib/src/testSetup';
-import { StreamingClient } from '@salesforce/apex-node/lib/src/streaming';
-import { createSandbox, SinonSandbox, SinonStub } from 'sinon';
-import { expect } from 'chai';
-import { RerunOption, Testall } from '../../src/command/Testall';
+
 import { TestResult, TestService } from '@salesforce/apex-node';
+import { Connection } from '@salesforce/core';
+import { TestContext } from '@salesforce/core/lib/testSetup';
+import { expect } from 'chai';
+import { SinonSandbox, SinonStub, createSandbox } from 'sinon';
+import { RerunOption, Testall } from '../../src/command/Testall';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
+import { ApexTestResult } from '../../src/model/ApexTestResult';
+import { ApexTestRunResult } from '../../src/model/ApexTestRunResult';
+import { QueryHelper } from '../../src/query/QueryHelper';
 import {
-  logRegex,
+  MaybeError,
+  TestError,
+  TestErrorKind,
+} from '../../src/runner/TestError';
+import {
   MockOutputGenerator,
   MockTestMethodCollector,
   MockTestRunner,
   MockThrowingTestRunner,
+  createMockConnection,
+  logRegex,
   testRunId,
 } from '../Setup';
-import { ApexTestRunResult } from '../../src/model/ApexTestRunResult';
-import { ApexTestResult } from '../../src/model/ApexTestResult';
-import { QueryHelper } from '../../src/query/QueryHelper';
-import { TestError, TestErrorKind } from '../../src/runner/TestError';
 
-const $$ = testSetup();
-let mockConnection: Connection;
-let sandboxStub: SinonSandbox;
-let testingServiceSyncStub: SinonStub;
-let queryStub: SinonStub;
-const testData = new MockTestOrgData();
+describe('TestAll', () => {
+  const $$ = new TestContext();
+  let sandbox: SinonSandbox;
 
-describe('messages', () => {
+  let mockConnection: Connection;
+  let testingServiceSyncStub: SinonStub;
+  let queryStub: SinonStub;
+
   beforeEach(async () => {
-    sandboxStub = createSandbox();
-    $$.setConfigStubContents('AuthInfoConfig', {
-      contents: await testData.getConfig(),
-    });
-    // Stub retrieveMaxApiVersion to get over "Domain Not Found: The org cannot be found" error
-    sandboxStub
-      .stub(Connection.prototype, 'retrieveMaxApiVersion')
-      .resolves('50.0');
-    mockConnection = await Connection.create({
-      authInfo: await AuthInfo.create({
-        username: testData.username,
-      }),
-    });
-    sandboxStub.stub(mockConnection, 'instanceUrl').get(() => {
-      return 'https://na139.salesforce.com';
-    });
+    sandbox = createSandbox();
+    mockConnection = await createMockConnection($$, sandbox);
 
-    sandboxStub.stub(StreamingClient.prototype, 'handshake').resolves();
-    testingServiceSyncStub = sandboxStub.stub(
+    const qh = QueryHelper.instance(mockConnection);
+    queryStub = sandbox.stub(qh, 'query');
+    // delegate retry variant to basic query
+    sandbox.stub(qh, 'queryWithRetry').returns(queryStub);
+
+    testingServiceSyncStub = sandbox.stub(
       TestService.prototype,
       'runTestSynchronous'
     );
-
-    queryStub = sandboxStub.stub(
-      QueryHelper.instance(mockConnection.tooling),
-      'query'
-    );
-    // delegate retry variant to basic query
-    sandboxStub
-      .stub(QueryHelper.instance(mockConnection.tooling), 'queryWithRetry')
-      .returns(queryStub);
   });
 
   afterEach(() => {
-    sandboxStub.restore();
+    sandbox.restore();
   });
 
   it('should log and re-throw runner Error', async () => {
@@ -108,8 +91,8 @@ describe('messages', () => {
 
   it('should log and re-throw internal Error', async () => {
     const logger = new CapturingLogger();
-    const err = new Error('TestRunner failed');
-    ((err as unknown) as Record<string, unknown>).data = 'More data';
+    const err: MaybeError = new Error('TestRunner failed');
+    err.data = 'More data';
     const runner = new MockThrowingTestRunner(err);
     const testMethods = new MockTestMethodCollector(
       new Map<string, string>([['An Id', 'FooClass']]),
@@ -174,7 +157,6 @@ describe('messages', () => {
 
   it('should return summary after running', async () => {
     const mockDate = new Date(1587412800000);
-    //@ts-expect-error
     const spy = jest.spyOn(global, 'Date').mockImplementation(() => mockDate);
 
     const logger = new CapturingLogger();

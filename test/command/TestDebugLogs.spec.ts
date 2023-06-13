@@ -1,16 +1,14 @@
 /*
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
-import { AuthInfo, Connection } from '@apexdevtools/sfdx-auth-helper';
-import {
-  MockTestOrgData,
-  testSetup,
-} from '@apexdevtools/sfdx-auth-helper/lib/src/testSetup';
-import { StreamingClient } from '@salesforce/apex-node/lib/src/streaming';
-import { createSandbox, SinonSandbox, SinonStub } from 'sinon';
+
+import { Connection } from '@salesforce/core';
+import { TestContext } from '@salesforce/core/lib/testSetup';
+import { SinonSandbox, SinonStub, createSandbox } from 'sinon';
 import { expect } from 'chai';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import {
+  createMockConnection,
   logRegex,
   MockTestMethodCollector,
   MockTestRunner,
@@ -24,50 +22,33 @@ import * as fs from 'fs';
 import * as os from 'os';
 import path from 'path';
 
-const $$ = testSetup();
-let mockConnection: Connection;
-let sandboxStub: SinonSandbox;
-let queryHelperStub: SinonStub;
-let toolingQueryStub: SinonStub;
-let toolingCreateStub: SinonStub;
-let toolingRequestStub: SinonStub;
-const testData = new MockTestOrgData();
+describe('TestDebugLogs', () => {
+  const $$ = new TestContext();
+  let sandbox: SinonSandbox;
 
-describe('messages', () => {
+  let mockConnection: Connection;
+  let queryStub: SinonStub;
+  let toolingQueryStub: SinonStub;
+  let toolingCreateStub: SinonStub;
+  let toolingRequestStub: SinonStub;
+
   beforeEach(async () => {
-    sandboxStub = createSandbox();
-    $$.setConfigStubContents('AuthInfoConfig', {
-      contents: await testData.getConfig(),
-    });
-    // Stub retrieveMaxApiVersion to get over "Domain Not Found: The org cannot be found" error
-    sandboxStub
-      .stub(Connection.prototype, 'retrieveMaxApiVersion')
-      .resolves('50.0');
-    mockConnection = await Connection.create({
-      authInfo: await AuthInfo.create({
-        username: testData.username,
-      }),
-    });
-    sandboxStub.stub(mockConnection, 'instanceUrl').get(() => {
-      return 'https://na139.salesforce.com';
-    });
+    sandbox = createSandbox();
+    mockConnection = await createMockConnection($$, sandbox);
 
-    sandboxStub.stub(StreamingClient.prototype, 'handshake').resolves();
-    queryHelperStub = sandboxStub.stub(
-      QueryHelper.instance(mockConnection.tooling),
-      'query'
-    );
+    const qh = QueryHelper.instance(mockConnection);
+    queryStub = sandbox.stub(qh, 'query');
     // delegate retry variant to basic query
-    sandboxStub
-      .stub(QueryHelper.instance(mockConnection.tooling), 'queryWithRetry')
-      .returns(queryHelperStub);
-    toolingQueryStub = sandboxStub.stub(mockConnection.tooling, 'query');
-    toolingCreateStub = sandboxStub.stub(mockConnection.tooling, 'create');
-    toolingRequestStub = sandboxStub.stub(mockConnection.tooling, 'request');
+    sandbox.stub(qh, 'queryWithRetry').returns(queryStub);
+
+    toolingQueryStub = sandbox.stub(mockConnection.tooling, 'query');
+    toolingCreateStub = sandbox.stub(mockConnection.tooling, 'create');
+    toolingRequestStub = sandbox.stub(mockConnection.tooling, 'request');
+    sandbox.stub(mockConnection.tooling, 'destroy').resolves();
   });
 
   afterEach(() => {
-    sandboxStub.restore();
+    sandbox.restore();
   });
 
   it('unknown user should throw', async () => {
@@ -87,7 +68,7 @@ describe('messages', () => {
     };
     const runner = new MockTestRunner(runnerResult);
     const methodCollector = new MockTestMethodCollector(new Map(), new Map());
-    queryHelperStub.onCall(0).resolves([]);
+    queryStub.onCall(0).resolves([]);
 
     try {
       await TestDebugLogs.run(
@@ -131,9 +112,9 @@ describe('messages', () => {
     };
     const runner = new MockTestRunner(runnerResult);
     const methodCollector = new MockTestMethodCollector(new Map(), new Map());
-    queryHelperStub.onCall(0).resolves([{ Id: 'AnId' }]); // User Id
-    queryHelperStub.onCall(1).resolves([]); // Debug logs
-    queryHelperStub.onCall(2).resolves([]); // ApexClassInfo
+    queryStub.onCall(0).resolves([{ Id: 'AnId' }]); // User Id
+    queryStub.onCall(1).resolves([]); // Debug logs
+    queryStub.onCall(2).resolves([]); // ApexClassInfo
     toolingQueryStub.resolves({ records: [] }); // Debug trace
     toolingCreateStub.resolves({ success: true }); // Debug trace
 
@@ -183,9 +164,9 @@ describe('messages', () => {
     };
     const runner = new MockTestRunner(runnerResult);
     const methodCollector = new MockTestMethodCollector(new Map(), new Map());
-    queryHelperStub.onCall(0).resolves([{ Id: 'AnId' }]); // User Id
-    queryHelperStub.onCall(1).resolves([]); // Debug logs
-    queryHelperStub.onCall(2).resolves([]); // ApexClassInfo
+    queryStub.onCall(0).resolves([{ Id: 'AnId' }]); // User Id
+    queryStub.onCall(1).resolves([]); // Debug logs
+    queryStub.onCall(2).resolves([]); // ApexClassInfo
     toolingQueryStub.resolves({ records: [] }); // Debug trace
     toolingCreateStub.resolves({ success: true }); // Debug trace
 
@@ -253,10 +234,10 @@ describe('messages', () => {
       },
     ];
 
-    queryHelperStub.onCall(0).resolves([{ Id: 'AnId' }]); // User Id
-    queryHelperStub.onCall(1).resolves([{ Id: 'LogId' }]); // Debug logs
-    queryHelperStub.onCall(2).resolves([mockTestRunResult[0]]);
-    queryHelperStub.onCall(3).resolves([{ Id: 'LogId' }]); // Debug logs
+    queryStub.onCall(0).resolves([{ Id: 'AnId' }]); // User Id
+    queryStub.onCall(1).resolves([{ Id: 'LogId' }]); // Debug logs
+    queryStub.onCall(2).resolves([mockTestRunResult[0]]);
+    queryStub.onCall(3).resolves([{ Id: 'LogId' }]); // Debug logs
     toolingQueryStub.resolves({ records: [{ Id: 'AnId' }] }); // Debug trace
     toolingCreateStub.resolves({ success: true }); // Debug trace
     toolingRequestStub.resolves('Log Content');

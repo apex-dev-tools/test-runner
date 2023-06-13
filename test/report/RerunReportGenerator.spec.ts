@@ -6,7 +6,7 @@ import { expect } from 'chai';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import { RerunReportGenerator } from '../../src/results/RerunReportGenerator';
 
-describe('messages', () => {
+describe('RerunReportGenerator', () => {
   it('should create json & xml output on failing report', () => {
     const generator = new RerunReportGenerator();
 

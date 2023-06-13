@@ -2,18 +2,19 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import { Connection } from '@apexdevtools/sfdx-auth-helper';
-import { RequestData } from '@salesforce/apex-node/lib/src/execute/types';
+import { Connection } from '@salesforce/core';
 import { escapeXml } from '@salesforce/apex-node/lib/src/utils/authUtil';
 import { Logger } from '../log/Logger';
 import { QueryHelper } from '../query/QueryHelper';
 import * as util from 'util';
 import { TestError } from '../runner/TestError';
+import { SymbolTable } from '../model/SymbolTable';
+import { RequestInfo } from 'jsforce';
 
 export interface ApexClassInfo {
   Id: string;
   Name: string;
-  SymbolTable: any;
+  SymbolTable: SymbolTable | null;
 }
 
 export const MAX_SYMBOLS_CHUNK_SIZE = 50;
@@ -88,7 +89,7 @@ export class ClassSymbolLoader {
   ): Promise<ApexClassInfo[]> {
     const idClause = classIds.map(id => `'${id}'`).join(', ');
     const apexClasses = await QueryHelper.instance(
-      this.connection.tooling
+      this.connection
     ).query<ApexClassInfo>(
       'ApexClass',
       `Id IN (${idClause})`,
@@ -104,15 +105,15 @@ export class ClassSymbolLoader {
     const query = `Select Id, Name, Body from ApexClass Where NamespacePrefix = ${
       this.namespace == '' ? 'null' : `'${this.namespace}'`
     } AND Id in (${idClause})`;
-    const result: QueryResponse = await this.connection.tooling.request(
-      this.buildQueryRequest(query)
-    );
+    const result: QueryResponse = await QueryHelper.instance(
+      this.connection
+    ).request(this.buildQueryRequest(query));
     const envelope = result['soapenv:Envelope'];
     const body = envelope['soapenv:Body'];
     return body.queryResponse.result.records;
   }
 
-  private buildQueryRequest(queryString: string): RequestData {
+  private buildQueryRequest(queryString: string): RequestInfo {
     const body = util.format(
       soapTemplate,
       this.connection.accessToken,

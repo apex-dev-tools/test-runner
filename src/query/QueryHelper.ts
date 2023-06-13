@@ -2,9 +2,11 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import { BaseConnection as JSForceConnection, Record } from 'jsforce';
+import { AuthHelper } from '@apexdevtools/sfdx-auth-helper';
+import { Connection as JSForceConnection, Record, RequestInfo } from 'jsforce';
 import { Logger } from '../log/Logger';
 import { TestError, TestErrorKind } from '../runner/TestError';
+import { Connection } from '@salesforce/core';
 
 type QueryFunction<T> = (
   sobject: string,
@@ -36,10 +38,15 @@ export function getMaxQueryRetries(options: QueryOptions): number {
 }
 
 export class QueryHelper {
-  static helpers = new Map<JSForceConnection, QueryHelper>();
+  static helpers: Map<Connection, QueryHelper> = new Map<
+    Connection,
+    QueryHelper
+  >();
+  // Until we can upgrade to new jsforce / core types
+  // use fallback jsforce v1
   connection: JSForceConnection;
 
-  static instance(connection: JSForceConnection): QueryHelper {
+  static instance(connection: Connection): QueryHelper {
     let helper = this.helpers.get(connection);
     if (helper == undefined) {
       helper = new QueryHelper(connection);
@@ -48,8 +55,12 @@ export class QueryHelper {
     return helper;
   }
 
-  private constructor(connection: JSForceConnection) {
-    this.connection = connection;
+  private constructor(connection: Connection) {
+    this.connection = AuthHelper.toJsForceConnection(connection);
+  }
+
+  async request<T>(req: string | RequestInfo): Promise<T> {
+    return this.connection.tooling.request<T>(req);
   }
 
   async query<T>(
@@ -57,7 +68,7 @@ export class QueryHelper {
     clause: string,
     fields: string
   ): Promise<Record<T>[]> {
-    return this.connection
+    return this.connection.tooling
       .sobject(sobject)
       .find<T>(clause, fields)
       .execute({ autoFetch: true, maxFetch: 100000 });

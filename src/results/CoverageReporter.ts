@@ -4,7 +4,7 @@
 
 import { OutputGenerator, TestRunSummary } from './OutputGenerator';
 import { Logger } from '../log/Logger';
-import { CoverageReporter as ApexNodeCoverageReporter } from '@salesforce/apex-node';
+import { LcovCoverageReporter } from './lcov/LcovCoverageReporter';
 import path from 'path';
 import fs from 'fs';
 
@@ -34,15 +34,11 @@ export class CoverageReporter implements OutputGenerator {
         totalSize: summary.coverageResult.data.length,
         records: summary.coverageResult.data,
       };
-      new ApexNodeCoverageReporter(records, abs, this.projectRoot, {
-        reportFormats: ['lcovonly'],
-        reportOptions: {
-          lcovonly: {
-            projectRoot: this.projectRoot,
-            file: 'lcov.info',
-          },
-        },
-      }).generateReports();
+      new LcovCoverageReporter(
+        records,
+        abs,
+        this.projectRoot
+      ).generateReports();
     }
   }
 }

@@ -1,57 +1,37 @@
 /*
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
-import { AuthInfo, Connection } from '@apexdevtools/sfdx-auth-helper';
-import {
-  MockTestOrgData,
-  testSetup,
-} from '@apexdevtools/sfdx-auth-helper/lib/src/testSetup';
-import { StreamingClient } from '@salesforce/apex-node/lib/src/streaming';
-import { createSandbox, SinonSandbox, SinonStub, match } from 'sinon';
+
+import { Connection } from '@salesforce/core';
+import { TestContext } from '@salesforce/core/lib/testSetup';
 import { expect } from 'chai';
-import { CapturingLogger } from '../../src/log/CapturingLogger';
-import { QueryHelper } from '../../src/query/QueryHelper';
-import { ApexClassInfo } from '../../src/query/ClassSymbolLoader';
-import { setupQueryApexClassesSOAP } from '../Setup';
+import { SinonSandbox, SinonStub, createSandbox, match } from 'sinon';
 import { OrgTestMethodCollector } from '../../src/collector/OrgTestMethodCollector';
-import { Record } from 'jsforce';
+import { CapturingLogger } from '../../src/log/CapturingLogger';
+import { SymbolTable } from '../../src/model/SymbolTable';
+import { ApexClassInfo } from '../../src/query/ClassSymbolLoader';
+import { QueryHelper } from '../../src/query/QueryHelper';
+import { createMockConnection, setupQueryApexClassesSOAP } from '../Setup';
 
-const $$ = testSetup();
-let mockConnection: Connection;
-let sandboxStub: SinonSandbox;
-let toolingRequestStub: SinonStub;
-let queryStub: SinonStub<[string, string, string], Promise<Record<any>[]>>;
-const testData = new MockTestOrgData();
+describe('OrgTestMethodCollector', () => {
+  const $$ = new TestContext();
+  let sandbox: SinonSandbox;
 
-describe('messages', () => {
+  let mockConnection: Connection;
+  let requestStub: SinonStub;
+  let queryStub: SinonStub;
+
   beforeEach(async () => {
-    sandboxStub = createSandbox();
-    $$.setConfigStubContents('AuthInfoConfig', {
-      contents: await testData.getConfig(),
-    });
-    // Stub retrieveMaxApiVersion to get over "Domain Not Found: The org cannot be found" error
-    sandboxStub
-      .stub(Connection.prototype, 'retrieveMaxApiVersion')
-      .resolves('50.0');
-    mockConnection = await Connection.create({
-      authInfo: await AuthInfo.create({
-        username: testData.username,
-      }),
-    });
-    sandboxStub.stub(mockConnection, 'instanceUrl').get(() => {
-      return 'https://na139.salesforce.com';
-    });
+    sandbox = createSandbox();
+    mockConnection = await createMockConnection($$, sandbox);
 
-    sandboxStub.stub(StreamingClient.prototype, 'handshake').resolves();
-    toolingRequestStub = sandboxStub.stub(mockConnection.tooling, 'request');
-    queryStub = sandboxStub.stub(
-      QueryHelper.instance(mockConnection.tooling),
-      'query'
-    );
+    const qh = QueryHelper.instance(mockConnection);
+    requestStub = sandbox.stub(qh, 'request');
+    queryStub = sandbox.stub(qh, 'query');
   });
 
   afterEach(() => {
-    sandboxStub.restore();
+    sandbox.restore();
   });
 
   it('should create map of class ids to names', async () => {
@@ -161,16 +141,16 @@ describe('messages', () => {
               name: 'FooMethod3',
             },
           ],
-        },
+        } as SymbolTable,
       },
       {
         Id: 'Id2',
         Name: 'BarClass',
         SymbolTable: {
           tableDeclaration: {
-            modifiers: [],
+            modifiers: [] as string[],
           },
-        },
+        } as SymbolTable,
       },
       {
         Id: 'Id3',
@@ -185,7 +165,7 @@ describe('messages', () => {
               name: 'BazMethod',
             },
           ],
-        },
+        } as SymbolTable,
       },
     ];
 
@@ -226,9 +206,9 @@ describe('messages', () => {
         Name: 'BarClass',
         SymbolTable: {
           tableDeclaration: {
-            modifiers: [],
+            modifiers: [] as string[],
           },
-        },
+        } as SymbolTable,
       },
       {
         Id: 'Id3',
@@ -243,7 +223,7 @@ describe('messages', () => {
               name: 'BazMethod',
             },
           ],
-        },
+        } as SymbolTable,
       },
     ];
     // classIdNameMap calls
@@ -279,14 +259,14 @@ describe('messages', () => {
               name: 'FooMethod3',
             },
           ],
-        },
+        } as SymbolTable,
       },
     ];
     queryStub
       .withArgs('ApexClass', match.any, 'Id, Name, SymbolTable')
       .onCall(1)
       .resolves(updatedApexClasses);
-    setupQueryApexClassesSOAP(toolingRequestStub, []);
+    setupQueryApexClassesSOAP(requestStub, []);
 
     const testMethodCollector = new OrgTestMethodCollector(
       new CapturingLogger(),

@@ -1,7 +1,8 @@
 node_modules/
 coverage/
 lib/
+test-bundle/
+test-results/
 
 test-result.*
 .eslintcache
-

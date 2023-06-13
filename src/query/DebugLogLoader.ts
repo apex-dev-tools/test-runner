@@ -2,9 +2,10 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import { Connection, fs } from '@apexdevtools/sfdx-auth-helper';
+import { Connection } from '@salesforce/core';
 import { QueryHelper } from '../query/QueryHelper';
 import * as path from 'path';
+import fs from 'fs';
 
 export interface ApexLog {
   Id: string;
@@ -21,7 +22,7 @@ export class DebugLogLoader {
     connection: Connection,
     namespace: string
   ): Promise<DebugLogLoader> {
-    const logs = await QueryHelper.instance(connection.tooling).query<ApexLog>(
+    const logs = await QueryHelper.instance(connection).query<ApexLog>(
       'ApexLog',
       '',
       'Id, LogLength, Status'

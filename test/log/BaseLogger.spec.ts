@@ -4,11 +4,11 @@
 
 import { expect } from 'chai';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
-import { logRegex } from '../Setup';
-import { ApexTestRunResult } from '../../src/model/ApexTestRunResult';
 import { ApexTestResult } from '../../src/model/ApexTestResult';
+import { ApexTestRunResult } from '../../src/model/ApexTestRunResult';
+import { logRegex } from '../Setup';
 
-describe('messages', () => {
+describe('BaseLogger', () => {
   it('should save test run status when verbose logging', () => {
     const mockTestRunResult: Partial<ApexTestRunResult> = {
       Status: 'Processing',

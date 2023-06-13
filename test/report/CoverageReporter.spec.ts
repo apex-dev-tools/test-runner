@@ -1,42 +1,43 @@
 /*
  * Copyright (c) 2023, FinancialForce.com, inc. All rights reserved.
  */
-import { CoverageReporter } from '../../src/results/CoverageReporter';
-import { CapturingLogger } from '../../src';
 
-import path from 'path';
+import { expect } from 'chai';
 import fs from 'fs';
-import { CoverageReporter as ApexNodeCoverageReporter } from '@salesforce/apex-node';
+import path from 'path';
+import { SinonSandbox, SinonStub, createSandbox } from 'sinon';
+import { CapturingLogger } from '../../src';
+import { CoverageReporter } from '../../src/results/CoverageReporter';
+import { LcovCoverageReporter } from '../../src/results/lcov/LcovCoverageReporter';
+import LcovOnlyReport from 'istanbul-reports/lib/lcovonly';
 
-jest.mock('@salesforce/apex-node', () => {
-  return {
-    CoverageReporter: jest.fn().mockImplementation(() => {
-      return { generateReports: jest.fn() };
-    }),
-  };
-});
-
-const mockedApexNodeCoverageReporter = jest.mocked(ApexNodeCoverageReporter);
-describe('coverage reporter', () => {
-  let joinSpy: any, resolveSpy: any, mkDirSyncSpy: any;
+describe('CoverageReporter', () => {
+  let sandbox: SinonSandbox;
+  let executeStub: SinonStub;
+  let errorStub: SinonStub;
 
   beforeEach(() => {
-    joinSpy = jest
-      .spyOn(path, 'join')
-      .mockReturnValueOnce('./fakepath/coverage');
-    resolveSpy = jest
-      .spyOn(path, 'resolve')
-      .mockReturnValueOnce('path/to/fakepath/coverage');
-    mkDirSyncSpy = jest.spyOn(fs, 'mkdirSync');
+    sandbox = createSandbox();
+
+    executeStub = sandbox.stub(LcovOnlyReport.prototype, 'execute');
+    errorStub = sandbox
+      .stub(LcovCoverageReporter.prototype, 'localizeErrorMessage')
+      .returnsArg(0);
+    sandbox.stub(LcovCoverageReporter.prototype, 'getContext');
+
+    sandbox.stub(path, 'join').returns('dirBase/coverage');
+    sandbox.stub(path, 'resolve').returns('/abs/dirBase/coverage');
+    sandbox.stub(fs, 'mkdirSync');
   });
+
   afterEach(() => {
-    jest.restoreAllMocks();
-    jest.clearAllMocks();
+    sandbox.restore();
   });
-  it('should call generate reports on CoverageReporter when there is data', () => {
-    const generator = new CoverageReporter('projetRoot');
+
+  it('should generate reports when there is data', () => {
+    const generator = new CoverageReporter('projectRoot');
     const logger = new CapturingLogger();
-    generator.generate(logger, 'dirBase', '.fileName', {
+    generator.generate(logger, 'dirBase', 'ignored', {
       startTime: new Date(),
       testResults: [],
       runResult: {
@@ -71,43 +72,14 @@ describe('coverage reporter', () => {
       },
     });
 
-    expect(mockedApexNodeCoverageReporter).toBeCalledWith(
-      {
-        done: true,
-        records: [
-          {
-            ApexClassOrTrigger: {
-              Id: 'ClassID',
-              Name: 'FooClass',
-              NamespacePrefix: '',
-            },
-            NumLinesCovered: 3,
-            NumLinesUncovered: 3,
-            Coverage: { coveredLines: [1, 2, 3], uncoveredLines: [4, 5, 6] },
-          },
-        ],
-        totalSize: 1,
-      },
-      'path/to/fakepath/coverage',
-      'projetRoot',
-      {
-        reportFormats: ['lcovonly'],
-        reportOptions: {
-          lcovonly: { file: 'lcov.info', projectRoot: 'projetRoot' },
-        },
-      }
-    );
-    expect(joinSpy).toBeCalledWith('dirBase', 'coverage');
-    expect(resolveSpy).toBeCalledWith('./fakepath/coverage');
-    expect(mkDirSyncSpy).toBeCalledWith('path/to/fakepath/coverage', {
-      recursive: true,
-    });
+    expect(executeStub.calledOnce).to.be.true;
+    expect(errorStub.called).to.be.false;
   });
 
-  it('should not call generate reports on CoverageReporter when there is no data', () => {
-    const generator = new CoverageReporter('projetRoot');
+  it('should not generate reports when there is no data', () => {
+    const generator = new CoverageReporter('projectRoot');
     const logger = new CapturingLogger();
-    generator.generate(logger, 'dirBase', '.fileName', {
+    generator.generate(logger, 'dirBase', 'ignored', {
       startTime: new Date(),
       testResults: [],
       runResult: {
@@ -128,9 +100,7 @@ describe('coverage reporter', () => {
       coverageResult: undefined,
     });
 
-    expect(mockedApexNodeCoverageReporter).not.toHaveBeenCalled();
-    expect(joinSpy).not.toBeCalled();
-    expect(resolveSpy).not.toBeCalled();
-    expect(mkDirSyncSpy).not.toBeCalled();
+    expect(executeStub.called).to.be.false;
+    expect(errorStub.called).to.be.false;
   });
 });

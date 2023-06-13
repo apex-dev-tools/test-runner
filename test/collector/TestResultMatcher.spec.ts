@@ -1,15 +1,16 @@
 /*
  * Copyright (c) 2023, FinancialForce.com, inc. All rights reserved.
  */
+
 import { expect } from 'chai';
 import { TestResultMatcher } from '../../src/collector/TestResultMatcher';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import * as fs from 'fs';
 import { logRegex } from '../Setup';
 
-let logger: CapturingLogger;
+describe('TestResultMatcher', () => {
+  let logger: CapturingLogger;
 
-describe('result message', () => {
   beforeEach(() => {
     logger = new CapturingLogger();
   });

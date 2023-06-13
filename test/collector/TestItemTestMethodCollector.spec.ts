@@ -1,57 +1,34 @@
 /*
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
-import { AuthInfo, Connection } from '@apexdevtools/sfdx-auth-helper';
-import {
-  MockTestOrgData,
-  testSetup,
-} from '@apexdevtools/sfdx-auth-helper/lib/src/testSetup';
-import { StreamingClient } from '@salesforce/apex-node/lib/src/streaming';
-import { createSandbox, SinonSandbox, SinonStub } from 'sinon';
+
+import { TestItem } from '@salesforce/apex-node';
+import { Connection } from '@salesforce/core';
+import { TestContext } from '@salesforce/core/lib/testSetup';
 import { expect } from 'chai';
-import { CapturingLogger } from '../../src/log/CapturingLogger';
-import { QueryHelper } from '../../src/query/QueryHelper';
-import { ApexClassInfo } from '../../src/query/ClassSymbolLoader';
+import { SinonSandbox, SinonStub, createSandbox } from 'sinon';
 import { OrgTestMethodCollector } from '../../src/collector/OrgTestMethodCollector';
 import { TestItemTestMethodCollector } from '../../src/collector/TestItemTestMethodCollector';
-import { TestItem } from '@salesforce/apex-node';
+import { CapturingLogger } from '../../src/log/CapturingLogger';
+import { ApexClassInfo } from '../../src/query/ClassSymbolLoader';
+import { QueryHelper } from '../../src/query/QueryHelper';
+import { createMockConnection } from '../Setup';
 
-const $$ = testSetup();
-let mockConnection: Connection;
-let sandboxStub: SinonSandbox;
-let toolingQueryStub: SinonStub;
-let queryHelperStub: SinonStub;
-const testData = new MockTestOrgData();
+describe('TestItemTestMethodCollector', () => {
+  const $$ = new TestContext();
+  let sandbox: SinonSandbox;
 
-describe('messages', () => {
+  let mockConnection: Connection;
+  let queryStub: SinonStub;
+
   beforeEach(async () => {
-    sandboxStub = createSandbox();
-    $$.setConfigStubContents('AuthInfoConfig', {
-      contents: await testData.getConfig(),
-    });
-    // Stub retrieveMaxApiVersion to get over "Domain Not Found: The org cannot be found" error
-    sandboxStub
-      .stub(Connection.prototype, 'retrieveMaxApiVersion')
-      .resolves('50.0');
-    mockConnection = await Connection.create({
-      authInfo: await AuthInfo.create({
-        username: testData.username,
-      }),
-    });
-    sandboxStub.stub(mockConnection, 'instanceUrl').get(() => {
-      return 'https://na139.salesforce.com';
-    });
-
-    sandboxStub.stub(StreamingClient.prototype, 'handshake').resolves();
-    toolingQueryStub = sandboxStub.stub(mockConnection.tooling, 'query');
-    queryHelperStub = sandboxStub.stub(
-      QueryHelper.instance(mockConnection.tooling),
-      'query'
-    );
+    sandbox = createSandbox();
+    mockConnection = await createMockConnection($$, sandbox);
+    queryStub = sandbox.stub(QueryHelper.instance(mockConnection), 'query');
   });
 
   afterEach(() => {
-    sandboxStub.restore();
+    sandbox.restore();
   });
 
   it('should create map of class ids to names', async () => {
@@ -63,7 +40,7 @@ describe('messages', () => {
       },
     ];
 
-    queryHelperStub.resolves(mockApexClasses);
+    queryStub.resolves(mockApexClasses);
 
     const testMethodCollector = new TestItemTestMethodCollector(
       new CapturingLogger(),
@@ -92,8 +69,7 @@ describe('messages', () => {
       },
     ];
 
-    queryHelperStub.resolves(mockApexClasses);
-    toolingQueryStub.resolves({ records: mockApexClasses });
+    queryStub.resolves(mockApexClasses);
 
     const testMethodCollector = new OrgTestMethodCollector(
       new CapturingLogger(),
@@ -120,9 +96,9 @@ describe('messages', () => {
       });
     }
 
-    queryHelperStub.onCall(0).resolves(mockApexClasses.slice(0, 200));
-    queryHelperStub.onCall(1).resolves(mockApexClasses.slice(200, 400));
-    queryHelperStub.onCall(2).resolves(mockApexClasses.slice(400));
+    queryStub.onCall(0).resolves(mockApexClasses.slice(0, 200));
+    queryStub.onCall(1).resolves(mockApexClasses.slice(200, 400));
+    queryStub.onCall(2).resolves(mockApexClasses.slice(400));
 
     const testMethodCollector = new TestItemTestMethodCollector(
       new CapturingLogger(),
@@ -165,7 +141,8 @@ describe('messages', () => {
       'foo',
       mockTestItems
     );
-    const testMethodsByClassName = await testMethodCollector.gatherTestMethods();
+    const testMethodsByClassName =
+      await testMethodCollector.gatherTestMethods();
 
     expect(testMethodsByClassName.size).to.equal(2);
     expect(testMethodsByClassName.has('FooClass')).to.be.true;
