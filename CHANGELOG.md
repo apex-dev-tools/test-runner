@@ -1,5 +1,14 @@
 # test-runner - Changelog
 
+## 2.0.0 - 2023-06-23
+
+* Removes module override for `@salesforce/core`.
+* Upgrade core dependencies, including:
+  * `@apexdevtools/sfdx-auth-helper`
+  * `@salesforce/core`
+  * `@salesforce/apex-node`
+* Supports webpack bundling.
+
 ## 1.9.2 - 2023-06-07
 
 * Add file extension back to reruns report.
