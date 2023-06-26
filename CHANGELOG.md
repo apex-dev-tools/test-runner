@@ -1,5 +1,9 @@
 # test-runner - Changelog
 
+## 2.0.1 - 2023-06-26
+
+* Fix `@salesforce/apex-node` including commitlint by relaxing required version.
+
 ## 2.0.0 - 2023-06-23
 
 * Removes module override for `@salesforce/core`.
