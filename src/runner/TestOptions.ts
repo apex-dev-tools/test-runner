@@ -82,7 +82,7 @@ export function getMaxTestRunRetries(options: TestRunnerOptions): number {
   else return DEFAULT_MAX_TEST_RUN_RETRIES;
 }
 
-export function getStatusPollIntervalMs(options: TestRunnerOptions): Duration {
+export function getStatusPollInterval(options: TestRunnerOptions): Duration {
   if (
     options.statusPollIntervalMs !== undefined &&
     options.statusPollIntervalMs >= 0
@@ -91,7 +91,7 @@ export function getStatusPollIntervalMs(options: TestRunnerOptions): Duration {
   else return Duration.milliseconds(DEFAULT_STATUS_POLL_INTERVAL_MS);
 }
 
-export function getTestRunTimeoutMins(options: TestRunnerOptions): Duration {
+export function getTestRunTimeout(options: TestRunnerOptions): Duration {
   if (
     options.testRunTimeoutMins !== undefined &&
     options.testRunTimeoutMins >= 0

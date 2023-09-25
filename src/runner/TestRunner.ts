@@ -2,7 +2,7 @@
  * Copyright (c) 2019, FinancialForce.com, inc. All rights reserved.
  */
 
-import { Connection, PollingClient } from '@salesforce/core';
+import { Connection } from '@salesforce/core';
 import {
   TestRunIdResult,
   TestService,
@@ -18,9 +18,9 @@ import {
 } from '../model/ApexTestRunResult';
 import {
   getMaxTestRunRetries,
-  getStatusPollIntervalMs,
+  getStatusPollInterval,
   getTestRunAborter,
-  getTestRunTimeoutMins,
+  getTestRunTimeout,
   TestRunnerOptions,
 } from './TestOptions';
 import TestStats from './TestStats';
@@ -28,6 +28,8 @@ import { ResultCollector } from '../collector/ResultCollector';
 import { QueryHelper } from '../query/QueryHelper';
 import { ApexTestQueueItem } from '../model/ApexTestQueueItem';
 import { TestError, TestErrorKind } from './TestError';
+import { Pollable, poll } from './Poll';
+import { ApexTestResult } from '../model/ApexTestResult';
 
 /**
  * Parallel unit test runner that includes the ability to cancel & restart a run should it not make sufficient progress
@@ -38,9 +40,15 @@ import { TestError, TestErrorKind } from './TestError';
  * See TestRunnerOptions for specifying configurable parameters.
  */
 
+export interface TestRunnerResult {
+  run: ApexTestRunResult;
+  tests: ApexTestResult[];
+  error?: TestError;
+}
+
 export interface TestRunner {
   getTestClasses(): string[];
-  run(token?: CancellationToken): Promise<ApexTestRunResult>;
+  run(token?: CancellationToken): Promise<TestRunnerResult>;
   newRunner(testItems: TestItem[]): TestRunner;
 }
 
@@ -106,7 +114,7 @@ export class AsyncTestRunner implements TestRunner {
     return this._testItems.map(item => item.className as string);
   }
 
-  public async run(token?: CancellationToken): Promise<ApexTestRunResult> {
+  public async run(token?: CancellationToken): Promise<TestRunnerResult> {
     if (this.hasHitMaxNumberOfTestRunRetries()) {
       throw new TestError(
         `Max number of test run retries reached, max allowed retries: ${getMaxTestRunRetries(
@@ -127,22 +135,24 @@ export class AsyncTestRunner implements TestRunner {
     this._options.callbacks?.onRunStarted?.(testRunIdResult.testRunId);
     this._logger.logRunStarted(testRunIdResult.testRunId);
 
-    await this.waitForTestRunCompletion(testRunIdResult.testRunId, token);
+    const result = await this.waitForTestRunCompletion(
+      testRunIdResult.testRunId,
+      token
+    );
 
-    const result = await this.testRunResult(testRunIdResult.testRunId);
-    if (result.Status == 'Processing' && this._stats.isTestRunHanging()) {
-      this._logger.logNoProgress(testRunIdResult.testRunId);
-      this._stats = this._stats.reset();
-      await getTestRunAborter(this._options).abortRun(
-        this._logger,
-        this._connection,
-        testRunIdResult.testRunId,
-        this._options
-      );
-      return await this.run(token);
-    } else {
+    if (token?.isCancellationRequested) {
+      await this.abortTestRun(result.run.AsyncApexJobId);
       return result;
     }
+
+    if (result.run.Status == 'Processing' && this._stats.isTestRunHanging()) {
+      this._logger.logNoProgress(testRunIdResult.testRunId);
+      this._stats = this._stats.reset();
+      await this.abortTestRun(result.run.AsyncApexJobId);
+      return await this.run(token);
+    }
+
+    return result;
   }
 
   private hasHitMaxNumberOfTestRunRetries(): boolean {
@@ -181,50 +191,50 @@ export class AsyncTestRunner implements TestRunner {
   private async waitForTestRunCompletion(
     testRunId: string,
     token?: CancellationToken
-  ): Promise<void> {
-    let polledTests: Set<string> = new Set();
-    const options: PollingClient.Options = {
+  ): Promise<TestRunnerResult> {
+    let seenTests: Set<string> = new Set();
+    let lastResult: TestRunnerResult | undefined;
+
+    const testRunStatus: Pollable<TestRunnerResult> = {
+      pollDelay: getStatusPollInterval(this._options).milliseconds,
+      pollTimeout: getTestRunTimeout(this._options).milliseconds,
       poll: async () => {
-        const testRunResult = await this.testRunResult(testRunId);
+        const run = await this.testRunResult(testRunId);
+        const tests = await ResultCollector.gatherResults(
+          this._connection,
+          run.AsyncApexJobId
+        );
 
-        polledTests = await this.updateProgress(testRunResult, polledTests);
+        await this.updateProgress(run, tests);
+        seenTests = this.notifyNewResults(tests, seenTests);
 
+        lastResult = {
+          run,
+          tests,
+        };
+
+        return lastResult;
+      },
+      pollUntil: result =>
+        token?.isCancellationRequested ||
+        this.hasTestRunComplete(result.run.Status) ||
+        this._stats.isTestRunHanging(),
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      pollRetryIf: error => {
+        // will throw the error from poll() if false
         if (token?.isCancellationRequested) {
-          await getTestRunAborter(this._options).abortRun(
-            this._logger,
-            this._connection,
-            testRunId,
-            this._options
-          );
-          return Promise.resolve({ completed: true });
+          return false;
         }
 
-        // Bail out if we reach a completion state
-        if (this.hasTestRunComplete(testRunResult.Status))
-          return Promise.resolve({ completed: true });
-
-        // Continue polling while we are making some progress
-        return Promise.resolve({ completed: this._stats.isTestRunHanging() });
+        // Can abort polling based on error
+        return true;
       },
-      frequency: getStatusPollIntervalMs(this._options),
-      timeout: getTestRunTimeoutMins(this._options),
     };
 
-    const client = await PollingClient.create(options);
     try {
-      await client.subscribe();
+      return await poll(testRunStatus);
     } catch (err) {
-      if (err instanceof Error) {
-        if (err.message === 'The client has timed out.') {
-          throw new TestError(
-            `Test run '${testRunId}' has exceed test runner max allowed run time of ${getTestRunTimeoutMins(
-              this._options
-            ).toString()}`,
-            TestErrorKind.Timeout
-          );
-        }
-      }
-      throw err;
+      return this.doPartialResult(testRunId, err, lastResult);
     }
   }
 
@@ -232,6 +242,46 @@ export class AsyncTestRunner implements TestRunner {
     return (
       status === 'Completed' || status === 'Aborted' || status === 'Failed'
     );
+  }
+
+  private async abortTestRun(testRunId: string): Promise<string[]> {
+    return getTestRunAborter(this._options).abortRun(
+      this._logger,
+      this._connection,
+      testRunId,
+      this._options
+    );
+  }
+
+  private doPartialResult(
+    testRunId: string,
+    err: unknown,
+    last?: TestRunnerResult
+  ): TestRunnerResult {
+    if (!last) {
+      throw TestError.wrapError(
+        err,
+        TestErrorKind.General,
+        `Could not get any results for test run '${testRunId}'.`
+      );
+    }
+
+    let error: TestError;
+    if (err instanceof Error && err.message.startsWith('Timeout')) {
+      error = new TestError(
+        `Test run '${testRunId}' has exceeded test runner max allowed run time of ${getTestRunTimeout(
+          this._options
+        ).toString()}`,
+        TestErrorKind.Timeout
+      );
+    } else {
+      error = TestError.wrapError(err);
+    }
+
+    return {
+      error,
+      ...last,
+    };
   }
 
   private async testRunResult(testRunId: string): Promise<ApexTestRunResult> {
@@ -252,23 +302,22 @@ export class AsyncTestRunner implements TestRunner {
 
   private async updateProgress(
     testRunResult: ApexTestRunResult,
-    seen: Set<string>
-  ): Promise<Set<string>> {
-    const runId = testRunResult.AsyncApexJobId;
-    const results = await ResultCollector.gatherResults(
-      this._connection,
-      testRunResult.AsyncApexJobId
-    );
-    const newResults = results.filter(x => !seen.has(x.Id));
-
+    results: ApexTestResult[]
+  ): Promise<void> {
     this._logger.logStatus(testRunResult, results);
     this._stats = this._stats.update(results.length);
 
-    this._options.callbacks?.onPoll?.([...newResults]);
-
     if (this._logger.verbose) {
-      await this.reportQueueItems(runId);
+      await this.reportQueueItems(testRunResult.AsyncApexJobId);
     }
+  }
+
+  private notifyNewResults(
+    results: ApexTestResult[],
+    seen: Set<string>
+  ): Set<string> {
+    const newResults = results.filter(x => !seen.has(x.Id));
+    this._options.callbacks?.onPoll?.([...newResults]);
 
     return new Set([...seen, ...newResults.map(r => r.Id)]);
   }
