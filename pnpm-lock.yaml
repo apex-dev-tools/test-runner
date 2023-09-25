@@ -31,6 +31,9 @@ dependencies:
   table:
     specifier: ^6.8.1
     version: 6.8.1
+  ts-retry-promise:
+    specifier: ^0.7.0
+    version: 0.7.0
 
 devDependencies:
   '@ryansonshine/commitizen':
