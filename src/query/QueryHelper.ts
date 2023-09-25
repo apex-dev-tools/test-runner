@@ -81,9 +81,7 @@ export class QueryHelper {
     return async (sobject: string, clause: string, fields: string) => {
       const boundQuery = this.query.bind<
         this,
-        string,
-        string,
-        string,
+        [string, string, string],
         [],
         Promise<Record<T>[]>
       >(this, sobject, clause, fields);
