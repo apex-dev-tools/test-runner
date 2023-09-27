@@ -20,6 +20,8 @@ import {
   OutputGenerator,
   TestRerun,
   TestRunSummary,
+  formatTestName,
+  getTestName,
 } from '../results/OutputGenerator';
 import { TestRunnerOptions } from '../runner/TestOptions';
 import { TestRunner } from '../runner/TestRunner';
@@ -200,46 +202,35 @@ export class Testall {
     runIds: string[]
   ): Promise<ApexTestRunResult | null> {
     // Do a run of everything requested
-    const runResult = await runner.run();
-
-    // Get all the test results for analysis
-    const rawTestResults = await ResultCollector.gatherResultsWithRetry(
-      this._connection,
-      runResult.AsyncApexJobId,
-      this._logger,
-      this._options
-    );
+    const { run, tests, error } = await runner.run();
 
     // Update rolling results for tests that did run
-    rawTestResults.forEach(test => {
-      results.set(this.getTestName(test), test);
+    tests.forEach(test => {
+      results.set(getTestName(test), test);
     });
 
     // If run aborted, don't try continue
-    if (runResult.Status == 'Aborted') return null;
+    if (run.Status == 'Aborted') return null;
 
     // Keep track of new test run ids
-    runIds.push(runResult.AsyncApexJobId);
+    runIds.push(run.AsyncApexJobId);
 
     // Merge results into parent record to give aggregate for reporting
-    let activeRunResult = runResult;
+    let activeRunResult = run;
     if (parentRunResult != null) {
       activeRunResult = parentRunResult;
-      parentRunResult.Status = runResult.Status;
-      parentRunResult.EndTime = runResult.EndTime;
-      parentRunResult.TestTime += runResult.TestTime;
-      parentRunResult.ClassesCompleted += runResult.ClassesCompleted;
-      parentRunResult.ClassesEnqueued += runResult.ClassesEnqueued;
-      parentRunResult.MethodsCompleted += runResult.MethodsCompleted;
-      parentRunResult.MethodsEnqueued += runResult.MethodsEnqueued;
-      parentRunResult.MethodsFailed += runResult.MethodsFailed;
+      parentRunResult.Status = run.Status;
+      parentRunResult.EndTime = run.EndTime;
+      parentRunResult.TestTime += run.TestTime;
+      parentRunResult.ClassesCompleted += run.ClassesCompleted;
+      parentRunResult.ClassesEnqueued += run.ClassesEnqueued;
+      parentRunResult.MethodsCompleted += run.MethodsCompleted;
+      parentRunResult.MethodsEnqueued += run.MethodsEnqueued;
+      parentRunResult.MethodsFailed += run.MethodsFailed;
     }
 
     // If we have too many genuine failures then give up
-    const testResults = ResultCollector.groupRecords(
-      this._logger,
-      rawTestResults
-    );
+    const testResults = ResultCollector.groupRecords(this._logger, tests);
     if (
       priorFailures + testResults.failed.length >
       getMaxErrorsForReRun(this._options)
@@ -252,11 +243,7 @@ export class Testall {
     const missingTests = new Map<string, Set<string>>();
     (await expectedTests).forEach((methods, className) => {
       methods.forEach(methodName => {
-        const testName = this.formatTestName(
-          className,
-          methodName,
-          this._namespace
-        );
+        const testName = formatTestName(className, methodName, this._namespace);
 
         if (!results.has(testName)) {
           let missingMethods = missingTests.get(className);
@@ -308,7 +295,7 @@ export class Testall {
       const syncTest = await this.runSingleTest(testService, test);
 
       if (syncTest) {
-        const fullName = this.getTestName(test);
+        const fullName = getTestName(test);
         this._logger.logTestRerun(fullName, test, syncTest);
 
         // replace original test in final results
@@ -380,28 +367,11 @@ export class Testall {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this._logger.logMessage(
-        `${this.getTestName(currentResult)} re-run failed, cause: ${msg}`
+        `${getTestName(currentResult)} re-run failed, cause: ${msg}`
       );
     }
 
     return undefined;
-  }
-
-  private getTestName(test: BaseTestResult): string {
-    return this.formatTestName(
-      test.ApexClass.Name,
-      test.MethodName,
-      test.ApexClass.NamespacePrefix
-    );
-  }
-
-  private formatTestName(
-    className: string,
-    methodName: string,
-    ns: string | null
-  ): string {
-    const namespace = ns ? (ns.endsWith('__') ? ns : `${ns}__`) : '';
-    return `${namespace}${className}.${methodName}`;
   }
 
   private convertToSyncResult(

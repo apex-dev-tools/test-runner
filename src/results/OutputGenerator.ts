@@ -51,3 +51,29 @@ export function groupByOutcome(
     } as OutcomeMap<ApexTestResult[]>
   );
 }
+
+export function getTestName(test: BaseTestResult): string {
+  return formatTestName(
+    test.ApexClass.Name,
+    test.MethodName,
+    test.ApexClass.NamespacePrefix
+  );
+}
+
+export function formatTestName(
+  className: string,
+  methodName: string,
+  ns: string | null
+): string {
+  return `${resolveNamespace(ns)}${className}.${methodName}`;
+}
+
+export function getClassName(test: BaseTestResult): string {
+  return `${resolveNamespace(test.ApexClass.NamespacePrefix)}${
+    test.ApexClass.Name
+  }`;
+}
+
+function resolveNamespace(ns: string | null) {
+  return ns ? (ns.endsWith('__') ? ns : `${ns}__`) : '';
+}

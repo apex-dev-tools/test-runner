@@ -16,9 +16,7 @@ export interface CancelTestRunOptions {
   cancelPollTimoutMins?: number; // mins for timeout when waiting for cancelled test queue items, default 10 minutes
 }
 
-export function getCancelPollIntervalMs(
-  options: CancelTestRunOptions
-): Duration {
+export function getCancelPollInterval(options: CancelTestRunOptions): Duration {
   if (
     options.cancelPollIntervalMs !== undefined &&
     options.cancelPollIntervalMs >= 0
@@ -27,9 +25,7 @@ export function getCancelPollIntervalMs(
   else return Duration.milliseconds(DEFAULT_POLL_INTERVAL_MS);
 }
 
-export function getCancelPollTimeoutMins(
-  options: CancelTestRunOptions
-): Duration {
+export function getCancelPollTimeout(options: CancelTestRunOptions): Duration {
   if (
     options.cancelPollTimoutMins !== undefined &&
     options.cancelPollTimoutMins >= 0

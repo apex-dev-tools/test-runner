@@ -32,7 +32,7 @@ export async function poll<T>(
       timeout: pollable.pollTimeout,
       until: r => pollable.pollUntil(r),
       retryIf: error => {
-        logger?.logMessage(`Poll failed, Cause: ${getErrorCause(error)}`);
+        logger?.logMessage(`Poll failed: ${getErrorCause(error)}`);
         return pollable.pollRetryIf(error);
       },
     });
@@ -61,7 +61,7 @@ export async function retry<T>(
         return newDelay;
       },
       retryIf: error => {
-        logger?.logMessage(`Request failed, Cause: ${getErrorCause(error)}`);
+        logger?.logMessage(`Request failed: ${getErrorCause(error)}`);
         return true;
       },
       ...opts,

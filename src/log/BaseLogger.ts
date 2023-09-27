@@ -6,7 +6,7 @@ import path from 'path';
 import { TestallOptions, getMaxErrorsForReRun } from '../command/Testall';
 import { ApexTestResult, BaseTestResult } from '../model/ApexTestResult';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
-import { groupByOutcome } from '../results/OutputGenerator';
+import { getClassName, groupByOutcome } from '../results/OutputGenerator';
 import { MaybeError } from '../runner/TestError';
 import { Logger } from './Logger';
 
@@ -136,15 +136,40 @@ export abstract class BaseLogger implements Logger {
     const completed = tests.length;
     const passed = outcomes.Pass.length;
     const failed = outcomes.Fail.length + outcomes.CompileFail.length;
-
-    const complete =
-      testRunResult.MethodsEnqueued > 0
-        ? Math.round((completed * 100) / testRunResult.MethodsEnqueued)
-        : 0;
+    const total = testRunResult.MethodsEnqueued;
+    const complete = total > 0 ? Math.floor((completed * 100) / total) : 0;
 
     this.logMessage(
-      `[${status}] Passed: ${passed} | Failed: ${failed} | ${complete}% Complete`
+      `[${status}] Passed: ${passed} | Failed: ${failed} | ${completed}/${total} Complete (${complete}%)`
     );
+  }
+
+  logTestFailures(
+    seenResults: ApexTestResult[],
+    newResultsByClassId: Record<string, ApexTestResult[]>
+  ): void {
+    const seenClasses = new Set(seenResults.map(r => r.ApexClass.Id));
+    const reportable = Object.entries(newResultsByClassId).filter(
+      ([id, results]) => !seenClasses.has(id) && results.length > 0
+    );
+
+    if (reportable.length > 0) {
+      this.logMessage('--- New Class Failures ---');
+
+      reportable.forEach(([, results]) => {
+        const tests = results.slice(0, 2);
+
+        this.logMessage(`[${getClassName(tests[0])}]`);
+
+        tests.forEach(t => {
+          const msg = t.Message ? ` - ${t.Message}` : '';
+          this.logMessage(` ${t.MethodName}${msg}`);
+        });
+
+        results.length > 2 &&
+          this.logMessage(` (and ${results.length - 2} more...)`);
+      });
+    }
   }
 
   logRunCancelling(testRunId: string): void {

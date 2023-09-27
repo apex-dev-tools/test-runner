@@ -7,8 +7,8 @@ import { Connection, PollingClient } from '@salesforce/core';
 import { ExecuteService } from '@salesforce/apex-node';
 import {
   CancelTestRunOptions,
-  getCancelPollIntervalMs,
-  getCancelPollTimeoutMins,
+  getCancelPollInterval,
+  getCancelPollTimeout,
   TestRunAborter,
 } from './TestOptions';
 import { QueryHelper } from '../query/QueryHelper';
@@ -90,8 +90,8 @@ export class TestRunCancelAborter implements TestRunAborter {
           completed: numberOfTestsAwaitingCancellation === 0,
         });
       },
-      frequency: getCancelPollIntervalMs(options),
-      timeout: getCancelPollTimeoutMins(options),
+      frequency: getCancelPollInterval(options),
+      timeout: getCancelPollTimeout(options),
     });
 
     try {
@@ -101,7 +101,7 @@ export class TestRunCancelAborter implements TestRunAborter {
       if (err instanceof Error) {
         if (err.message === 'The client has timed out.') {
           throw new TestError(
-            `Cancel of test run '${testRunId}' has exceed max allowed time of ${getCancelPollTimeoutMins(
+            `Cancel of test run '${testRunId}' has exceeded max allowed time of ${getCancelPollTimeout(
               options
             ).toString()}`,
             TestErrorKind.Timeout

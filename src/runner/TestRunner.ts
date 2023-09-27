@@ -208,12 +208,10 @@ export class AsyncTestRunner implements TestRunner {
         await this.updateProgress(run, tests);
         seenTests = this.notifyNewResults(tests, seenTests);
 
-        lastResult = {
+        return (lastResult = {
           run,
           tests,
-        };
-
-        return lastResult;
+        });
       },
       pollUntil: result =>
         token?.isCancellationRequested ||
@@ -317,6 +315,16 @@ export class AsyncTestRunner implements TestRunner {
     seen: Set<string>
   ): Set<string> {
     const newResults = results.filter(x => !seen.has(x.Id));
+    const newResultsByClassId = newResults.reduce((classes, test) => {
+      const id = test.ApexClass.Id;
+      classes[id] = [...(classes[id] || []), test];
+      return classes;
+    }, {} as Record<string, ApexTestResult[]>);
+
+    this._logger.logTestFailures(
+      results.filter(x => seen.has(x.Id)),
+      newResultsByClassId
+    );
     this._options.callbacks?.onPoll?.([...newResults]);
 
     return new Set([...seen, ...newResults.map(r => r.Id)]);
