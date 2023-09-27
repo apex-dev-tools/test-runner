@@ -10,15 +10,9 @@ import {
   MAX_SYMBOLS_CHUNK_SIZE,
 } from '../query/ClassSymbolLoader';
 import { chunk } from '../query/Chunk';
-import {
-  classIdNameMapFromNames,
-  TestMethodCollector,
-} from './TestMethodCollector';
+import { TestMethodCollector } from './TestMethodCollector';
 
-export class OrgTestMethodCollector implements TestMethodCollector {
-  logger: Logger;
-  connection: Connection;
-  namespace: string;
+export class OrgTestMethodCollector extends TestMethodCollector {
   classNames: string[];
 
   private classNameById: null | Map<string, string> = null;
@@ -29,19 +23,13 @@ export class OrgTestMethodCollector implements TestMethodCollector {
     namespace: string,
     classNames: string[]
   ) {
-    this.logger = logger;
-    this.connection = connection;
-    this.namespace = namespace;
+    super(logger, connection, namespace);
     this.classNames = classNames;
   }
 
   async classIdNameMap(): Promise<Map<string, string>> {
     if (this.classNameById == null) {
-      this.classNameById = await classIdNameMapFromNames(
-        this.classNames,
-        this.connection,
-        this.namespace
-      );
+      this.classNameById = await this.classIdNameMapFromNames(this.classNames);
     }
     return this.classNameById;
   }
