@@ -140,16 +140,24 @@ export class AsyncTestRunner implements TestRunner {
       token
     );
 
-    if (token?.isCancellationRequested) {
-      await this.abortTestRun(result.run.AsyncApexJobId);
-      return result;
-    }
+    // Ensure result for partial reporting
+    try {
+      if (token?.isCancellationRequested) {
+        await this.abortTestRun(result.run.AsyncApexJobId);
+        return result;
+      }
 
-    if (result.run.Status == 'Processing' && this._stats.isTestRunHanging()) {
-      this._logger.logNoProgress(testRunIdResult.testRunId);
-      this._stats = this._stats.reset();
-      await this.abortTestRun(result.run.AsyncApexJobId);
-      return await this.run(token);
+      if (result.run.Status == 'Processing' && this._stats.isTestRunHanging()) {
+        this._logger.logNoProgress(testRunIdResult.testRunId);
+        this._stats = this._stats.reset();
+        await this.abortTestRun(result.run.AsyncApexJobId);
+        return await this.run(token);
+      }
+    } catch (err) {
+      // error may already be defined from wait()
+      if (!result.error) {
+        return { ...result, error: TestError.wrapError(err) };
+      }
     }
 
     return result;
@@ -232,7 +240,7 @@ export class AsyncTestRunner implements TestRunner {
     try {
       return await poll(testRunStatus);
     } catch (err) {
-      return this.doPartialResult(testRunId, err, lastResult);
+      return this.preparePartialResult(testRunId, err, lastResult);
     }
   }
 
@@ -251,7 +259,7 @@ export class AsyncTestRunner implements TestRunner {
     );
   }
 
-  private doPartialResult(
+  private preparePartialResult(
     testRunId: string,
     err: unknown,
     last?: TestRunnerResult

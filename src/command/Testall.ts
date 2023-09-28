@@ -14,17 +14,17 @@ import { ResultCollector } from '../collector/ResultCollector';
 import { TestMethodCollector } from '../collector/TestMethodCollector';
 import { Logger } from '../log/Logger';
 import { ApexTestResult, BaseTestResult } from '../model/ApexTestResult';
-import { ApexTestRunResult } from '../model/ApexTestRunResult';
 import { QueryOptions } from '../query/QueryHelper';
 import {
   OutputGenerator,
   TestRerun,
   TestRunSummary,
-  formatTestName,
-  getTestName,
 } from '../results/OutputGenerator';
 import { TestRunnerOptions } from '../runner/TestOptions';
 import { TestRunner } from '../runner/TestRunner';
+import { CoverageReport } from '../model/ApexCodeCoverage';
+import { formatTestName, getTestName } from '../results/TestResultUtils';
+import { TestResultStore } from '../results/TestResultStore';
 
 /**
  * Parallel unit test runner that can hide intermitant failures caused by UNABLE_TO_LOCK_ROW, deadlock errors and
@@ -134,61 +134,35 @@ export class Testall {
       () => abortTestMethodCollection
     );
 
-    // Run them ;-)
-    const results = new Map<string, ApexTestResult>();
-    let runResult: ApexTestRunResult | null = null;
-    const runIds: string[] = [];
+    const store = new TestResultStore();
+    let summary: TestRunSummary;
     try {
-      runResult = await this.asyncRun(
-        0,
-        runner,
-        testMethodMap,
-        null,
-        results,
-        runIds
-      );
+      // To support partial results, we delay the first async error
+      await this.asyncRun(0, runner, testMethodMap, store);
+      if (store.asyncError) {
+        throw store.asyncError;
+      }
+
+      // Do sequential re-runs to try and get more passes
+      await this.syncRun(store);
+
+      summary = store.toRunSummary(startTime);
+
+      if (this._options.codeCoverage && !this._options.disableCoverageReport) {
+        const coverage = await this.reportCoverage(store, summary);
+        summary.coverageResult = coverage;
+      }
+
+      this.generateReports(outputGenerators, summary);
     } catch (err) {
-      // Terminate gathering test methods, its failed
+      // Terminate gathering test methods
       abortTestMethodCollection = true;
+
+      // Make attempt to report what we've got
+      summary = store.toRunSummary(startTime);
+      this.generateReports(outputGenerators, summary);
       throw err;
     }
-    if (runResult == null) {
-      abortTestMethodCollection = true;
-      this._logger.logTestallAbort(this._options);
-      return;
-    }
-
-    // Do sequential re-runs to try and get more passes
-    const reruns = await this.syncRun(results, runResult);
-
-    // Reporting
-    const summary: TestRunSummary = {
-      startTime,
-      testResults: Array.from(results.values()),
-      runResult,
-      runIds,
-      reruns,
-      coverageResult: undefined,
-    };
-
-    if (this._options.codeCoverage && !this._options.disableCoverageReport) {
-      if (runIds.length > 1) {
-        this._logger.logWarning(
-          'Test run has reruns, so coverage report may not be complete'
-        );
-      }
-      const coverage = await ResultCollector.getCoverageReport(
-        this._connection,
-        summary.testResults
-      );
-      summary.coverageResult = coverage;
-      this._logger.logMessage(coverage.table);
-    }
-
-    outputGenerators.forEach(outputGenerator => {
-      const { fileName, outputDir } = getOutputFileBase(this._options);
-      outputGenerator.generate(this._logger, outputDir, fileName, summary);
-    });
 
     return summary;
   }
@@ -196,52 +170,59 @@ export class Testall {
   public async asyncRun(
     priorFailures: number,
     runner: TestRunner,
-    expectedTests: Promise<Map<string, Set<string>>>,
-    parentRunResult: null | ApexTestRunResult,
-    results: Map<string, ApexTestResult>,
-    runIds: string[]
-  ): Promise<ApexTestRunResult | null> {
-    // Do a run of everything requested
-    const { run, tests, error } = await runner.run();
+    expectedTestsPromise: Promise<Map<string, Set<string>>>,
+    store: TestResultStore
+  ): Promise<void> {
+    const result = await runner.run();
 
     // Update rolling results for tests that did run
-    tests.forEach(test => {
-      results.set(getTestName(test), test);
-    });
+    store.saveAsyncResult(result);
 
-    // If run aborted, don't try continue
-    if (run.Status == 'Aborted') return null;
-
-    // Keep track of new test run ids
-    runIds.push(run.AsyncApexJobId);
-
-    // Merge results into parent record to give aggregate for reporting
-    let activeRunResult = run;
-    if (parentRunResult != null) {
-      activeRunResult = parentRunResult;
-      parentRunResult.Status = run.Status;
-      parentRunResult.EndTime = run.EndTime;
-      parentRunResult.TestTime += run.TestTime;
-      parentRunResult.ClassesCompleted += run.ClassesCompleted;
-      parentRunResult.ClassesEnqueued += run.ClassesEnqueued;
-      parentRunResult.MethodsCompleted += run.MethodsCompleted;
-      parentRunResult.MethodsEnqueued += run.MethodsEnqueued;
-      parentRunResult.MethodsFailed += run.MethodsFailed;
-    }
+    // If run errored or aborted, stop
+    if (result.error || result.run.Status == 'Aborted') return;
 
     // If we have too many genuine failures then give up
-    const testResults = ResultCollector.groupRecords(this._logger, tests);
-    if (
-      priorFailures + testResults.failed.length >
-      getMaxErrorsForReRun(this._options)
-    ) {
-      this._logger.logMaxErrorAbort(testResults.failed);
-      return activeRunResult;
+    const { failed } = ResultCollector.groupRecords(this._logger, result.tests);
+    if (priorFailures + failed.length > getMaxErrorsForReRun(this._options)) {
+      this._logger.logMaxErrorAbort(failed);
+      return;
     }
 
     // Filter expected by actual results to find residual
+    // Try again if something was missed
+    const missingTests = await this.resolveMissingTests(
+      expectedTestsPromise,
+      store.tests
+    );
+
+    if (missingTests.size > 0) {
+      this._logger.logTestallRerun(missingTests);
+
+      const testItems: TestItem[] = Array.from(
+        missingTests,
+        ([className, methods]) => ({
+          className,
+          testMethods: Array.from(methods),
+        })
+      );
+
+      await this.asyncRun(
+        priorFailures + failed.length,
+        runner.newRunner(testItems),
+        Promise.resolve(missingTests),
+        store
+      );
+    }
+  }
+
+  private async resolveMissingTests(
+    expectedTestsPromise: Promise<Map<string, Set<string>>>,
+    results: Map<string, ApexTestResult>
+  ): Promise<Map<string, Set<string>>> {
+    const expectedTests = await expectedTestsPromise;
     const missingTests = new Map<string, Set<string>>();
-    (await expectedTests).forEach((methods, className) => {
+
+    expectedTests.forEach((methods, className) => {
       methods.forEach(methodName => {
         const testName = formatTestName(className, methodName, this._namespace);
 
@@ -254,42 +235,13 @@ export class Testall {
       });
     });
 
-    // Try again if something was missed
-    if (missingTests.size > 0) {
-      this._logger.logTestallRerun(missingTests);
-
-      const testItems: TestItem[] = [];
-      missingTests.forEach((methods, className) => {
-        testItems.push({
-          className: className,
-          testMethods: Array.from(methods),
-        });
-      });
-
-      const newRunner = runner.newRunner(testItems);
-      const newResults = await this.asyncRun(
-        priorFailures + testResults.failed.length,
-        newRunner,
-        Promise.resolve(missingTests),
-        activeRunResult,
-        results,
-        runIds
-      );
-      if (newResults == null) {
-        return null;
-      }
-    }
-
-    return activeRunResult;
+    return missingTests;
   }
 
-  private async syncRun(
-    results: Map<string, ApexTestResult>,
-    parentRunResult: ApexTestRunResult
-  ): Promise<TestRerun[]> {
+  private async syncRun(store: TestResultStore): Promise<void> {
     const testService = new TestService(this._connection);
     const reruns: TestRerun[] = [];
-    const tests = this.getTestsToRerun(Array.from(results.values()));
+    const tests = this.getTestsToRerun(store.resultsArray);
 
     for (const test of tests) {
       const syncTest = await this.runSingleTest(testService, test);
@@ -298,22 +250,11 @@ export class Testall {
         const fullName = getTestName(test);
         this._logger.logTestRerun(fullName, test, syncTest);
 
-        // replace original test in final results
-        results.set(fullName, this.mergeSyncResult(test, syncTest));
-
         reruns.push({ fullName, before: test, after: syncTest });
       }
     }
 
-    const time = reruns.reduce((a, c) => a + c.after.RunTime, 0);
-    const passed = reruns.filter(r => r.after.Outcome === 'Pass').length;
-
-    // totalTime can now exceed sum of run times in summary
-    // since it includes original + rerun time
-    parentRunResult.TestTime += time;
-    parentRunResult.MethodsFailed -= passed;
-
-    return reruns;
+    store.saveSyncResult(reruns);
   }
 
   private getTestsToRerun(results: ApexTestResult[]): ApexTestResult[] {
@@ -365,9 +306,10 @@ export class Testall {
 
       return this.convertToSyncResult(result, timestamp);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
       this._logger.logMessage(
-        `${getTestName(currentResult)} re-run failed, cause: ${msg}`
+        `${getTestName(currentResult)} re-run failed, cause: ${this.getErrorMsg(
+          err
+        )}`
       );
     }
 
@@ -396,17 +338,43 @@ export class Testall {
       : test;
   }
 
-  private mergeSyncResult(
-    before: ApexTestResult,
-    after: BaseTestResult
-  ): ApexTestResult {
-    return {
-      ...before,
-      Outcome: after.Outcome,
-      Message: after.Message,
-      StackTrace: after.StackTrace,
-      RunTime: after.RunTime,
-      TestTimestamp: after.TestTimestamp,
-    };
+  private generateReports(
+    outputGenerators: OutputGenerator[],
+    summary: TestRunSummary
+  ): void {
+    outputGenerators.forEach(outputGenerator => {
+      const { fileName, outputDir } = getOutputFileBase(this._options);
+      outputGenerator.generate(this._logger, outputDir, fileName, summary);
+    });
+  }
+
+  private async reportCoverage(
+    store: TestResultStore,
+    summary: TestRunSummary
+  ): Promise<CoverageReport | undefined> {
+    if (store.runIds.length > 1 || store.reruns) {
+      this._logger.logWarning(
+        'Test run has reruns, so coverage report may not be complete'
+      );
+    }
+
+    try {
+      const coverage = await ResultCollector.getCoverageReport(
+        this._connection,
+        summary.testResults
+      );
+      this._logger.logMessage(coverage.table);
+
+      return coverage;
+    } catch (err) {
+      this._logger.logMessage(
+        `Failed to get coverage: ${this.getErrorMsg(err)}`
+      );
+      return;
+    }
+  }
+
+  private getErrorMsg(err: unknown): string {
+    return err instanceof Error ? err.message : String(err);
   }
 }

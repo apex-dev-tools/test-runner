@@ -20,7 +20,6 @@ export interface Logger {
 
   // Testall main flow
   logTestallStart(options: TestallOptions): void;
-  logTestallAbort(options: TestallOptions): void;
   logTestallRerun(missing: Map<string, Set<string>>): void;
   logMaxErrorAbort(failed: ApexTestResult[]): void;
   logTestWillRerun(tests: ApexTestResult[], matches: number): void;

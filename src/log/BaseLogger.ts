@@ -6,9 +6,9 @@ import path from 'path';
 import { TestallOptions, getMaxErrorsForReRun } from '../command/Testall';
 import { ApexTestResult, BaseTestResult } from '../model/ApexTestResult';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
-import { getClassName, groupByOutcome } from '../results/OutputGenerator';
 import { MaybeError } from '../runner/TestError';
 import { Logger } from './Logger';
+import { getClassName, groupByOutcome } from '../results/TestResultUtils';
 
 export abstract class BaseLogger implements Logger {
   readonly logDirPath: string;
@@ -57,13 +57,6 @@ export abstract class BaseLogger implements Logger {
       `Starting test run, with max failing tests for re-run ${getMaxErrorsForReRun(
         options
       )}`
-    );
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  logTestallAbort(options: TestallOptions): void {
-    this.logMessage(
-      'Initial test run was aborted, no results will be generated'
     );
   }
 
