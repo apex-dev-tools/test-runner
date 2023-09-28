@@ -22,7 +22,7 @@ export class DebugLogLoader {
     connection: Connection,
     namespace: string
   ): Promise<DebugLogLoader> {
-    const logs = await QueryHelper.instance(connection).query<ApexLog>(
+    const logs = await QueryHelper.create(connection).query<ApexLog>(
       'ApexLog',
       '',
       'Id, LogLength, Status'

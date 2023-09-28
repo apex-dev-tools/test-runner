@@ -11,11 +11,13 @@ import { Logger } from '../log/Logger';
 export abstract class TestMethodCollector {
   logger: Logger;
   connection: Connection;
+  queryHelper: QueryHelper;
   namespace: string;
 
   constructor(logger: Logger, connection: Connection, namespace: string) {
     this.logger = logger;
     this.connection = connection;
+    this.queryHelper = QueryHelper.create(connection, logger);
     this.namespace = namespace;
   }
 
@@ -30,9 +32,7 @@ export abstract class TestMethodCollector {
     let apexClasses: ApexClassInfo[] = [];
 
     if (classNames.length == 0) {
-      apexClasses = await QueryHelper.instance(
-        this.connection
-      ).query<ApexClassInfo>(
+      apexClasses = await this.queryHelper.query<ApexClassInfo>(
         'ApexClass',
         `NamespacePrefix=${
           this.namespace === '' ? 'null' : `'${this.namespace}'`
@@ -44,7 +44,7 @@ export abstract class TestMethodCollector {
       for (const chunk of chunks) {
         const classes = chunk.map(name => `'${name}'`).join(', ');
         apexClasses = apexClasses.concat(
-          await QueryHelper.instance(this.connection).query<ApexClassInfo>(
+          await this.queryHelper.query<ApexClassInfo>(
             'ApexClass',
             `NamespacePrefix=${
               this.namespace === '' ? 'null' : `'${this.namespace}'`

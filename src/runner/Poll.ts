@@ -44,13 +44,13 @@ export async function poll<T>(
 export async function retry<T>(
   fn: () => Promise<T>,
   logger?: Logger,
-  opts?: RetryConfig<T>
+  opts?: Partial<RetryConfig<T>>
 ): Promise<T> {
   try {
     return await retryPromise(fn, {
       retries: 4,
       delay: 15000,
-      timeout: 240000,
+      timeout: 'INFINITELY',
       backoff: (attempt, delay) => {
         const newDelay = delay * 2;
         logger?.logWarning(

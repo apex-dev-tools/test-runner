@@ -88,7 +88,7 @@ export class ClassSymbolLoader {
     classIds: string[]
   ): Promise<ApexClassInfo[]> {
     const idClause = classIds.map(id => `'${id}'`).join(', ');
-    const apexClasses = await QueryHelper.instance(
+    const apexClasses = await QueryHelper.create(
       this.connection
     ).query<ApexClassInfo>(
       'ApexClass',
@@ -105,7 +105,7 @@ export class ClassSymbolLoader {
     const query = `Select Id, Name, Body from ApexClass Where NamespacePrefix = ${
       this.namespace == '' ? 'null' : `'${this.namespace}'`
     } AND Id in (${idClause})`;
-    const result: QueryResponse = await QueryHelper.instance(
+    const result: QueryResponse = await QueryHelper.create(
       this.connection
     ).request(this.buildQueryRequest(query));
     const envelope = result['soapenv:Envelope'];

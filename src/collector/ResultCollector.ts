@@ -13,7 +13,7 @@ import {
   CoverageReport,
 } from '../model/ApexCodeCoverage';
 import { ApexTestResult, ApexTestResultFields } from '../model/ApexTestResult';
-import { QueryHelper, QueryOptions } from '../query/QueryHelper';
+import { QueryHelper } from '../query/QueryHelper';
 import { TestError, TestErrorKind } from '../runner/TestError';
 import { TestResultMatcher } from './TestResultMatcher';
 
@@ -62,22 +62,7 @@ export class ResultCollector {
     connection: Connection,
     testRunId: string
   ): Promise<ApexTestResult[]> {
-    return await QueryHelper.instance(connection).query<ApexTestResult>(
-      'ApexTestResult',
-      `AsyncApexJobId='${testRunId}'`,
-      ApexTestResultFields.join(', ')
-    );
-  }
-
-  static async gatherResultsWithRetry(
-    connection: Connection,
-    testRunId: string,
-    logger: Logger,
-    options: QueryOptions
-  ): Promise<ApexTestResult[]> {
-    return await QueryHelper.instance(
-      connection
-    ).queryWithRetry<ApexTestResult>(logger, options)(
+    return await QueryHelper.create(connection).query<ApexTestResult>(
       'ApexTestResult',
       `AsyncApexJobId='${testRunId}'`,
       ApexTestResultFields.join(', ')
@@ -153,7 +138,7 @@ export class ResultCollector {
     }
     const chunked = this.chunkArrays<string>(ids, this.RECORD_QUERY_LIMIT);
     const promises = chunked.map(async chunk => {
-      return QueryHelper.instance(connection).query<ApexCodeCoverage[]>(
+      return QueryHelper.create(connection).query<ApexCodeCoverage[]>(
         'ApexCodeCoverage',
         `ApexTestClassId IN (${chunk.join(', ')})`,
         ApexCodeCoverageFields.join(', ')
@@ -173,9 +158,7 @@ export class ResultCollector {
     const chunked = this.chunkArrays<string>(ids, this.RECORD_QUERY_LIMIT);
 
     const promises = chunked.map(chunk => {
-      return QueryHelper.instance(connection).query<
-        ApexCodeCoverageAggregate[]
-      >(
+      return QueryHelper.create(connection).query<ApexCodeCoverageAggregate[]>(
         'ApexCodeCoverageAggregate',
         `ApexClassorTriggerId IN (${chunk.join(', ')})`,
         ApexCodeCoverageAggregateFields.join(', ')
