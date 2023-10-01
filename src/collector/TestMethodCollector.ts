@@ -17,7 +17,7 @@ export abstract class TestMethodCollector {
   constructor(logger: Logger, connection: Connection, namespace: string) {
     this.logger = logger;
     this.connection = connection;
-    this.queryHelper = QueryHelper.create(connection, logger);
+    this.queryHelper = QueryHelper.instance(connection, logger);
     this.namespace = namespace;
   }
 

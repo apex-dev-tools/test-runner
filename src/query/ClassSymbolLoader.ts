@@ -2,7 +2,6 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import { Connection } from '@salesforce/core';
 import { escapeXml } from '@salesforce/apex-node/lib/src/utils/authUtil';
 import { Logger } from '../log/Logger';
 import { QueryHelper } from '../query/QueryHelper';
@@ -21,12 +20,12 @@ export const MAX_SYMBOLS_CHUNK_SIZE = 50;
 
 export class ClassSymbolLoader {
   private logger: Logger;
-  private connection: Connection;
+  private queryHelper: QueryHelper;
   private namespace: string;
 
-  constructor(logger: Logger, connection: Connection, namespace: string) {
+  constructor(logger: Logger, queryHelper: QueryHelper, namespace: string) {
     this.logger = logger;
-    this.connection = connection;
+    this.queryHelper = queryHelper;
     this.namespace = namespace;
   }
 
@@ -88,9 +87,7 @@ export class ClassSymbolLoader {
     classIds: string[]
   ): Promise<ApexClassInfo[]> {
     const idClause = classIds.map(id => `'${id}'`).join(', ');
-    const apexClasses = await QueryHelper.create(
-      this.connection
-    ).query<ApexClassInfo>(
+    const apexClasses = await this.queryHelper.query<ApexClassInfo>(
       'ApexClass',
       `Id IN (${idClause})`,
       'Id, Name, SymbolTable'
@@ -105,21 +102,22 @@ export class ClassSymbolLoader {
     const query = `Select Id, Name, Body from ApexClass Where NamespacePrefix = ${
       this.namespace == '' ? 'null' : `'${this.namespace}'`
     } AND Id in (${idClause})`;
-    const result: QueryResponse = await QueryHelper.create(
-      this.connection
-    ).request(this.buildQueryRequest(query));
+    const result: QueryResponse = await this.queryHelper.run(conn =>
+      conn.tooling.request(this.buildQueryRequest(query))
+    );
     const envelope = result['soapenv:Envelope'];
     const body = envelope['soapenv:Body'];
     return body.queryResponse.result.records;
   }
 
   private buildQueryRequest(queryString: string): RequestInfo {
+    const conn = this.queryHelper.connection;
     const body = util.format(
       soapTemplate,
-      this.connection.accessToken,
+      conn.accessToken,
       escapeXml(queryString)
     );
-    const postEndpoint = `${this.connection.instanceUrl}/services/Soap/u/${this.connection.version}`;
+    const postEndpoint = `${conn.instanceUrl}/services/Soap/u/${conn.version}`;
     const requestHeaders = {
       'content-type': 'text/xml',
       SOAPAction: 'x',

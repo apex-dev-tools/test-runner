@@ -3,17 +3,14 @@
  */
 
 import { Logger } from '../log/Logger';
-import { Connection, PollingClient } from '@salesforce/core';
+import { Connection } from '@salesforce/core';
 import { ExecuteService } from '@salesforce/apex-node';
-import {
-  CancelTestRunOptions,
-  getCancelPollInterval,
-  getCancelPollTimeout,
-  TestRunAborter,
-} from './TestOptions';
+import { CancelTestRunOptions, TestRunAborter } from './TestOptions';
 import { QueryHelper } from '../query/QueryHelper';
 import { chunk } from '../query/Chunk';
-import { TestError, TestErrorKind } from './TestError';
+import { TestError } from './TestError';
+import { ApexTestQueueItem } from '../model/ApexTestQueueItem';
+import { retry } from './Poll';
 
 export class TestRunCancelAborter implements TestRunAborter {
   async abortRun(
@@ -23,18 +20,25 @@ export class TestRunCancelAborter implements TestRunAborter {
     options: CancelTestRunOptions = {}
   ): Promise<string[]> {
     logger.logRunCancelling(testRunId);
-    const apexQueueItems = await QueryHelper.create(connection).query<IdObject>(
+
+    const executeService = new ExecuteService(connection);
+    const apexQueueItems = await QueryHelper.instance(
+      connection,
+      logger
+    ).query<ApexTestQueueItem>(
       'ApexTestQueueItem',
       `Status IN ('Holding', 'Queued', 'Preparing', 'Processing') AND ParentJobId='${testRunId}'`,
       'Id'
     );
+
     const chunks = chunk(apexQueueItems, 1000);
     for (const chunk of chunks) {
       const ids = chunk.map(item => `'${item.Id}'`).join(',');
 
-      const executeService = new ExecuteService(connection);
-      const result = await executeService.executeAnonymous({
-        apexCode: `
+      const result = await retry(
+        () =>
+          executeService.executeAnonymous({
+            apexCode: `
           List<ApexTestQueueItem> nonExecutedTests = [SELECT Id, Status FROM ApexTestQueueItem 
               WHERE Id in (${ids})];
           for (ApexTestQueueItem nonExecutedTest : nonExecutedTests) {
@@ -42,7 +46,13 @@ export class TestRunCancelAborter implements TestRunAborter {
           }
           update nonExecutedTests;
         `,
-      });
+          }),
+        logger,
+        {
+          retries: 2,
+        }
+      );
+
       if (!result.success) {
         throw new TestError(
           `Anon apex to abort tests did not succeed, result='${JSON.stringify({
@@ -54,63 +64,8 @@ export class TestRunCancelAborter implements TestRunAborter {
       }
     }
 
-    return this.waitForTestRunToCancel(
-      logger,
-      connection,
-      testRunId,
-      options
-    ).then(() => apexQueueItems.map(x => x.Id));
+    logger.logRunCancelled(testRunId);
+
+    return apexQueueItems.map(x => x.Id);
   }
-
-  private async waitForTestRunToCancel(
-    logger: Logger,
-    connection: Connection,
-    testRunId: string,
-    options: CancelTestRunOptions
-  ): Promise<void> {
-    const client = await PollingClient.create({
-      poll: async () => {
-        const testRunResults = await QueryHelper.create(connection).query(
-          'ApexTestQueueItem',
-          `Status IN ('Holding', 'Queued', 'Preparing', 'Processing') AND ParentJobId='${testRunId}'`,
-          'Status'
-        );
-
-        const numberOfTestsAwaitingCancellation = testRunResults.length;
-        if (numberOfTestsAwaitingCancellation > 0) {
-          logger.logWaitingForCancel(
-            testRunId,
-            numberOfTestsAwaitingCancellation
-          );
-        }
-
-        return Promise.resolve({
-          completed: numberOfTestsAwaitingCancellation === 0,
-        });
-      },
-      frequency: getCancelPollInterval(options),
-      timeout: getCancelPollTimeout(options),
-    });
-
-    try {
-      await client.subscribe();
-      logger.logRunCancelled(testRunId);
-    } catch (err) {
-      if (err instanceof Error) {
-        if (err.message === 'The client has timed out.') {
-          throw new TestError(
-            `Cancel of test run '${testRunId}' has exceeded max allowed time of ${getCancelPollTimeout(
-              options
-            ).toString()}`,
-            TestErrorKind.Timeout
-          );
-        }
-      }
-      throw err;
-    }
-  }
-}
-
-interface IdObject {
-  Id: string;
 }

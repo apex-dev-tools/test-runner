@@ -96,6 +96,15 @@ export function getTestRunTimeout(options: TestRunnerOptions): Duration {
   else return Duration.minutes(DEFAULT_TEST_RUN_TIMEOUT_MINS);
 }
 
+export function getTestRunTimeoutMessage(
+  id: string,
+  options: TestRunnerOptions
+): string {
+  return `Test run '${id}' has exceeded test runner max allowed run time of ${getTestRunTimeout(
+    options
+  ).toString()}`;
+}
+
 export function getPollLimitToAssumeHangingTests(
   options: TestRunnerOptions
 ): number {

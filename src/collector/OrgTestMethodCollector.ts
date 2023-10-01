@@ -40,7 +40,7 @@ export class OrgTestMethodCollector extends TestMethodCollector {
     // Query class symbols in chunks
     const loader = new ClassSymbolLoader(
       this.logger,
-      this.connection,
+      this.queryHelper,
       this.namespace
     );
 

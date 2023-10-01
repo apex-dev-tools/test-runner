@@ -8,6 +8,7 @@ import {
   retry as retryPromise,
 } from 'ts-retry-promise';
 import { Logger } from '../log/Logger';
+import { TestError, TestErrorKind } from './TestError';
 
 export interface Pollable<T> {
   // wait in ms
@@ -15,6 +16,7 @@ export interface Pollable<T> {
 
   // overall timeout ms
   pollTimeout: number;
+  pollTimeoutMessage?: string;
 
   poll(): Promise<T>;
   pollUntil(result: T): boolean;
@@ -37,7 +39,11 @@ export async function poll<T>(
       },
     });
   } catch (error) {
-    throw unwrapRetryError(error);
+    throw wrapPollError(
+      error,
+      pollable.pollTimeoutMessage ||
+        `Polling has exceeded timeout of ${pollable.pollTimeout} ms.`
+    );
   }
 }
 
@@ -86,4 +92,16 @@ function unwrapRetryError(error: unknown) {
     return error.lastError;
   }
   return error;
+}
+
+function wrapPollError(error: unknown, timeoutMsg: string): TestError {
+  const retryErr = unwrapRetryError(error);
+  let err: TestError;
+  if (retryErr instanceof Error && retryErr.message.startsWith('Timeout')) {
+    err = new TestError(timeoutMsg, TestErrorKind.Timeout);
+  } else {
+    err = TestError.wrapError(retryErr);
+  }
+
+  return err;
 }

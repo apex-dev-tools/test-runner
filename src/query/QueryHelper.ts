@@ -3,7 +3,7 @@
  */
 
 import { AuthHelper } from '@apexdevtools/sfdx-auth-helper';
-import { Connection as JSForceConnection, Record, RequestInfo } from 'jsforce';
+import { Connection as JSForceConnection, Record } from 'jsforce';
 import { Logger } from '../log/Logger';
 import { Connection } from '@salesforce/core';
 import { retry } from '../runner/Poll';
@@ -21,7 +21,7 @@ export class QueryHelper {
   retryConfig: { delay?: number; retries?: number };
   logger?: Logger;
 
-  static create(
+  static instance(
     connection: Connection,
     logger?: Logger,
     options: QueryOptions = {}
@@ -43,10 +43,8 @@ export class QueryHelper {
     this.logger = logger;
   }
 
-  async request<T>(req: string | RequestInfo): Promise<T> {
-    return await this.retryFn(async () =>
-      this.connection.tooling.request<T>(req)
-    );
+  async run<T>(fn: (connection: JSForceConnection) => Promise<T>): Promise<T> {
+    return await this.retryFn(async () => fn(this.connection));
   }
 
   async query<T>(
@@ -64,7 +62,7 @@ export class QueryHelper {
 
   private async retryFn<T>(fn: () => Promise<T>): Promise<T> {
     try {
-      return retry(fn, this.logger, this.retryConfig);
+      return await retry(fn, this.logger, this.retryConfig);
     } catch (err) {
       throw TestError.wrapError(err, TestErrorKind.Query);
     }

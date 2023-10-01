@@ -145,7 +145,7 @@ export class TestDebugLogs {
   }
 
   async getUserId(username: string, connection: Connection): Promise<string> {
-    const users = await QueryHelper.create(connection).query(
+    const users = await QueryHelper.instance(connection).query(
       'User',
       "Username = '${username}'",
       'Id'
