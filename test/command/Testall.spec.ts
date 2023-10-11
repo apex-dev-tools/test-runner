@@ -11,7 +11,6 @@ import { RerunOption, Testall } from '../../src/command/Testall';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import { ApexTestResult } from '../../src/model/ApexTestResult';
 import { ApexTestRunResult } from '../../src/model/ApexTestRunResult';
-import { QueryHelper } from '../../src/query/QueryHelper';
 import {
   MaybeError,
   TestError,
@@ -23,9 +22,22 @@ import {
   MockTestRunner,
   MockThrowingTestRunner,
   createMockConnection,
+  createMockRunResult,
+  createMockTestResult,
   logRegex,
   testRunId,
 } from '../Setup';
+import { Logger } from '../../src/log/Logger';
+
+function mockDefaultCollector(logger: Logger, connection: Connection) {
+  return new MockTestMethodCollector(
+    logger,
+    connection,
+    '',
+    new Map<string, string>([['An Id', 'FooClass']]),
+    new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
+  );
+}
 
 describe('TestAll', () => {
   const $$ = new TestContext();
@@ -33,16 +45,10 @@ describe('TestAll', () => {
 
   let mockConnection: Connection;
   let testingServiceSyncStub: SinonStub;
-  let queryStub: SinonStub;
 
   beforeEach(async () => {
     sandbox = createSandbox();
     mockConnection = await createMockConnection($$, sandbox);
-
-    const qh = QueryHelper.instance(mockConnection);
-    queryStub = sandbox.stub(qh, 'query');
-    // delegate retry variant to basic query
-    sandbox.stub(qh, 'queryWithRetry').returns(queryStub);
 
     testingServiceSyncStub = sandbox.stub(
       TestService.prototype,
@@ -58,10 +64,7 @@ describe('TestAll', () => {
     const logger = new CapturingLogger();
     const err = new TestError('TestRunner timeout', TestErrorKind.Timeout);
     const runner = new MockThrowingTestRunner(err);
-    const testMethods = new MockTestMethodCollector(
-      new Map<string, string>([['An Id', 'FooClass']]),
-      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
-    );
+    const testMethods = mockDefaultCollector(logger, mockConnection);
 
     let capturedErr;
     try {
@@ -94,10 +97,7 @@ describe('TestAll', () => {
     const err: MaybeError = new Error('TestRunner failed');
     err.data = 'More data';
     const runner = new MockThrowingTestRunner(err);
-    const testMethods = new MockTestMethodCollector(
-      new Map<string, string>([['An Id', 'FooClass']]),
-      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
-    );
+    const testMethods = mockDefaultCollector(logger, mockConnection);
 
     try {
       await Testall.run(
@@ -129,10 +129,7 @@ describe('TestAll', () => {
   it('should log and re-throw non-Error exception', async () => {
     const logger = new CapturingLogger();
     const runner = new MockThrowingTestRunner('TestRunner failed');
-    const testMethods = new MockTestMethodCollector(
-      new Map<string, string>([['An Id', 'FooClass']]),
-      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
-    );
+    const testMethods = mockDefaultCollector(logger, mockConnection);
 
     try {
       await Testall.run(
@@ -160,40 +157,13 @@ describe('TestAll', () => {
     const spy = jest.spyOn(global, 'Date').mockImplementation(() => mockDate);
 
     const logger = new CapturingLogger();
-    const runnerResult: ApexTestRunResult = {
-      AsyncApexJobId: testRunId,
-      StartTime: '',
-      EndTime: '',
-      Status: 'Passed',
-      TestTime: 1,
-      UserId: 'user',
-      ClassesCompleted: 100,
-      ClassesEnqueued: 10,
-      MethodsCompleted: 1000,
-      MethodsEnqueued: 900,
-      MethodsFailed: 0,
-    };
-    const runner = new MockTestRunner(runnerResult);
-    const testMethods = new MockTestMethodCollector(
-      new Map<string, string>([['An Id', 'FooClass']]),
-      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
-    );
-
-    const mockTestRunResult: ApexTestResult[] = [
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
-        Outcome: 'Pass',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'testMethod',
-        Message: '',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
-    ];
-    queryStub.resolves(mockTestRunResult);
+    const mockRunResult: ApexTestRunResult = createMockRunResult();
+    const mockTestResults: ApexTestResult[] = [createMockTestResult()];
+    const runner = new MockTestRunner({
+      run: mockRunResult,
+      tests: mockTestResults,
+    });
+    const testMethods = mockDefaultCollector(logger, mockConnection);
 
     const result = await Testall.run(
       logger,
@@ -208,64 +178,24 @@ describe('TestAll', () => {
 
     expect(result).to.deep.equal({
       startTime: new Date('2020-04-20T20:00:00.000Z'),
-      testResults: [
-        {
-          Id: 'The id',
-          QueueItemId: 'Queue id',
-          AsyncApexJobId: '707xx0000AGQ3jbQQD',
-          Outcome: 'Pass',
-          ApexClass: {
-            Id: 'Class id',
-            Name: 'FooClass',
-            NamespacePrefix: '',
-          },
-          MethodName: 'testMethod',
-          Message: '',
-          StackTrace: null,
-          RunTime: 1,
-          TestTimestamp: '',
-        },
-      ],
-      runResult: {
-        AsyncApexJobId: '707xx0000AGQ3jbQQD',
-        StartTime: '',
-        EndTime: '',
-        Status: 'Passed',
-        TestTime: 1,
-        UserId: 'user',
-        ClassesCompleted: 100,
-        ClassesEnqueued: 10,
-        MethodsCompleted: 1000,
-        MethodsEnqueued: 900,
-        MethodsFailed: 0,
-      },
+      testResults: mockTestResults,
+      runResult: mockRunResult,
       reruns: [],
-      runIds: ['707xx0000AGQ3jbQQD'],
+      runIds: [testRunId],
       coverageResult: undefined,
     });
   });
 
   it('should stop after an initial aborted test run', async () => {
     const logger = new CapturingLogger();
-    const runnerResult: ApexTestRunResult = {
-      AsyncApexJobId: testRunId,
-      StartTime: '',
-      EndTime: '',
+    const mockRunResult: ApexTestRunResult = createMockRunResult({
       Status: 'Aborted',
-      TestTime: 1,
-      UserId: 'user',
-      ClassesCompleted: 100,
-      ClassesEnqueued: 10,
-      MethodsCompleted: 1000,
-      MethodsEnqueued: 900,
-      MethodsFailed: 0,
-    };
-    const runner = new MockTestRunner(runnerResult);
-    queryStub.resolves([]);
-    const testMethods = new MockTestMethodCollector(
-      new Map<string, string>([['An Id', 'FooClass']]),
-      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
-    );
+    });
+    const runner = new MockTestRunner({
+      run: mockRunResult,
+      tests: [],
+    });
+    const testMethods = mockDefaultCollector(logger, mockConnection);
 
     const result = await Testall.run(
       logger,
@@ -289,38 +219,19 @@ describe('TestAll', () => {
 
   it('should stop if there are too many failed tests', async () => {
     const logger = new CapturingLogger();
-    const runnerResult: ApexTestRunResult = {
-      AsyncApexJobId: testRunId,
-      StartTime: '',
-      EndTime: '',
+    const mockRunResult: ApexTestRunResult = createMockRunResult({
       Status: 'Failed',
-      TestTime: 1,
-      UserId: 'user',
-      ClassesCompleted: 100,
-      ClassesEnqueued: 10,
-      MethodsCompleted: 1000,
-      MethodsEnqueued: 900,
-      MethodsFailed: 0,
-    };
-    const runner = new MockTestRunner(runnerResult);
-
-    const mockTestRunResult: ApexTestResult = {
-      Id: 'The id',
-      QueueItemId: 'Queue id',
-      AsyncApexJobId: testRunId,
-      Outcome: 'Fail',
-      ApexClass: { Id: 'An Id', Name: 'FooClass', NamespacePrefix: '' },
-      MethodName: 'MethodName',
-      Message: null,
-      StackTrace: null,
-      RunTime: 1,
-      TestTimestamp: '',
-    };
-    queryStub.resolves([mockTestRunResult]);
-    const testMethods = new MockTestMethodCollector(
-      new Map<string, string>([['An Id', 'FooClass']]),
-      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
-    );
+    });
+    const mockTestResults: ApexTestResult[] = [
+      createMockTestResult({
+        Outcome: 'Fail',
+      }),
+    ];
+    const runner = new MockTestRunner({
+      run: mockRunResult,
+      tests: mockTestResults,
+    });
+    const testMethods = mockDefaultCollector(logger, mockConnection);
 
     const result = await Testall.run(
       logger,
@@ -351,41 +262,20 @@ describe('TestAll', () => {
 
   it('should complete after passed sequential re-run of tests', async () => {
     const logger = new CapturingLogger();
-    const runnerResult: ApexTestRunResult = {
-      AsyncApexJobId: testRunId,
-      StartTime: '',
-      EndTime: '',
+    const mockRunResult: ApexTestRunResult = createMockRunResult({
       Status: 'Failed',
-      TestTime: 1,
-      UserId: 'user',
-      ClassesCompleted: 100,
-      ClassesEnqueued: 10,
-      MethodsCompleted: 1000,
-      MethodsEnqueued: 900,
-      MethodsFailed: 0,
-    };
-    const runner = new MockTestRunner(runnerResult);
-    const testMethods = new MockTestMethodCollector(
-      new Map<string, string>([['An Id', 'FooClass']]),
-      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
-    );
-
-    const mockTestRunResult: ApexTestResult[] = [
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
+    });
+    const mockTestResults: ApexTestResult[] = [
+      createMockTestResult({
         Outcome: 'Fail',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'testMethod',
         Message: 'UNABLE_TO_LOCK_ROW',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
+      }),
     ];
-    queryStub.resolves(mockTestRunResult);
-
+    const runner = new MockTestRunner({
+      run: mockRunResult,
+      tests: mockTestResults,
+    });
+    const testMethods = mockDefaultCollector(logger, mockConnection);
     const mockTestResult = {
       tests: [{ asyncApexJobId: 'retryId', outcome: 'Pass', message: null }],
     } as TestResult;
@@ -418,41 +308,20 @@ describe('TestAll', () => {
 
   it('should complete after failed sequential re-run of tests', async () => {
     const logger = new CapturingLogger();
-    const runnerResult: ApexTestRunResult = {
-      AsyncApexJobId: testRunId,
-      StartTime: '',
-      EndTime: '',
+    const mockRunResult: ApexTestRunResult = createMockRunResult({
       Status: 'Failed',
-      TestTime: 1,
-      UserId: 'user',
-      ClassesCompleted: 100,
-      ClassesEnqueued: 10,
-      MethodsCompleted: 1000,
-      MethodsEnqueued: 900,
-      MethodsFailed: 0,
-    };
-    const runner = new MockTestRunner(runnerResult);
-    const testMethods = new MockTestMethodCollector(
-      new Map<string, string>([['An Id', 'FooClass']]),
-      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
-    );
-
-    const mockTestRunResult: ApexTestResult[] = [
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
+    });
+    const mockTestResults: ApexTestResult[] = [
+      createMockTestResult({
         Outcome: 'Fail',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'testMethod',
         Message: 'UNABLE_TO_LOCK_ROW',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
+      }),
     ];
-    queryStub.resolves(mockTestRunResult);
-
+    const runner = new MockTestRunner({
+      run: mockRunResult,
+      tests: mockTestResults,
+    });
+    const testMethods = mockDefaultCollector(logger, mockConnection);
     const mockTestResult = {
       tests: [
         { asyncApexJobId: 'retryId', outcome: 'Fail', message: 'Other Error' },
@@ -491,41 +360,20 @@ describe('TestAll', () => {
 
   it('should ignore and log failed retry request of test', async () => {
     const logger = new CapturingLogger();
-    const runnerResult: ApexTestRunResult = {
-      AsyncApexJobId: testRunId,
-      StartTime: '',
-      EndTime: '',
+    const mockRunResult: ApexTestRunResult = createMockRunResult({
       Status: 'Failed',
-      TestTime: 1,
-      UserId: 'user',
-      ClassesCompleted: 100,
-      ClassesEnqueued: 10,
-      MethodsCompleted: 1000,
-      MethodsEnqueued: 900,
-      MethodsFailed: 0,
-    };
-    const runner = new MockTestRunner(runnerResult);
-    const testMethods = new MockTestMethodCollector(
-      new Map<string, string>([['An Id', 'FooClass']]),
-      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
-    );
-
-    const mockTestRunResult: ApexTestResult[] = [
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
+    });
+    const mockTestResults: ApexTestResult[] = [
+      createMockTestResult({
         Outcome: 'Fail',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'testMethod',
         Message: 'UNABLE_TO_LOCK_ROW',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
+      }),
     ];
-    queryStub.resolves(mockTestRunResult);
-
+    const runner = new MockTestRunner({
+      run: mockRunResult,
+      tests: mockTestResults,
+    });
+    const testMethods = mockDefaultCollector(logger, mockConnection);
     testingServiceSyncStub.rejects(new Error('Request Error'));
 
     const result = await Testall.run(
@@ -553,41 +401,20 @@ describe('TestAll', () => {
 
   it('should complete after limited sequential re-run of tests', async () => {
     const logger = new CapturingLogger();
-    const runnerResult: ApexTestRunResult = {
-      AsyncApexJobId: testRunId,
-      StartTime: '',
-      EndTime: '',
+    const mockRunResult: ApexTestRunResult = createMockRunResult({
       Status: 'Failed',
-      TestTime: 1,
-      UserId: 'user',
-      ClassesCompleted: 100,
-      ClassesEnqueued: 10,
-      MethodsCompleted: 1000,
-      MethodsEnqueued: 900,
-      MethodsFailed: 0,
-    };
-    const runner = new MockTestRunner(runnerResult);
-    const testMethods = new MockTestMethodCollector(
-      new Map<string, string>([['An Id', 'FooClass']]),
-      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
-    );
-
-    const mockTestRunResult: ApexTestResult[] = [
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
+    });
+    const mockTestResults: ApexTestResult[] = [
+      createMockTestResult({
         Outcome: 'Fail',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'testMethod',
         Message: 'Not matching Error',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
+      }),
     ];
-    queryStub.resolves(mockTestRunResult);
-
+    const runner = new MockTestRunner({
+      run: mockRunResult,
+      tests: mockTestResults,
+    });
+    const testMethods = mockDefaultCollector(logger, mockConnection);
     const mockTestResult = {
       tests: [{ asyncApexJobId: 'retryId', outcome: 'Pass', message: null }],
     } as TestResult;
@@ -625,52 +452,25 @@ describe('TestAll', () => {
 
   it('should complete after exceeding limit on sequential re-run of tests', async () => {
     const logger = new CapturingLogger();
-    const runnerResult: ApexTestRunResult = {
-      AsyncApexJobId: testRunId,
-      StartTime: '',
-      EndTime: '',
+    const mockRunResult: ApexTestRunResult = createMockRunResult({
       Status: 'Failed',
-      TestTime: 1,
-      UserId: 'user',
-      ClassesCompleted: 100,
-      ClassesEnqueued: 10,
-      MethodsCompleted: 1000,
-      MethodsEnqueued: 900,
-      MethodsFailed: 0,
-    };
-    const runner = new MockTestRunner(runnerResult);
-    const testMethods = new MockTestMethodCollector(
-      new Map<string, string>([['An Id', 'FooClass']]),
-      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
-    );
-
-    const mockTestRunResult: ApexTestResult[] = [
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
+    });
+    const mockTestResults: ApexTestResult[] = [
+      createMockTestResult({
         Outcome: 'Fail',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'testMethod',
         Message: 'Not matching Error',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
+      }),
+      createMockTestResult({
         Outcome: 'Fail',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'testMethod2',
-        Message: 'Not matching Error 2',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
+        Message: 'Not matching Error',
+        MethodName: 'method2',
+      }),
     ];
-    queryStub.resolves(mockTestRunResult);
+    const runner = new MockTestRunner({
+      run: mockRunResult,
+      tests: mockTestResults,
+    });
+    const testMethods = mockDefaultCollector(logger, mockConnection);
 
     const mockTestResult = {
       tests: [{ asyncApexJobId: 'retryId', outcome: 'Pass', message: null }],
@@ -710,64 +510,30 @@ describe('TestAll', () => {
 
   it('should complete after sequential re-run of all failed tests', async () => {
     const logger = new CapturingLogger();
-    const runnerResult: ApexTestRunResult = {
-      AsyncApexJobId: testRunId,
-      StartTime: '',
-      EndTime: '',
+    const mockRunResult: ApexTestRunResult = createMockRunResult({
       Status: 'Failed',
-      TestTime: 1,
-      UserId: 'user',
-      ClassesCompleted: 100,
-      ClassesEnqueued: 10,
-      MethodsCompleted: 1000,
-      MethodsEnqueued: 900,
-      MethodsFailed: 0,
-    };
-    const runner = new MockTestRunner(runnerResult);
-    const testMethods = new MockTestMethodCollector(
-      new Map<string, string>([['An Id', 'FooClass']]),
-      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
-    );
-
-    const mockTestRunResult: ApexTestResult[] = [
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
+    });
+    const mockTestResults: ApexTestResult[] = [
+      createMockTestResult({
         Outcome: 'Fail',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'testMethod',
         Message: 'UNABLE_TO_LOCK_ROW',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
+      }),
+      createMockTestResult({
         Outcome: 'Fail',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'testMethod2',
         Message: 'Not matching Error',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
+        MethodName: 'method2',
+      }),
+      createMockTestResult({
         Outcome: 'Fail',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'testMethod3',
         Message: 'Not matching Error 2',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
+        MethodName: 'method3',
+      }),
     ];
-    queryStub.resolves(mockTestRunResult);
+    const runner = new MockTestRunner({
+      run: mockRunResult,
+      tests: mockTestResults,
+    });
+    const testMethods = mockDefaultCollector(logger, mockConnection);
 
     const mockTestResult = {
       tests: [{ asyncApexJobId: 'retryId', outcome: 'Pass', message: null }],
@@ -809,55 +575,35 @@ describe('TestAll', () => {
 
   it('should re-run missing tests', async () => {
     const logger = new CapturingLogger();
-    const runnerResult: ApexTestRunResult = {
-      AsyncApexJobId: testRunId,
-      StartTime: '',
-      EndTime: '',
+    const mockRunResult: ApexTestRunResult = createMockRunResult({
       Status: 'Completed',
-      TestTime: 1,
-      UserId: 'user',
-      ClassesCompleted: 100,
-      ClassesEnqueued: 10,
-      MethodsCompleted: 1000,
-      MethodsEnqueued: 900,
-      MethodsFailed: 0,
-    };
-    const runner = new MockTestRunner(runnerResult);
+    });
+    const mockTestResults: ApexTestResult[] = [
+      createMockTestResult({
+        Outcome: 'Pass',
+        MethodName: 'FooMethod1',
+      }),
+      createMockTestResult({
+        Outcome: 'Pass',
+        MethodName: 'FooMethod2',
+      }),
+    ];
+    const runner = new MockTestRunner({
+      run: mockRunResult,
+      tests: [mockTestResults[0]],
+    }).addNextResult({
+      run: mockRunResult,
+      tests: [mockTestResults[1]],
+    });
     const testMethods = new MockTestMethodCollector(
+      logger,
+      mockConnection,
+      '',
       new Map<string, string>([['An Id', 'FooClass']]),
       new Map<string, Set<string>>([
         ['FooClass', new Set(['FooMethod1', 'FooMethod2'])],
       ])
     );
-
-    const mockTestRunResult: ApexTestResult[] = [
-      {
-        Id: 'Class id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
-        Outcome: 'Pass',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: 'ns' },
-        MethodName: 'FooMethod1',
-        Message: '',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
-      {
-        Id: 'Class id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
-        Outcome: 'Pass',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: 'ns' },
-        MethodName: 'FooMethod2',
-        Message: '',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
-    ];
-    queryStub.onCall(0).resolves([mockTestRunResult[0]]);
-    queryStub.onCall(1).resolves([mockTestRunResult[1]]);
 
     const result = await Testall.run(
       logger,

@@ -61,7 +61,7 @@ describe('QueryHelper', () => {
 
     const logger = new CapturingLogger();
 
-    await QueryHelper.instance(mockConnection).queryWithRetry(logger, {})(
+    await QueryHelper.instance(mockConnection, logger).query(
       'sobject',
       'clause',
       'fields'
@@ -85,10 +85,10 @@ describe('QueryHelper', () => {
 
     const logger = new CapturingLogger();
 
-    await QueryHelper.instance(mockConnection).queryWithRetry(logger, {
+    await QueryHelper.instance(mockConnection, logger, {
       maxQueryRetries: 2,
       queryInitialIntervalMs: 500,
-    })('sobject', 'clause', 'fields');
+    }).query('sobject', 'clause', 'fields');
 
     expect(queryMock.execute.callCount).to.equal(3);
     expect(sobjectStub.alwaysCalledWith('sobject')).to.be.true;
@@ -114,11 +114,9 @@ describe('QueryHelper', () => {
 
     let capturedErr;
     try {
-      await QueryHelper.instance(mockConnection).queryWithRetry(logger, {})(
-        'sobject',
-        'clause',
-        'fields'
-      );
+      await QueryHelper.instance(mockConnection, logger, {
+        maxQueryRetries: 3,
+      }).query('sobject', 'clause', 'fields');
     } catch (err) {
       capturedErr = err;
     }

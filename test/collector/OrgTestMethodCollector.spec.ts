@@ -5,13 +5,23 @@
 import { Connection } from '@salesforce/core';
 import { TestContext } from '@salesforce/core/lib/testSetup';
 import { expect } from 'chai';
-import { SinonSandbox, SinonStub, createSandbox, match } from 'sinon';
+import {
+  SinonSandbox,
+  SinonStub,
+  SinonStubbedInstance,
+  createSandbox,
+  match,
+} from 'sinon';
 import { OrgTestMethodCollector } from '../../src/collector/OrgTestMethodCollector';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import { SymbolTable } from '../../src/model/SymbolTable';
 import { ApexClassInfo } from '../../src/query/ClassSymbolLoader';
 import { QueryHelper } from '../../src/query/QueryHelper';
-import { createMockConnection, setupQueryApexClassesSOAP } from '../Setup';
+import {
+  createMockConnection,
+  setupQueryApexClassesSOAP,
+  createQueryHelper,
+} from '../Setup';
 
 describe('OrgTestMethodCollector', () => {
   const $$ = new TestContext();
@@ -19,15 +29,13 @@ describe('OrgTestMethodCollector', () => {
 
   let mockConnection: Connection;
   let requestStub: SinonStub;
-  let queryStub: SinonStub;
+  let qhStub: SinonStubbedInstance<QueryHelper>;
 
   beforeEach(async () => {
     sandbox = createSandbox();
     mockConnection = await createMockConnection($$, sandbox);
-
-    const qh = QueryHelper.instance(mockConnection);
-    requestStub = sandbox.stub(qh, 'request');
-    queryStub = sandbox.stub(qh, 'query');
+    requestStub = sandbox.stub(mockConnection.tooling, 'request');
+    qhStub = createQueryHelper(sandbox, mockConnection);
   });
 
   afterEach(() => {
@@ -43,7 +51,7 @@ describe('OrgTestMethodCollector', () => {
       },
     ];
 
-    queryStub.resolves(mockApexClasses);
+    qhStub.query.resolves(mockApexClasses);
 
     const testMethodCollector = new OrgTestMethodCollector(
       new CapturingLogger(),
@@ -72,7 +80,7 @@ describe('OrgTestMethodCollector', () => {
       },
     ];
 
-    queryStub.resolves(mockApexClasses);
+    qhStub.query.resolves(mockApexClasses);
 
     const testMethodCollector = new OrgTestMethodCollector(
       new CapturingLogger(),
@@ -99,9 +107,9 @@ describe('OrgTestMethodCollector', () => {
       });
     }
 
-    queryStub.onCall(0).resolves(mockApexClasses.slice(0, 200));
-    queryStub.onCall(1).resolves(mockApexClasses.slice(200, 400));
-    queryStub.onCall(2).resolves(mockApexClasses.slice(400));
+    qhStub.query.onCall(0).resolves(mockApexClasses.slice(0, 200));
+    qhStub.query.onCall(1).resolves(mockApexClasses.slice(200, 400));
+    qhStub.query.onCall(2).resolves(mockApexClasses.slice(400));
 
     const testMethodCollector = new OrgTestMethodCollector(
       new CapturingLogger(),
@@ -170,7 +178,7 @@ describe('OrgTestMethodCollector', () => {
     ];
 
     // Use same response for both types of ApexClass query
-    queryStub.resolves(mockApexClasses);
+    qhStub.query.resolves(mockApexClasses);
 
     const testMethodCollector = new OrgTestMethodCollector(
       new CapturingLogger(),
@@ -227,12 +235,12 @@ describe('OrgTestMethodCollector', () => {
       },
     ];
     // classIdNameMap calls
-    queryStub
+    qhStub.query
       .withArgs('ApexClass', match.any, 'Id, Name')
       .resolves(mockApexClasses);
 
     // ClassSymbolLoader calls
-    queryStub
+    qhStub.query
       .withArgs('ApexClass', match.any, 'Id, Name, SymbolTable')
       .onCall(0)
       .resolves(mockApexClasses);
@@ -262,11 +270,11 @@ describe('OrgTestMethodCollector', () => {
         } as SymbolTable,
       },
     ];
-    queryStub
+    qhStub.query
       .withArgs('ApexClass', match.any, 'Id, Name, SymbolTable')
       .onCall(1)
       .resolves(updatedApexClasses);
-    setupQueryApexClassesSOAP(requestStub, []);
+    requestStub.resolves(setupQueryApexClassesSOAP([]));
 
     const testMethodCollector = new OrgTestMethodCollector(
       new CapturingLogger(),

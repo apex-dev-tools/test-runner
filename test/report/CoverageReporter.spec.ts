@@ -59,6 +59,7 @@ describe('CoverageReporter', () => {
         table: '',
         data: [
           {
+            Id: 'CoverageAgg-Id',
             ApexClassOrTrigger: {
               Id: 'ClassID',
               Name: 'FooClass',
