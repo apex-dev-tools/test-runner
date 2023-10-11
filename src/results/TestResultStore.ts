@@ -2,6 +2,7 @@
  * Copyright (c) 2023, Certinia Inc. All rights reserved.
  */
 
+import { CoverageReport } from '../model/ApexCodeCoverage';
 import { ApexTestResult, BaseTestResult } from '../model/ApexTestResult';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 import { TestError } from '../runner/TestError';
@@ -13,17 +14,20 @@ import { getTestName } from './TestResultUtils';
 // and generating into final summary
 
 export class TestResultStore {
+  startTime: Date;
   run?: ApexTestRunResult;
   runIds: string[];
   tests: Map<string, ApexTestResult>;
   asyncError?: TestError;
   reruns: TestRerun[];
+  coverage?: CoverageReport;
 
   get resultsArray() {
     return Array.from(this.tests.values());
   }
 
-  constructor() {
+  constructor(startTime?: Date) {
+    this.startTime = startTime || new Date();
     this.runIds = [];
     this.tests = new Map<string, ApexTestResult>();
     this.reruns = [];
@@ -60,7 +64,20 @@ export class TestResultStore {
     }
   }
 
-  public toRunSummary(startTime: Date): TestRunSummary {
+  public saveCoverage(report: CoverageReport): void {
+    this.coverage = report;
+  }
+
+  public hasError() {
+    const status = this.run?.Status;
+    return status === 'Aborted' || status === 'Failed' || this.asyncError;
+  }
+
+  public hasAborted() {
+    return this.run?.Status === 'Aborted';
+  }
+
+  public toRunSummary(): TestRunSummary {
     if (!this.run) {
       throw (
         this.asyncError ||
@@ -69,11 +86,12 @@ export class TestResultStore {
     }
 
     return {
-      startTime,
+      startTime: this.startTime,
       testResults: this.resultsArray,
       runResult: this.run,
       runIds: this.runIds,
       reruns: this.reruns,
+      coverageResult: this.coverage,
     };
   }
 

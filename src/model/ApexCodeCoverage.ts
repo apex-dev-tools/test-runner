@@ -33,6 +33,7 @@ export const ApexCodeCoverageFields = [
 export type CodeCoverage = { coveredLines: number[]; uncoveredLines: number[] };
 
 export interface ApexCodeCoverageAggregate {
+  Id?: string;
   ApexClassOrTrigger: ApexClass;
   NumLinesCovered: number;
   NumLinesUncovered: number;

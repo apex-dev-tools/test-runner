@@ -22,7 +22,6 @@ import {
 } from '../results/OutputGenerator';
 import { TestRunnerOptions } from '../runner/TestOptions';
 import { TestRunner } from '../runner/TestRunner';
-import { CoverageReport } from '../model/ApexCodeCoverage';
 import { formatTestName, getTestName } from '../results/TestResultUtils';
 import { TestResultStore } from '../results/TestResultStore';
 
@@ -125,7 +124,6 @@ export class Testall {
     methodCollector: TestMethodCollector,
     outputGenerators: OutputGenerator[]
   ): Promise<TestRunSummary | undefined> {
-    const startTime = new Date();
     let abortTestMethodCollection = false;
 
     // Create promise for test methods we expect to run
@@ -135,36 +133,37 @@ export class Testall {
     );
 
     const store = new TestResultStore();
-    let summary: TestRunSummary;
     try {
       // To support partial results, we delay the first async error
       await this.asyncRun(0, runner, testMethodMap, store);
+
+      // Ensure test collection stopped
+      abortTestMethodCollection = true;
+
+      // Early exit on error / abort
       if (store.asyncError) {
         throw store.asyncError;
+      }
+      if (store.hasAborted()) {
+        return this.reportResults(store, outputGenerators);
       }
 
       // Do sequential re-runs to try and get more passes
       await this.syncRun(store);
 
-      summary = store.toRunSummary(startTime);
-
       if (this._options.codeCoverage && !this._options.disableCoverageReport) {
-        const coverage = await this.reportCoverage(store, summary);
-        summary.coverageResult = coverage;
+        await this.getCoverage(store);
       }
 
-      this.generateReports(outputGenerators, summary);
+      return this.reportResults(store, outputGenerators);
     } catch (err) {
       // Terminate gathering test methods
       abortTestMethodCollection = true;
 
       // Make attempt to report what we've got
-      summary = store.toRunSummary(startTime);
-      this.generateReports(outputGenerators, summary);
+      this.reportResults(store, outputGenerators);
       throw err;
     }
-
-    return summary;
   }
 
   public async asyncRun(
@@ -179,7 +178,7 @@ export class Testall {
     store.saveAsyncResult(result);
 
     // If run errored or aborted, stop
-    if (result.error || result.run.Status == 'Aborted') return;
+    if (store.hasError()) return;
 
     // If we have too many genuine failures then give up
     const { failed } = ResultCollector.groupRecords(this._logger, result.tests);
@@ -338,20 +337,21 @@ export class Testall {
       : test;
   }
 
-  private generateReports(
-    outputGenerators: OutputGenerator[],
-    summary: TestRunSummary
-  ): void {
+  private reportResults(
+    store: TestResultStore,
+    outputGenerators: OutputGenerator[]
+  ): TestRunSummary {
+    const summary = store.toRunSummary();
+
     outputGenerators.forEach(outputGenerator => {
       const { fileName, outputDir } = getOutputFileBase(this._options);
       outputGenerator.generate(this._logger, outputDir, fileName, summary);
     });
+
+    return summary;
   }
 
-  private async reportCoverage(
-    store: TestResultStore,
-    summary: TestRunSummary
-  ): Promise<CoverageReport | undefined> {
+  private async getCoverage(store: TestResultStore): Promise<void> {
     if (store.runIds.length > 1 || store.reruns) {
       this._logger.logWarning(
         'Test run has reruns, so coverage report may not be complete'
@@ -361,16 +361,15 @@ export class Testall {
     try {
       const coverage = await ResultCollector.getCoverageReport(
         this._connection,
-        summary.testResults
+        store.resultsArray
       );
       this._logger.logMessage(coverage.table);
 
-      return coverage;
+      store.saveCoverage(coverage);
     } catch (err) {
       this._logger.logMessage(
         `Failed to get coverage: ${this.getErrorMsg(err)}`
       );
-      return;
     }
   }
 
