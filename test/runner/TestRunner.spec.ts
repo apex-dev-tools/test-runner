@@ -14,7 +14,6 @@ import {
   createSandbox,
   match,
 } from 'sinon';
-import { ResultCollector } from '../../src/collector/ResultCollector';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import { ApexTestResult } from '../../src/model/ApexTestResult';
 import { QueryHelper } from '../../src/query/QueryHelper';
@@ -68,9 +67,6 @@ const mockTestResult: ApexTestResult[] = [
   },
 ];
 
-jest.mock('../../src/collector/ResultCollector');
-const gatherResult = jest.spyOn(ResultCollector, 'gatherResults');
-
 describe('TestRunner', () => {
   const $$ = new TestContext();
   let sandbox: SinonSandbox;
@@ -88,8 +84,9 @@ describe('TestRunner', () => {
       .stub(TestService.prototype, 'runTestAsynchronous')
       .resolves({ testRunId });
 
-    gatherResult.mockReset();
-    gatherResult.mockReturnValue(Promise.resolve(mockTestResult));
+    qhStub.query
+      .withArgs('ApexTestResult', match.any, match.any)
+      .resolves(mockTestResult);
   });
 
   afterEach(() => {
@@ -449,11 +446,15 @@ describe('TestRunner', () => {
       { Status: 'Completed' }, // result
     ]);
     // poll results
-    gatherResult
-      .mockReturnValueOnce(Promise.resolve([mockTestResult[0]]))
-      .mockReturnValueOnce(Promise.resolve(mockTestResult))
-      .mockReturnValueOnce(Promise.resolve(finalResults))
-      .mockReturnValueOnce(Promise.resolve(finalResults));
+    qhStub.query
+      .onCall(0)
+      .resolves([mockTestResult[0]])
+      .onCall(1)
+      .resolves(mockTestResult)
+      .onCall(2)
+      .resolves(finalResults)
+      .onCall(3)
+      .resolves(finalResults);
     setupExecuteAnonymous(
       sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
       {

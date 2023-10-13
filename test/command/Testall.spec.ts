@@ -24,18 +24,20 @@ import {
   createMockConnection,
   createMockRunResult,
   createMockTestResult,
+  defaultTestInfo,
   logRegex,
   testRunId,
 } from '../Setup';
 import { Logger } from '../../src/log/Logger';
 
 function mockDefaultCollector(logger: Logger, connection: Connection) {
+  const { classId, className, methodName } = defaultTestInfo;
   return new MockTestMethodCollector(
     logger,
     connection,
     '',
-    new Map<string, string>([['An Id', 'FooClass']]),
-    new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
+    new Map<string, string>([[classId, className]]),
+    new Map<string, Set<string>>([[className, new Set([methodName])]])
   );
 }
 
@@ -578,14 +580,25 @@ describe('TestAll', () => {
     const mockRunResult: ApexTestRunResult = createMockRunResult({
       Status: 'Completed',
     });
+    const { classId, className } = defaultTestInfo;
     const mockTestResults: ApexTestResult[] = [
       createMockTestResult({
         Outcome: 'Pass',
-        MethodName: 'FooMethod1',
+        MethodName: 'method1',
+        ApexClass: {
+          Id: classId,
+          Name: className,
+          NamespacePrefix: 'ns',
+        },
       }),
       createMockTestResult({
         Outcome: 'Pass',
-        MethodName: 'FooMethod2',
+        MethodName: 'method2',
+        ApexClass: {
+          Id: classId,
+          Name: className,
+          NamespacePrefix: 'ns',
+        },
       }),
     ];
     const runner = new MockTestRunner({
@@ -598,10 +611,10 @@ describe('TestAll', () => {
     const testMethods = new MockTestMethodCollector(
       logger,
       mockConnection,
-      '',
-      new Map<string, string>([['An Id', 'FooClass']]),
+      'ns',
+      new Map<string, string>([[classId, className]]),
       new Map<string, Set<string>>([
-        ['FooClass', new Set(['FooMethod1', 'FooMethod2'])],
+        [className, new Set(['method1', 'method2'])],
       ])
     );
 

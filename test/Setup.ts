@@ -28,6 +28,13 @@ import { Connection as JSForceConnection } from 'jsforce';
 import { ApexTestResult } from '../src/model/ApexTestResult';
 
 export const testRunId = '707xx0000AGQ3jbQQD';
+export const defaultTestInfo = {
+  id: 'test',
+  queueId: 'queue',
+  classId: 'cls',
+  className: 'Class',
+  methodName: 'method',
+};
 
 export const isoDateFormat =
   '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}Z';
@@ -78,7 +85,7 @@ export type ApexTestRunResultParams = Partial<ApexTestRunResult>;
 
 export function setupQueryApexTestResults(
   stub: SinonStubbedInstance<QueryHelper>,
-  params: ApexTestRunResultParams
+  params?: ApexTestRunResultParams
 ): void {
   const mockTestRunResult: ApexTestRunResult = createMockRunResult(params);
 
@@ -123,16 +130,16 @@ export type ApexTestResultParams = Partial<ApexTestResult>;
 
 export function createMockTestResult(params: ApexTestResultParams = {}) {
   return {
-    Id: params.Id || 'test',
-    QueueItemId: params.QueueItemId || 'queue',
+    Id: params.Id || defaultTestInfo.id,
+    QueueItemId: params.QueueItemId || defaultTestInfo.queueId,
     AsyncApexJobId: params.AsyncApexJobId || testRunId,
     Outcome: params.Outcome || 'Pass',
     ApexClass: params.ApexClass || {
-      Id: 'class',
-      Name: 'Class',
+      Id: defaultTestInfo.classId,
+      Name: defaultTestInfo.className,
       NamespacePrefix: '',
     },
-    MethodName: params.MethodName || 'method',
+    MethodName: params.MethodName || defaultTestInfo.methodName,
     Message: params.Message || '',
     StackTrace: params.StackTrace || null,
     RunTime: params.RunTime || 1,
