@@ -39,6 +39,9 @@ export async function createMockConnection(
     '50.0'
   );
 
+  // creates a temp alias file to avoid crash
+  $$.stubAliases({});
+
   await $$.stubAuths(testData);
   const mockConnection = await testData.getConnection();
 
