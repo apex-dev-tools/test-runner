@@ -77,10 +77,11 @@ export class TestResultStore {
     return this.run?.Status === 'Aborted';
   }
 
-  public toRunSummary(): TestRunSummary {
+  public toRunSummary(error?: unknown): TestRunSummary {
     if (!this.run) {
       throw (
         this.asyncError ||
+        error ||
         new TestError('Failed to generate results, no async run record')
       );
     }

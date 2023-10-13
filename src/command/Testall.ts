@@ -161,7 +161,7 @@ export class Testall {
       abortTestMethodCollection = true;
 
       // Make attempt to report what we've got
-      this.reportResults(store, outputGenerators);
+      this.reportResults(store, outputGenerators, err);
       throw err;
     }
   }
@@ -339,9 +339,10 @@ export class Testall {
 
   private reportResults(
     store: TestResultStore,
-    outputGenerators: OutputGenerator[]
+    outputGenerators: OutputGenerator[],
+    error?: unknown
   ): TestRunSummary {
-    const summary = store.toRunSummary();
+    const summary = store.toRunSummary(error);
 
     outputGenerators.forEach(outputGenerator => {
       const { fileName, outputDir } = getOutputFileBase(this._options);
