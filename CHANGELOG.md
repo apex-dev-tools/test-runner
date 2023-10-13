@@ -1,5 +1,9 @@
 # test-runner - Changelog
 
+## 2.1.0 - 2023-10-13
+
+* Update to `@salesforce/core` v4 and other supporting deps.
+
 ## 2.0.1 - 2023-06-26
 
 * Fix `@salesforce/apex-node` including commitlint by relaxing required version.
