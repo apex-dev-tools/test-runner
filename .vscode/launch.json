@@ -38,57 +38,53 @@
       "name": "Debug Jest Tests",
       "type": "node",
       "request": "launch",
-      "runtimeArgs": [
-        "--inspect-brk",
-        "${workspaceRoot}/node_modules/jest/bin/jest.js",
-        "--runInBand"
-      ],
-      "envFile": "${workspaceFolder}/.env",
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "windows": {
-        "program": "${workspaceFolder}/node_modules/jest/bin/jest"
-      }
-    },
-    {
-      "name": "Debug Selected Jest Test",
-      "type": "node",
-      "request": "launch",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
-        "run-script",
+        "run",
         "test"
       ],
       "args": [
         "--",
-        "-i",
-        "${relativeFile}",
-        "-t",
-        "${selectedText}",
         "--testTimeout=300000"
       ],
-      "envFile": "${workspaceFolder}/.env",
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "windows": {
-        "program": "${workspaceFolder}/node_modules/jest/bin/jest"
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "name": "Debug Jest Current File",
       "type": "node",
       "request": "launch",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "test"
+      ],
       "args": [
+        "--",
         "${relativeFile}",
-        "--config",
-        "jest.config.js"
+        "--testTimeout=300000"
       ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "windows": {
-        "program": "${workspaceFolder}/node_modules/jest/bin/jest"
-      }
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "Debug Jest Selected Test",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "test"
+      ],
+      "args": [
+        "--",
+        "${relativeFile}",
+        "-t",
+        "${selectedText}",
+        "--testTimeout=300000"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
     }
   ]
 }
