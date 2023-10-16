@@ -17,6 +17,7 @@ import {
   createMockRunResult,
   createMockTestResult,
   createQueryHelper,
+  defaultTestInfo,
   logRegex,
   MockTestMethodCollector,
   MockTestRunner,
@@ -198,18 +199,18 @@ describe('TestDebugLogs', () => {
       run: runnerResult,
       tests: mockTestResults,
     });
+    const { classId, className, methodName } = defaultTestInfo;
     const methodCollector = new MockTestMethodCollector(
       logger,
       mockConnection,
       '',
-      new Map<string, string>([['Class id', 'FooClass']]),
-      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
+      new Map<string, string>([[classId, className]]),
+      new Map<string, Set<string>>([[className, new Set([methodName])]])
     );
 
     qhStub.query.onCall(0).resolves([{ Id: 'AnId' }]); // User Id
     qhStub.query.onCall(1).resolves([{ Id: 'LogId' }]); // Debug logs
-    qhStub.query.onCall(2).resolves([mockTestResults[0]]);
-    qhStub.query.onCall(3).resolves([{ Id: 'LogId' }]); // Debug logs
+    qhStub.query.onCall(2).resolves([{ Id: 'LogId' }]); // Debug logs
     toolingQueryStub.resolves({ records: [{ Id: 'AnId' }] }); // Debug trace
     toolingCreateStub.resolves({ success: true }); // Debug trace
     toolingRequestStub.resolves('Log Content');
@@ -230,7 +231,7 @@ describe('TestDebugLogs', () => {
       // Ignore
     }
 
-    expect(logger.entries.length).to.be.equal(8);
+    expect(logger.entries.length).to.be.equal(9);
     expect(logger.entries[0]).to.match(
       logRegex(`Removing & recreating output directory '${tmpDir}'`)
     );
@@ -241,13 +242,16 @@ describe('TestDebugLogs', () => {
     );
     expect(logger.entries[4]).to.match(logRegex('Found 1 test classes'));
     expect(logger.entries[5]).to.match(
-      logRegex('Queued all of method of class FooClass')
+      logRegex('Queued all of method of class Class')
     );
     expect(logger.entries[6]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
     expect(logger.entries[7]).to.match(
       logRegex('No matching test failures to re-run')
+    );
+    expect(logger.entries[8]).to.match(
+      logRegex('Generated reports for 1 tests')
     );
 
     const logFile = path.join(tmpDir, 'LogId.log');

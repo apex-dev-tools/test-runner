@@ -209,13 +209,16 @@ describe('TestAll', () => {
       {}
     );
 
-    expect(result).to.be.undefined;
-    expect(logger.entries.length).to.be.equal(2);
+    expect(result.runIds.length).to.be.equal(1);
+    expect(logger.entries.length).to.be.equal(3);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
     expect(logger.entries[1]).to.match(
-      logRegex('Initial test run was aborted, no results will be generated')
+      logRegex('Async test run has aborted, trying to report results')
+    );
+    expect(logger.entries[2]).to.match(
+      logRegex('Generated reports for 0 tests')
     );
   });
 
@@ -247,8 +250,8 @@ describe('TestAll', () => {
       }
     );
 
-    expect(result?.runIds.length).to.be.equal(1);
-    expect(logger.entries.length).to.be.equal(3);
+    expect(result.runIds.length).to.be.equal(1);
+    expect(logger.entries.length).to.be.equal(4);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 0')
     );
@@ -259,6 +262,9 @@ describe('TestAll', () => {
     );
     expect(logger.entries[2]).to.match(
       logRegex('No matching test failures to re-run')
+    );
+    expect(logger.entries[3]).to.match(
+      logRegex('Generated reports for 1 tests')
     );
   });
 
@@ -293,10 +299,10 @@ describe('TestAll', () => {
       {}
     );
 
-    expect(result?.reruns.length).to.equal(1);
-    expect(result?.reruns[0].after.Outcome).to.equal('Pass');
-    expect(result?.reruns[0].after.Message).to.equal(null);
-    expect(logger.entries.length).to.equal(3);
+    expect(result.reruns.length).to.equal(1);
+    expect(result.reruns[0].after.Outcome).to.equal('Pass');
+    expect(result.reruns[0].after.Message).to.equal(null);
+    expect(logger.entries.length).to.equal(4);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
@@ -304,7 +310,10 @@ describe('TestAll', () => {
       logRegex('Running 1 failed tests sequentially \\(matched patterns\\)')
     );
     expect(logger.entries[2]).to.match(
-      logRegex('FooClass.testMethod re-run complete, outcome = Pass')
+      logRegex('Class.method re-run complete, outcome = Pass')
+    );
+    expect(logger.entries[3]).to.match(
+      logRegex('Generated reports for 1 tests with 1 re-runs')
     );
   });
 
@@ -341,10 +350,10 @@ describe('TestAll', () => {
       {}
     );
 
-    expect(result?.reruns.length).to.equal(1);
-    expect(result?.reruns[0].after.Outcome).to.equal('Fail');
-    expect(result?.reruns[0].after.Message).to.equal('Other Error');
-    expect(logger.entries.length).to.be.equal(5);
+    expect(result.reruns.length).to.equal(1);
+    expect(result.reruns[0].after.Outcome).to.equal('Fail');
+    expect(result.reruns[0].after.Message).to.equal('Other Error');
+    expect(logger.entries.length).to.be.equal(6);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
@@ -352,12 +361,15 @@ describe('TestAll', () => {
       logRegex('Running 1 failed tests sequentially \\(matched patterns\\)')
     );
     expect(logger.entries[2]).to.match(
-      logRegex('FooClass.testMethod re-run complete, outcome = Fail')
+      logRegex('Class.method re-run complete, outcome = Fail')
     );
     expect(logger.entries[3]).to.match(
       logRegex(' \\[Before\\] UNABLE_TO_LOCK_ROW')
     );
     expect(logger.entries[4]).to.match(logRegex(' \\[After\\] Other Error'));
+    expect(logger.entries[5]).to.match(
+      logRegex('Generated reports for 1 tests with 1 re-runs')
+    );
   });
 
   it('should ignore and log failed retry request of test', async () => {
@@ -388,8 +400,8 @@ describe('TestAll', () => {
       {}
     );
 
-    expect(result?.reruns.length).to.equal(0);
-    expect(logger.entries.length).to.be.equal(3);
+    expect(result.reruns.length).to.equal(0);
+    expect(logger.entries.length).to.be.equal(4);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
@@ -397,7 +409,10 @@ describe('TestAll', () => {
       logRegex('Running 1 failed tests sequentially \\(matched patterns\\)')
     );
     expect(logger.entries[2]).to.match(
-      logRegex('FooClass.testMethod re-run failed, cause: Request Error')
+      logRegex('Class.method re-run failed, cause: Request Error')
+    );
+    expect(logger.entries[3]).to.match(
+      logRegex('Generated reports for 1 tests')
     );
   });
 
@@ -435,10 +450,10 @@ describe('TestAll', () => {
       }
     );
 
-    expect(result?.reruns.length).to.equal(1);
-    expect(result?.reruns[0].after.Outcome).to.equal('Pass');
-    expect(result?.reruns[0].after.Message).to.equal(null);
-    expect(logger.entries.length).to.equal(3);
+    expect(result.reruns.length).to.equal(1);
+    expect(result.reruns[0].after.Outcome).to.equal('Pass');
+    expect(result.reruns[0].after.Message).to.equal(null);
+    expect(logger.entries.length).to.equal(4);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 1')
     );
@@ -448,7 +463,10 @@ describe('TestAll', () => {
       )
     );
     expect(logger.entries[2]).to.match(
-      logRegex('FooClass.testMethod re-run complete, outcome = Pass')
+      logRegex('Class.method re-run complete, outcome = Pass')
+    );
+    expect(logger.entries[3]).to.match(
+      logRegex('Generated reports for 1 tests with 1 re-runs')
     );
   });
 
@@ -492,8 +510,8 @@ describe('TestAll', () => {
       }
     );
 
-    expect(result?.reruns.length).to.equal(0);
-    expect(logger.entries.length).to.equal(4);
+    expect(result.reruns.length).to.equal(0);
+    expect(logger.entries.length).to.equal(5);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 1')
     );
@@ -507,6 +525,9 @@ describe('TestAll', () => {
     );
     expect(logger.entries[3]).to.match(
       logRegex('No matching test failures to re-run')
+    );
+    expect(logger.entries[4]).to.match(
+      logRegex('Generated reports for 2 tests')
     );
   });
 
@@ -554,8 +575,8 @@ describe('TestAll', () => {
       }
     );
 
-    expect(result?.reruns.length).to.equal(3);
-    expect(logger.entries.length).to.equal(5);
+    expect(result.reruns.length).to.equal(3);
+    expect(logger.entries.length).to.equal(6);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
@@ -565,13 +586,16 @@ describe('TestAll', () => {
       )
     );
     expect(logger.entries[2]).to.match(
-      logRegex('FooClass.testMethod re-run complete, outcome = Pass')
+      logRegex('Class.method re-run complete, outcome = Pass')
     );
     expect(logger.entries[3]).to.match(
-      logRegex('FooClass.testMethod2 re-run complete, outcome = Pass')
+      logRegex('Class.method2 re-run complete, outcome = Pass')
     );
     expect(logger.entries[4]).to.match(
-      logRegex('FooClass.testMethod3 re-run complete, outcome = Pass')
+      logRegex('Class.method3 re-run complete, outcome = Pass')
+    );
+    expect(logger.entries[5]).to.match(
+      logRegex('Generated reports for 3 tests with 3 re-runs')
     );
   });
 
@@ -627,8 +651,8 @@ describe('TestAll', () => {
       [new MockOutputGenerator()],
       {}
     );
-    expect(result?.runIds.length).to.be.equal(2);
-    expect(logger.entries.length).to.be.equal(3);
+    expect(result.runIds.length).to.be.equal(2);
+    expect(logger.entries.length).to.be.equal(4);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
@@ -637,6 +661,9 @@ describe('TestAll', () => {
     );
     expect(logger.entries[2]).to.match(
       logRegex('No matching test failures to re-run')
+    );
+    expect(logger.entries[3]).to.match(
+      logRegex('Generated reports for 2 tests')
     );
   });
 });

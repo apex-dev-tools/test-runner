@@ -70,13 +70,14 @@ export function createQueryHelper(
   sandbox: SinonSandbox,
   connection: Connection
 ) {
-  const stubInstance = sandbox.createStubInstance(QueryHelper);
-  sandbox.stub(QueryHelper, 'instance').returns(stubInstance);
-
   // hack: use sf core connection mock in place of jsforce connection
+  const stubInstance = sandbox.createStubInstance(QueryHelper);
+  stubInstance.connection = connection as unknown as JSForceConnection;
   stubInstance.run.callsFake(fn =>
     fn(connection as unknown as JSForceConnection)
   );
+
+  sandbox.stub(QueryHelper, 'instance').returns(stubInstance);
 
   return stubInstance;
 }
