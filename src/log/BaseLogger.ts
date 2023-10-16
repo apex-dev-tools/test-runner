@@ -9,6 +9,7 @@ import { ApexTestRunResult } from '../model/ApexTestRunResult';
 import { MaybeError } from '../runner/TestError';
 import { Logger } from './Logger';
 import { getClassName, groupByOutcome } from '../results/TestResultUtils';
+import { TestRunSummary } from '../results/OutputGenerator';
 
 export abstract class BaseLogger implements Logger {
   readonly logDirPath: string;
@@ -111,6 +112,16 @@ export abstract class BaseLogger implements Logger {
         this.logMessage(` [Before and After] ${rerunMsg}`);
       }
     }
+  }
+
+  logTestReports(summary: TestRunSummary): void {
+    const { testResults, reruns } = summary;
+
+    let msg = `Generated reports for ${testResults.length} tests`;
+    if (reruns.length) {
+      msg += ` with ${reruns.length} re-runs`;
+    }
+    this.logMessage(msg);
   }
 
   logRunStarted(testRunId: string): void {

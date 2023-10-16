@@ -96,7 +96,7 @@ export class Testall {
     runner: TestRunner,
     outputGenerators: OutputGenerator[],
     options: TestallOptions
-  ): Promise<TestRunSummary | undefined> {
+  ): Promise<TestRunSummary> {
     try {
       logger.logTestallStart(options);
       const cmd = new Testall(logger, connection, namespace, options);
@@ -123,7 +123,7 @@ export class Testall {
     runner: TestRunner,
     methodCollector: TestMethodCollector,
     outputGenerators: OutputGenerator[]
-  ): Promise<TestRunSummary | undefined> {
+  ): Promise<TestRunSummary> {
     let abortTestMethodCollection = false;
 
     // Create promise for test methods we expect to run
@@ -177,8 +177,12 @@ export class Testall {
     // Update rolling results for tests that did run
     store.saveAsyncResult(result);
 
-    // If run errored or aborted, stop
-    if (store.hasError()) return;
+    if (store.asyncError || store.hasAborted()) {
+      this._logger.logMessage(
+        'Async test run has aborted, trying to report results'
+      );
+      return;
+    }
 
     // If we have too many genuine failures then give up
     const { failed } = ResultCollector.groupRecords(this._logger, result.tests);
@@ -348,6 +352,8 @@ export class Testall {
       const { fileName, outputDir } = getOutputFileBase(this._options);
       outputGenerator.generate(this._logger, outputDir, fileName, summary);
     });
+
+    this._logger.logTestReports(summary);
 
     return summary;
   }

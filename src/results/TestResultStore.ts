@@ -68,11 +68,6 @@ export class TestResultStore {
     this.coverage = report;
   }
 
-  public hasError() {
-    const status = this.run?.Status;
-    return status === 'Aborted' || status === 'Failed' || this.asyncError;
-  }
-
   public hasAborted() {
     return this.run?.Status === 'Aborted';
   }

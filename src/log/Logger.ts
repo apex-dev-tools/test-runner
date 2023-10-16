@@ -5,6 +5,7 @@
 import { TestallOptions } from '../command/Testall';
 import { ApexTestResult, BaseTestResult } from '../model/ApexTestResult';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
+import { TestRunSummary } from '../results/OutputGenerator';
 
 export interface Logger {
   readonly logDirPath: string;
@@ -28,6 +29,7 @@ export interface Logger {
     result: BaseTestResult,
     otherResult: BaseTestResult
   ): void;
+  logTestReports(summary: TestRunSummary): void;
 
   // Test runner
   logRunStarted(testRunId: string): void;
