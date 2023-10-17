@@ -38,9 +38,8 @@
       "name": "Debug Jest Tests",
       "type": "node",
       "request": "launch",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "pnpm",
       "runtimeArgs": [
-        "run",
         "test"
       ],
       "args": [
@@ -54,9 +53,8 @@
       "name": "Debug Jest Current File",
       "type": "node",
       "request": "launch",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "pnpm",
       "runtimeArgs": [
-        "run",
         "test"
       ],
       "args": [
@@ -71,9 +69,8 @@
       "name": "Debug Jest Selected Test",
       "type": "node",
       "request": "launch",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "pnpm",
       "runtimeArgs": [
-        "run",
         "test"
       ],
       "args": [
