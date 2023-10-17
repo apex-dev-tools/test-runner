@@ -225,36 +225,44 @@ describe('ResultCollector', () => {
     it('should not produce table when first query fails', async () => {
       qhStub.query.onFirstCall().rejects(new Error('First Query Error'));
 
+      let err;
       try {
         await ResultCollector.getCoverageReport(
           mockConnection,
           mockTestRunResults
         );
+        expect.fail('Missing exception');
       } catch (er) {
-        expect(er).to.be.instanceOf(TestError);
-        expect((er as TestError).message).to.equal(
-          'Failed getting coverage data: First Query Error'
-        );
-        expect((er as TestError).kind).to.equal(TestErrorKind.Query);
+        err = er as TestError;
       }
+
+      expect(err).to.be.instanceOf(TestError);
+      expect(err.message).to.equal(
+        'Failed getting coverage data: First Query Error'
+      );
+      expect(err.kind).to.equal(TestErrorKind.Query);
     });
 
     it('should not produce table when second query fails', async () => {
       qhStub.query.onFirstCall().resolves(mockCodeCoverage);
       qhStub.query.onSecondCall().rejects(new Error('Second Query Error'));
 
+      let err;
       try {
         await ResultCollector.getCoverageReport(
           mockConnection,
           mockTestRunResults
         );
+        expect.fail('Missing exception');
       } catch (er) {
-        expect(er).to.be.instanceOf(TestError);
-        expect((er as TestError).message).to.equal(
-          'Failed getting coverage data: Second Query Error'
-        );
-        expect((er as TestError).kind).to.equal(TestErrorKind.Query);
+        err = er as TestError;
       }
+
+      expect(err).to.be.instanceOf(TestError);
+      expect(err.message).to.equal(
+        'Failed getting coverage data: Second Query Error'
+      );
+      expect(err.kind).to.equal(TestErrorKind.Query);
     });
   });
 });

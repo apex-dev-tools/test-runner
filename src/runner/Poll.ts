@@ -53,27 +53,52 @@ export async function retry<T>(
   opts?: Partial<RetryConfig<T>>
 ): Promise<T> {
   try {
-    return await retryPromise(fn, {
-      retries: 4,
+    // explicit undefined values will override/break the options
+    cleanOptions(opts);
+
+    const retries = opts?.retries || 4;
+    const effectiveOpts: Partial<RetryConfig<T>> = {
+      retries,
       delay: 15000,
       timeout: 'INFINITELY',
       backoff: (attempt, delay) => {
-        const newDelay = delay * 2;
-        logger?.logWarning(
+        // WORKAROUND: ts-retry-promise has a bug, it will do the delay after
+        // the last retry even though it is not going to attempt another
+        if (retries !== 'INFINITELY' && attempt === retries + 1) {
+          return 0;
+        }
+
+        // backoff multiply last by 2
+        const newDelay =
+          attempt <= 1 ? delay : delay * Math.pow(2, attempt - 1);
+
+        logger?.logMessage(
           `Retrying failed request, waiting ${
             newDelay / 1000
-          } seconds (attempt: ${attempt})`
+          } seconds (attempts: ${attempt})`
         );
         return newDelay;
       },
       retryIf: error => {
-        logger?.logMessage(`Request failed: ${getErrorCause(error)}`);
+        logger?.logWarning(`Request failed. Cause: ${getErrorCause(error)}`);
         return true;
       },
       ...opts,
-    });
+    };
+
+    return await retryPromise(fn, effectiveOpts);
   } catch (error) {
     throw unwrapRetryError(error);
+  }
+}
+
+function cleanOptions(opt?: { [index: string]: any }) {
+  if (opt) {
+    Object.keys(opt).forEach(key => {
+      if (opt[key] === undefined) {
+        delete opt[key];
+      }
+    });
   }
 }
 

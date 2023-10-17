@@ -11,6 +11,7 @@ import { QueryHelper } from '../../src/query/QueryHelper';
 import { TestError, TestErrorKind } from '../../src/runner/TestError';
 import { createMockConnection, logRegex } from '../Setup';
 import { AuthHelper } from '@apexdevtools/sfdx-auth-helper';
+import { Connection as JSForceConnection } from 'jsforce';
 
 describe('QueryHelper', () => {
   const $$ = new TestContext();
@@ -24,14 +25,14 @@ describe('QueryHelper', () => {
   let queryMock: {
     execute: SinonStub;
   };
-  let timeoutSpy: jest.SpyInstance;
 
   beforeEach(async () => {
     sandbox = createSandbox();
     mockConnection = await createMockConnection($$, sandbox);
 
     // always call timeouts immediately
-    timeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation(cb => {
+    // won't work if the retry has a timeout set
+    sandbox.stub(global, 'setTimeout').callsFake(cb => {
       cb();
       return {} as NodeJS.Timeout;
     });
@@ -43,16 +44,16 @@ describe('QueryHelper', () => {
       execute: sandbox.stub(),
     };
 
-    const conn = AuthHelper.toJsForceConnection(mockConnection);
-    sobjectStub = sandbox.stub(conn.tooling, 'sobject');
+    sobjectStub = sandbox.stub(mockConnection.tooling, 'sobject');
     sobjectStub.returns(sobjectMock);
     sobjectMock.find.returns(queryMock);
-    sandbox.stub(AuthHelper, 'toJsForceConnection').returns(conn);
+    sandbox
+      .stub(AuthHelper, 'toJsForceConnection')
+      .returns(mockConnection as unknown as JSForceConnection);
   });
 
   afterEach(() => {
     sandbox.restore();
-    timeoutSpy.mockRestore();
   });
 
   it('should retry with default options', async () => {
@@ -70,10 +71,13 @@ describe('QueryHelper', () => {
     expect(queryMock.execute.callCount).to.equal(2);
     expect(sobjectStub.alwaysCalledWith('sobject')).to.be.true;
     expect(sobjectMock.find.alwaysCalledWith('clause', 'fields')).to.be.true;
-    expect(logger.entries.length).to.equal(1);
+    expect(logger.entries.length).to.equal(2);
     expect(logger.entries[0]).to.match(
+      logRegex('Warning: Request failed. Cause: 400')
+    );
+    expect(logger.entries[1]).to.match(
       logRegex(
-        'Request failed, waiting 30 seconds before trying again. Cause: 400'
+        'Retrying failed request, waiting \\d+ seconds \\(attempts: 1\\)'
       )
     );
   });
@@ -93,16 +97,18 @@ describe('QueryHelper', () => {
     expect(queryMock.execute.callCount).to.equal(3);
     expect(sobjectStub.alwaysCalledWith('sobject')).to.be.true;
     expect(sobjectMock.find.alwaysCalledWith('clause', 'fields')).to.be.true;
-    expect(logger.entries.length).to.equal(2);
+    expect(logger.entries.length).to.equal(4);
     expect(logger.entries[0]).to.match(
-      logRegex(
-        'Request failed, waiting 0.5 seconds before trying again. Cause: error'
-      )
+      logRegex('Warning: Request failed. Cause: error')
     );
     expect(logger.entries[1]).to.match(
-      logRegex(
-        'Request failed, waiting 1 seconds before trying again. Cause: 400'
-      )
+      logRegex('Retrying failed request, waiting 0.5 seconds \\(attempts: 1\\)')
+    );
+    expect(logger.entries[2]).to.match(
+      logRegex('Warning: Request failed. Cause: 400')
+    );
+    expect(logger.entries[3]).to.match(
+      logRegex('Retrying failed request, waiting 1 seconds \\(attempts: 2\\)')
     );
   });
 
@@ -117,37 +123,40 @@ describe('QueryHelper', () => {
       await QueryHelper.instance(mockConnection, logger, {
         maxQueryRetries: 3,
       }).query('sobject', 'clause', 'fields');
+      expect.fail('Missing exception');
     } catch (err) {
-      capturedErr = err;
+      capturedErr = err as TestError;
     }
 
     expect(queryMock.execute.callCount).to.equal(4);
     expect(sobjectStub.alwaysCalledWith('sobject')).to.be.true;
     expect(sobjectMock.find.alwaysCalledWith('clause', 'fields')).to.be.true;
-    if (capturedErr instanceof TestError) {
-      expect(capturedErr.message).to.equal('400');
-      expect(capturedErr.kind).to.equal(TestErrorKind.Query);
-    } else {
-      expect.fail('Not a TestError');
-    }
-    expect(logger.entries.length).to.equal(4);
+    expect(capturedErr).to.be.instanceof(TestError);
+    expect(capturedErr.message).to.equal(
+      'All retries failed. Last error: Error: 400'
+    );
+    expect(capturedErr.kind).to.equal(TestErrorKind.Query);
+    expect(logger.entries.length).to.equal(7);
     expect(logger.entries[0]).to.match(
-      logRegex(
-        'Request failed, waiting 30 seconds before trying again. Cause: 400'
-      )
+      logRegex('Warning: Request failed. Cause: 400')
     );
     expect(logger.entries[1]).to.match(
-      logRegex(
-        'Request failed, waiting 60 seconds before trying again. Cause: 400'
-      )
+      logRegex('Retrying failed request, waiting 15 seconds \\(attempts: 1\\)')
     );
     expect(logger.entries[2]).to.match(
-      logRegex(
-        'Request failed, waiting 120 seconds before trying again. Cause: 400'
-      )
+      logRegex('Warning: Request failed. Cause: 400')
     );
     expect(logger.entries[3]).to.match(
-      logRegex('Request failed after 3 retries. Cause: 400')
+      logRegex('Retrying failed request, waiting 30 seconds \\(attempts: 2\\)')
+    );
+    expect(logger.entries[4]).to.match(
+      logRegex('Warning: Request failed. Cause: 400')
+    );
+    expect(logger.entries[5]).to.match(
+      logRegex('Retrying failed request, waiting 60 seconds \\(attempts: 3\\)')
+    );
+    expect(logger.entries[6]).to.match(
+      logRegex('Warning: Request failed. Cause: 400')
     );
   });
 });

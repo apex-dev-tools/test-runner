@@ -44,7 +44,7 @@ export class QueryHelper {
   }
 
   async run<T>(fn: (connection: JSForceConnection) => Promise<T>): Promise<T> {
-    return await this.retryFn(() => fn(this.connection));
+    return this.retryFn(() => fn(this.connection));
   }
 
   async query<T>(
@@ -52,7 +52,7 @@ export class QueryHelper {
     clause: string,
     fields: string
   ): Promise<Record<T>[]> {
-    return await this.retryFn(() =>
+    return this.retryFn(() =>
       this.connection.tooling
         .sobject(sobject)
         .find<T>(clause, fields)
