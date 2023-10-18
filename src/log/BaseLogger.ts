@@ -148,32 +148,28 @@ export abstract class BaseLogger implements Logger {
     );
   }
 
-  logTestFailures(
-    seenResults: ApexTestResult[],
-    newResultsByClassId: Record<string, ApexTestResult[]>
-  ): void {
-    const seenClasses = new Set(seenResults.map(r => r.ApexClass.Id));
-    const reportable = Object.entries(newResultsByClassId).filter(
-      ([id, results]) => !seenClasses.has(id) && results.length > 0
-    );
+  logTestFailures(newResults: ApexTestResult[]): void {
+    const failedResultsByClassId = newResults.reduce((classes, test) => {
+      const id = test.ApexClass.Id;
+      if (test.Outcome === 'Fail' || test.Outcome === 'CompileFail') {
+        classes[id] = [...(classes[id] || []), test];
+      }
+      return classes;
+    }, {} as Record<string, ApexTestResult[]>);
 
-    if (reportable.length > 0) {
-      this.logMessage('--- New Class Failures ---');
+    Object.entries(failedResultsByClassId).forEach(([, results]) => {
+      const tests = results.slice(0, 2);
 
-      reportable.forEach(([, results]) => {
-        const tests = results.slice(0, 2);
+      this.logMessage(`  Failing Tests: ${getClassName(tests[0])}]`);
 
-        this.logMessage(`[${getClassName(tests[0])}]`);
-
-        tests.forEach(t => {
-          const msg = t.Message ? ` - ${t.Message}` : '';
-          this.logMessage(` ${t.MethodName}${msg}`);
-        });
-
-        results.length > 2 &&
-          this.logMessage(` (and ${results.length - 2} more...)`);
+      tests.forEach(t => {
+        const msg = t.Message ? ` - ${t.Message}` : '';
+        this.logMessage(`    * ${t.MethodName}${msg}`);
       });
-    }
+
+      results.length > 2 &&
+        this.logMessage(`    (and ${results.length - 2} more...)`);
+    });
   }
 
   logRunCancelling(testRunId: string): void {
