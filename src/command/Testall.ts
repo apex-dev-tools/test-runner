@@ -24,6 +24,7 @@ import { TestRunnerOptions } from '../runner/TestOptions';
 import { TestRunner } from '../runner/TestRunner';
 import { formatTestName, getTestName } from '../results/TestResultUtils';
 import { TestResultStore } from '../results/TestResultStore';
+import { retry } from '../runner/Poll';
 
 /**
  * Parallel unit test runner that can hide intermitant failures caused by UNABLE_TO_LOCK_ROW, deadlock errors and
@@ -302,10 +303,14 @@ export class Testall {
 
     try {
       const timestamp = SfDate.toDateTimeLiteral(new Date()).toString();
-      const result = await testService.runTestSynchronous({
-        tests: [item],
-        skipCodeCoverage: !(this._options.codeCoverage == true),
-      });
+      const result = await retry(
+        () =>
+          testService.runTestSynchronous({
+            tests: [item],
+            skipCodeCoverage: !(this._options.codeCoverage == true),
+          }),
+        this._logger
+      );
 
       return this.convertToSyncResult(result, timestamp);
     } catch (err) {

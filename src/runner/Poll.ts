@@ -56,7 +56,7 @@ export async function retry<T>(
     // explicit undefined values will override/break the options
     cleanOptions(opts);
 
-    const retries = opts?.retries || 4;
+    const retries = opts?.retries || 3;
     const effectiveOpts: Partial<RetryConfig<T>> = {
       retries,
       delay: 15000,

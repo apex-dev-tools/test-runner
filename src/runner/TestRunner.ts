@@ -28,7 +28,7 @@ import TestStats from './TestStats';
 import { QueryHelper } from '../query/QueryHelper';
 import { ApexTestQueueItem } from '../model/ApexTestQueueItem';
 import { TestError, TestErrorKind } from './TestError';
-import { Pollable, poll } from './Poll';
+import { Pollable, poll, retry } from './Poll';
 import { ApexTestResult, ApexTestResultFields } from '../model/ApexTestResult';
 
 /**
@@ -128,10 +128,9 @@ export class AsyncTestRunner implements TestRunner {
 
     const payload = this.testClassPayload() || (await this.testAllPayload());
 
-    const testRunIdResult = (await this._testService.runTestAsynchronous(
-      payload,
-      false,
-      true
+    const testRunIdResult = (await retry(
+      () => this._testService.runTestAsynchronous(payload, false, true),
+      this._logger
     )) as TestRunIdResult;
 
     this._options.callbacks?.onRunStarted?.(testRunIdResult.testRunId);
@@ -187,8 +186,9 @@ export class AsyncTestRunner implements TestRunner {
   private async testAllPayload(): Promise<
     AsyncTestConfiguration | AsyncTestArrayConfiguration
   > {
-    const payload = await this._testService.buildAsyncPayload(
-      TestLevel.RunLocalTests
+    const payload = await retry(
+      () => this._testService.buildAsyncPayload(TestLevel.RunLocalTests),
+      this._logger
     );
     payload.skipCodeCoverage = this.skipCollectCoverage();
     return payload;
@@ -240,9 +240,9 @@ export class AsyncTestRunner implements TestRunner {
     };
 
     try {
-      return await poll(testRunStatus);
+      return await poll(testRunStatus, this._logger);
     } catch (err) {
-      return this.preparePartialResult(testRunId, err, lastResult);
+      return this.preparePartialResult(err, lastResult);
     }
   }
 
@@ -312,20 +312,16 @@ export class AsyncTestRunner implements TestRunner {
   }
 
   private preparePartialResult(
-    testRunId: string,
     err: unknown,
     last?: TestRunnerResult
   ): TestRunnerResult {
+    const wrappedErr = TestError.wrapError(err);
     if (!last) {
-      throw TestError.wrapError(
-        err,
-        TestErrorKind.General,
-        `Could not get any results for test run '${testRunId}'.`
-      );
+      throw wrappedErr;
     }
 
     return {
-      error: TestError.wrapError(err),
+      error: wrappedErr,
       ...last,
     };
   }
