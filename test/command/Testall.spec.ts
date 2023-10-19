@@ -26,6 +26,7 @@ import {
   createMockTestResult,
   defaultTestInfo,
   logRegex,
+  mockSetTimeout,
   testRunId,
 } from '../Setup';
 import { Logger } from '../../src/log/Logger';
@@ -51,6 +52,8 @@ describe('TestAll', () => {
   beforeEach(async () => {
     sandbox = createSandbox();
     mockConnection = await createMockConnection($$, sandbox);
+
+    mockSetTimeout(sandbox);
 
     testingServiceSyncStub = sandbox.stub(
       TestService.prototype,
@@ -84,12 +87,15 @@ describe('TestAll', () => {
     }
 
     expect(capturedErr).to.equal(err);
-    expect(logger.entries.length).to.be.equal(3);
+    expect(logger.entries.length).to.be.equal(4);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
-    expect(logger.entries[1]).to.match(logRegex('TestRunner timeout'));
-    expect(logger.entries[2]).to.match(
+    expect(logger.entries[1]).to.match(
+      logRegex('Warning: Test result reports were not generated')
+    );
+    expect(logger.entries[2]).to.match(logRegex('TestRunner timeout'));
+    expect(logger.entries[3]).to.match(
       logRegex('Error stack: TestError: TestRunner timeout\n    at.*')
     );
   });
@@ -115,15 +121,18 @@ describe('TestAll', () => {
       // Ignore
     }
 
-    expect(logger.entries.length).to.be.equal(4);
+    expect(logger.entries.length).to.be.equal(5);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
-    expect(logger.entries[1]).to.match(logRegex('TestRunner failed'));
-    expect(logger.entries[2]).to.match(
+    expect(logger.entries[1]).to.match(
+      logRegex('Warning: Test result reports were not generated')
+    );
+    expect(logger.entries[2]).to.match(logRegex('TestRunner failed'));
+    expect(logger.entries[3]).to.match(
       logRegex('Error stack: Error: TestRunner failed\n    at.*')
     );
-    expect(logger.entries[3]).to.match(
+    expect(logger.entries[4]).to.match(
       logRegex('Additional data: "More data"')
     );
   });
@@ -147,11 +156,14 @@ describe('TestAll', () => {
       // Ignore
     }
 
-    expect(logger.entries.length).to.be.equal(2);
+    expect(logger.entries.length).to.be.equal(3);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
-    expect(logger.entries[1]).to.match(logRegex('Error: "TestRunner failed"'));
+    expect(logger.entries[1]).to.match(
+      logRegex('Warning: Test result reports were not generated')
+    );
+    expect(logger.entries[2]).to.match(logRegex('Error: "TestRunner failed"'));
   });
 
   it('should return summary after running', async () => {
@@ -401,7 +413,7 @@ describe('TestAll', () => {
     );
 
     expect(result.reruns.length).to.equal(0);
-    expect(logger.entries.length).to.be.equal(4);
+    expect(logger.entries.length).to.be.equal(11);
     expect(logger.entries[0]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
@@ -409,9 +421,32 @@ describe('TestAll', () => {
       logRegex('Running 1 failed tests sequentially \\(matched patterns\\)')
     );
     expect(logger.entries[2]).to.match(
-      logRegex('Class.method re-run failed, cause: Request Error')
+      logRegex('Warning: Request failed. Cause: Request Error')
     );
     expect(logger.entries[3]).to.match(
+      logRegex('Waiting 15 seconds to retry \\(attempts: 1\\)')
+    );
+    expect(logger.entries[4]).to.match(
+      logRegex('Warning: Request failed. Cause: Request Error')
+    );
+    expect(logger.entries[5]).to.match(
+      logRegex('Waiting 30 seconds to retry \\(attempts: 2\\)')
+    );
+    expect(logger.entries[6]).to.match(
+      logRegex('Warning: Request failed. Cause: Request Error')
+    );
+    expect(logger.entries[7]).to.match(
+      logRegex('Waiting 60 seconds to retry \\(attempts: 3\\)')
+    );
+    expect(logger.entries[8]).to.match(
+      logRegex('Warning: Request failed. Cause: Request Error')
+    );
+    expect(logger.entries[9]).to.match(
+      logRegex(
+        'Class.method re-run failed. All retries failed. Last error: Error: Request Error'
+      )
+    );
+    expect(logger.entries[10]).to.match(
       logRegex('Generated reports for 1 tests')
     );
   });

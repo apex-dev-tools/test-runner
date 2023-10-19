@@ -231,9 +231,11 @@ describe('ResultCollector', () => {
           mockConnection,
           mockTestRunResults
         );
-        expect.fail('Missing exception');
       } catch (er) {
         err = er as TestError;
+      }
+      if (!err) {
+        expect.fail('Missing exception');
       }
 
       expect(err).to.be.instanceOf(TestError);
@@ -253,9 +255,11 @@ describe('ResultCollector', () => {
           mockConnection,
           mockTestRunResults
         );
-        expect.fail('Missing exception');
       } catch (er) {
         err = er as TestError;
+      }
+      if (!err) {
+        expect.fail('Missing exception');
       }
 
       expect(err).to.be.instanceOf(TestError);

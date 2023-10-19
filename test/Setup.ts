@@ -26,6 +26,7 @@ import { TestRunner, TestRunnerResult } from '../src/runner/TestRunner';
 import { QueryHelper } from '../src/query/QueryHelper';
 import { Connection as JSForceConnection } from 'jsforce';
 import { ApexTestResult } from '../src/model/ApexTestResult';
+import { Duration } from '@salesforce/kit';
 
 export const testRunId = '707xx0000AGQ3jbQQD';
 export const defaultTestInfo = {
@@ -38,6 +39,24 @@ export const defaultTestInfo = {
 
 export const isoDateFormat =
   '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}Z';
+
+export const timeoutMs = Duration.minutes(120).milliseconds;
+
+export function mockSetTimeout(sandbox: SinonSandbox, testTimeoutMs = 50) {
+  // NOTE: for debugging within polling, increase testTimeoutMs
+
+  // stub timeout only for default durations
+  // always call timeouts for polling/retry immediately
+  // make global timeouts fit within test
+
+  const timeoutStub = sandbox.stub(global, 'setTimeout');
+  timeoutStub.withArgs(match.any, 0).callThrough();
+  timeoutStub.callsFake(cb => setTimeout(cb, 0));
+  timeoutStub.withArgs(match.any, testTimeoutMs).callThrough();
+  timeoutStub
+    .withArgs(match.any, timeoutMs)
+    .callsFake(cb => setTimeout(cb, testTimeoutMs));
+}
 
 export async function createMockConnection(
   $$: TestContext,
@@ -86,9 +105,13 @@ export type ApexTestRunResultParams = Partial<ApexTestRunResult>;
 
 export function setupQueryApexTestResults(
   stub: SinonStubbedInstance<QueryHelper>,
+  tests: ApexTestResult[],
   params?: ApexTestRunResultParams
 ): void {
-  const mockTestRunResult: ApexTestRunResult = createMockRunResult(params);
+  const mockTestRunResult: ApexTestRunResult = createMockRunResult({
+    MethodsEnqueued: tests.length,
+    ...params,
+  });
 
   stub.query
     .withArgs('ApexTestRunResult', match.any, match.any)
@@ -97,12 +120,14 @@ export function setupQueryApexTestResults(
 
 export function setupMultipleQueryApexTestResults(
   stub: SinonStubbedInstance<QueryHelper>,
+  tests: ApexTestResult[],
   paramsList: ApexTestRunResultParams[]
 ): void {
   for (let i = 0; i < paramsList.length; i++) {
-    const mockTestRunResult: ApexTestRunResult = createMockRunResult(
-      paramsList[i]
-    );
+    const mockTestRunResult: ApexTestRunResult = createMockRunResult({
+      MethodsEnqueued: tests.length,
+      ...paramsList[i],
+    });
 
     stub.query
       .withArgs('ApexTestRunResult', match.any, match.any)
