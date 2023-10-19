@@ -73,9 +73,7 @@ export async function retry<T>(
           attempt <= 1 ? delay : delay * Math.pow(2, attempt - 1);
 
         logger?.logMessage(
-          `Retrying failed request, waiting ${
-            newDelay / 1000
-          } seconds (attempts: ${attempt})`
+          `Waiting ${newDelay / 1000} seconds to retry (attempts: ${attempt})`
         );
         return newDelay;
       },

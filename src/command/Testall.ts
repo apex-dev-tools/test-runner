@@ -315,9 +315,7 @@ export class Testall {
       return this.convertToSyncResult(result, timestamp);
     } catch (err) {
       this._logger.logMessage(
-        `${getTestName(currentResult)} re-run failed, cause: ${this.getErrorMsg(
-          err
-        )}`
+        `${getTestName(currentResult)} re-run failed. ${this.getErrorMsg(err)}`
       );
     }
 
