@@ -160,7 +160,7 @@ export abstract class BaseLogger implements Logger {
     Object.entries(failedResultsByClassId).forEach(([, results]) => {
       const tests = results.slice(0, 2);
 
-      this.logMessage(`  Failing Tests: ${getClassName(tests[0])}]`);
+      this.logMessage(`  Failing Tests: ${getClassName(tests[0])}`);
 
       tests.forEach(t => {
         const msg = t.Message ? ` - ${t.Message}` : '';

@@ -77,7 +77,7 @@ export class TestResultStore {
       throw (
         this.asyncError ||
         error ||
-        new TestError('Failed to generate results, no async run record')
+        new TestError('Failed to generate results, no test run record')
       );
     }
 

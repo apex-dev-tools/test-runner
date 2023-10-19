@@ -346,7 +346,13 @@ export class Testall {
     outputGenerators: OutputGenerator[],
     error?: unknown
   ): TestRunSummary {
-    const summary = store.toRunSummary(error);
+    let summary: TestRunSummary;
+    try {
+      summary = store.toRunSummary(error);
+    } catch (err) {
+      this._logger.logWarning('Test result reports were not generated');
+      throw err;
+    }
 
     outputGenerators.forEach(outputGenerator => {
       const { fileName, outputDir } = getOutputFileBase(this._options);
