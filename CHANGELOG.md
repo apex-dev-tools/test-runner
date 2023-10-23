@@ -1,5 +1,19 @@
 # test-runner - Changelog
 
+## 3.0.0 - 2023-10-23
+
+* **BREAKING**: `AsyncTestRunner` now does not re-throw errors. Instead it returns a `TestRunnerResult` type which includes all test results retrieved and optional error.
+
+* Adds `ts-retry-promise` as dependency.
+  * Replacing uses of `@salesforce/core`'s `PollingClient`.
+  * All errors are now caught and retried, instead of just network errors.
+  * Errors and retries will be logged.
+* Reworked `TestAll` command to return partial result, no longer potentially undefined.
+* Added retries to many external request promises.
+  * Currently fixed 3 additional attempts made over ~2 minutes.
+* Added inline logging of test failures as they happen.
+* `TestAborter` no longer waits after marking aborted tests.
+
 ## 2.1.0 - 2023-10-13
 
 * Update to `@salesforce/core` v4 and other supporting deps.
