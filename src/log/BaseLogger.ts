@@ -6,9 +6,10 @@ import path from 'path';
 import { TestallOptions, getMaxErrorsForReRun } from '../command/Testall';
 import { ApexTestResult, BaseTestResult } from '../model/ApexTestResult';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
-import { groupByOutcome } from '../results/OutputGenerator';
 import { MaybeError } from '../runner/TestError';
 import { Logger } from './Logger';
+import { getClassName, groupByOutcome } from '../results/TestResultUtils';
+import { TestRunSummary } from '../results/OutputGenerator';
 
 export abstract class BaseLogger implements Logger {
   readonly logDirPath: string;
@@ -57,13 +58,6 @@ export abstract class BaseLogger implements Logger {
       `Starting test run, with max failing tests for re-run ${getMaxErrorsForReRun(
         options
       )}`
-    );
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  logTestallAbort(options: TestallOptions): void {
-    this.logMessage(
-      'Initial test run was aborted, no results will be generated'
     );
   }
 
@@ -120,6 +114,16 @@ export abstract class BaseLogger implements Logger {
     }
   }
 
+  logTestReports(summary: TestRunSummary): void {
+    const { testResults, reruns } = summary;
+
+    let msg = `Generated reports for ${testResults.length} tests`;
+    if (reruns.length) {
+      msg += ` with ${reruns.length} re-runs`;
+    }
+    this.logMessage(msg);
+  }
+
   logRunStarted(testRunId: string): void {
     this.logMessage(`Test run started with AsyncApexJob Id: ${testRunId}`);
   }
@@ -136,15 +140,36 @@ export abstract class BaseLogger implements Logger {
     const completed = tests.length;
     const passed = outcomes.Pass.length;
     const failed = outcomes.Fail.length + outcomes.CompileFail.length;
-
-    const complete =
-      testRunResult.MethodsEnqueued > 0
-        ? Math.round((completed * 100) / testRunResult.MethodsEnqueued)
-        : 0;
+    const total = testRunResult.MethodsEnqueued;
+    const complete = total > 0 ? Math.floor((completed * 100) / total) : 0;
 
     this.logMessage(
-      `[${status}] Passed: ${passed} | Failed: ${failed} | ${complete}% Complete`
+      `[${status}] Passed: ${passed} | Failed: ${failed} | ${completed}/${total} Complete (${complete}%)`
     );
+  }
+
+  logTestFailures(newResults: ApexTestResult[]): void {
+    const failedResultsByClassId = newResults.reduce((classes, test) => {
+      const id = test.ApexClass.Id;
+      if (test.Outcome === 'Fail' || test.Outcome === 'CompileFail') {
+        classes[id] = [...(classes[id] || []), test];
+      }
+      return classes;
+    }, {} as Record<string, ApexTestResult[]>);
+
+    Object.entries(failedResultsByClassId).forEach(([, results]) => {
+      const tests = results.slice(0, 2);
+
+      this.logMessage(`  Failing Tests: ${getClassName(tests[0])}`);
+
+      tests.forEach(t => {
+        const msg = t.Message ? ` - ${t.Message}` : '';
+        this.logMessage(`    * ${t.MethodName}${msg}`);
+      });
+
+      results.length > 2 &&
+        this.logMessage(`    (and ${results.length - 2} more...)`);
+    });
   }
 
   logRunCancelling(testRunId: string): void {

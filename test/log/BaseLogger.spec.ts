@@ -34,7 +34,9 @@ describe('BaseLogger', () => {
 
     expect(logger.entries.length).to.equal(1);
     expect(logger.entries[0]).to.match(
-      logRegex('\\[Processing\\] Passed: 2 \\| Failed: 1 \\| 50% Complete')
+      logRegex(
+        '\\[Processing\\] Passed: 2 \\| Failed: 1 \\| 3\\/6 Complete \\(50%\\)'
+      )
     );
   });
 

@@ -4,15 +4,9 @@
 import { Connection } from '@salesforce/core';
 import { TestItem } from '@salesforce/apex-node';
 import { Logger } from '../log/Logger';
-import {
-  classIdNameMapFromNames,
-  TestMethodCollector,
-} from './TestMethodCollector';
+import { TestMethodCollector } from './TestMethodCollector';
 
-export class TestItemTestMethodCollector implements TestMethodCollector {
-  logger: Logger;
-  connection: Connection;
-  namespace: string;
+export class TestItemTestMethodCollector extends TestMethodCollector {
   testItems: TestItem[];
 
   constructor(
@@ -21,17 +15,13 @@ export class TestItemTestMethodCollector implements TestMethodCollector {
     namespace: string,
     testItems: TestItem[]
   ) {
-    this.logger = logger;
-    this.connection = connection;
-    this.namespace = namespace;
+    super(logger, connection, namespace);
     this.testItems = testItems;
   }
 
   classIdNameMap(): Promise<Map<string, string>> {
-    return classIdNameMapFromNames(
-      this.testItems.map(item => item.className as string),
-      this.connection,
-      this.namespace
+    return this.classIdNameMapFromNames(
+      this.testItems.map(item => item.className as string)
     );
   }
 

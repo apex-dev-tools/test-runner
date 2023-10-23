@@ -9,7 +9,7 @@ import {
 } from '@salesforce/apex-node/lib/src/execute/types';
 import { Connection } from '@salesforce/core';
 import { MockTestOrgData, TestContext } from '@salesforce/core/lib/testSetup';
-import { SinonSandbox, SinonStub, match } from 'sinon';
+import { SinonSandbox, SinonStub, SinonStubbedInstance, match } from 'sinon';
 import { TestMethodCollector } from '../src/collector/TestMethodCollector';
 import { Logger } from '../src/log/Logger';
 import { ApexTestRunResult } from '../src/model/ApexTestRunResult';
@@ -22,12 +22,41 @@ import {
   CancelTestRunOptions,
   TestRunAborter,
 } from '../src/runner/TestOptions';
-import { TestRunner } from '../src/runner/TestRunner';
+import { TestRunner, TestRunnerResult } from '../src/runner/TestRunner';
+import { QueryHelper } from '../src/query/QueryHelper';
+import { Connection as JSForceConnection } from 'jsforce';
+import { ApexTestResult } from '../src/model/ApexTestResult';
+import { Duration } from '@salesforce/kit';
 
 export const testRunId = '707xx0000AGQ3jbQQD';
+export const defaultTestInfo = {
+  id: 'test',
+  queueId: 'queue',
+  classId: 'cls',
+  className: 'Class',
+  methodName: 'method',
+};
 
 export const isoDateFormat =
   '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}Z';
+
+export const timeoutMs = Duration.minutes(120).milliseconds;
+
+export function mockSetTimeout(sandbox: SinonSandbox, testTimeoutMs = 50) {
+  // NOTE: for debugging within polling, increase testTimeoutMs
+
+  // stub timeout only for default durations
+  // always call timeouts for polling/retry immediately
+  // make global timeouts fit within test
+
+  const timeoutStub = sandbox.stub(global, 'setTimeout');
+  timeoutStub.withArgs(match.any, 0).callThrough();
+  timeoutStub.callsFake(cb => setTimeout(cb, 0));
+  timeoutStub.withArgs(match.any, testTimeoutMs).callThrough();
+  timeoutStub
+    .withArgs(match.any, timeoutMs)
+    .callsFake(cb => setTimeout(cb, testTimeoutMs));
+}
 
 export async function createMockConnection(
   $$: TestContext,
@@ -56,36 +85,58 @@ export function logRegex(entry: string): RegExp {
   return new RegExp(`^${isoDateFormat} - ${entry}$`, 'gm');
 }
 
+export function createQueryHelper(
+  sandbox: SinonSandbox,
+  connection: Connection
+) {
+  // hack: use sf core connection mock in place of jsforce connection
+  const stubInstance = sandbox.createStubInstance(QueryHelper);
+  stubInstance.connection = connection as unknown as JSForceConnection;
+  stubInstance.run.callsFake(fn =>
+    fn(connection as unknown as JSForceConnection)
+  );
+
+  sandbox.stub(QueryHelper, 'instance').returns(stubInstance);
+
+  return stubInstance;
+}
+
 export type ApexTestRunResultParams = Partial<ApexTestRunResult>;
 
 export function setupQueryApexTestResults(
-  stub: SinonStub,
-  params: ApexTestRunResultParams
+  stub: SinonStubbedInstance<QueryHelper>,
+  tests: ApexTestResult[],
+  params?: ApexTestRunResultParams
 ): void {
-  const mockTestRunResult: ApexTestRunResult = createMockRunResult(params);
+  const mockTestRunResult: ApexTestRunResult = createMockRunResult({
+    MethodsEnqueued: tests.length,
+    ...params,
+  });
 
-  stub
+  stub.query
     .withArgs('ApexTestRunResult', match.any, match.any)
     .resolves([mockTestRunResult]);
 }
 
 export function setupMultipleQueryApexTestResults(
-  stub: SinonStub,
+  stub: SinonStubbedInstance<QueryHelper>,
+  tests: ApexTestResult[],
   paramsList: ApexTestRunResultParams[]
 ): void {
   for (let i = 0; i < paramsList.length; i++) {
-    const mockTestRunResult: ApexTestRunResult = createMockRunResult(
-      paramsList[i]
-    );
+    const mockTestRunResult: ApexTestRunResult = createMockRunResult({
+      MethodsEnqueued: tests.length,
+      ...paramsList[i],
+    });
 
-    stub
+    stub.query
       .withArgs('ApexTestRunResult', match.any, match.any)
       .onCall(i)
       .resolves([mockTestRunResult]);
   }
 }
 
-function createMockRunResult(params: ApexTestRunResultParams) {
+export function createMockRunResult(params: ApexTestRunResultParams = {}) {
   return {
     AsyncApexJobId: params.AsyncApexJobId || testRunId,
     StartTime: params.StartTime || '',
@@ -98,6 +149,27 @@ function createMockRunResult(params: ApexTestRunResultParams) {
     MethodsCompleted: params.MethodsCompleted || 0,
     MethodsEnqueued: params.MethodsEnqueued || 0,
     MethodsFailed: params.MethodsFailed || 0,
+  };
+}
+
+export type ApexTestResultParams = Partial<ApexTestResult>;
+
+export function createMockTestResult(params: ApexTestResultParams = {}) {
+  return {
+    Id: params.Id || defaultTestInfo.id,
+    QueueItemId: params.QueueItemId || defaultTestInfo.queueId,
+    AsyncApexJobId: params.AsyncApexJobId || testRunId,
+    Outcome: params.Outcome || 'Pass',
+    ApexClass: params.ApexClass || {
+      Id: defaultTestInfo.classId,
+      Name: defaultTestInfo.className,
+      NamespacePrefix: '',
+    },
+    MethodName: params.MethodName || defaultTestInfo.methodName,
+    Message: params.Message || '',
+    StackTrace: params.StackTrace || null,
+    RunTime: params.RunTime || 1,
+    TestTimestamp: params.TestTimestamp || '',
   };
 }
 
@@ -119,17 +191,15 @@ export function setupExecuteAnonymous(
 }
 
 export function setupQueryApexClassesSOAP(
-  stub: SinonStub,
   records: ApexClassInfo[]
-): void {
-  const soapResponse: QueryResponse = {
+): QueryResponse {
+  return {
     'soapenv:Envelope': {
       'soapenv:Body': {
         queryResponse: { result: { records: records } },
       },
     },
   };
-  stub.resolves(soapResponse);
 }
 
 export class MockAborter implements TestRunAborter {
@@ -149,25 +219,31 @@ export class MockAborter implements TestRunAborter {
 }
 
 export class MockTestRunner implements TestRunner {
-  results: ApexTestRunResult;
+  result: TestRunnerResult;
+  nextResult?: TestRunnerResult;
   testItems: TestItem[];
 
-  constructor(results: ApexTestRunResult, testItems: TestItem[] = []) {
-    this.results = results;
+  constructor(result: TestRunnerResult, testItems: TestItem[] = []) {
+    this.result = result;
     this.testItems = testItems;
+  }
+
+  addNextResult(res: TestRunnerResult): TestRunner {
+    this.nextResult = res;
+    return this;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   newRunner(testItems: TestItem[]): TestRunner {
-    return new MockTestRunner(this.results, this.testItems);
+    return new MockTestRunner(this.nextResult || this.result, this.testItems);
   }
 
   getTestClasses(): string[] {
     return this.testItems.map(i => i.className as string);
   }
 
-  async run(): Promise<ApexTestRunResult> {
-    return Promise.resolve(this.results);
+  async run(): Promise<TestRunnerResult> {
+    return Promise.resolve(this.result);
   }
 }
 
@@ -188,7 +264,7 @@ export class MockThrowingTestRunner implements TestRunner {
     return [];
   }
 
-  run(): Promise<ApexTestRunResult> {
+  run(): Promise<TestRunnerResult> {
     throw this.error;
   }
 }
@@ -206,14 +282,18 @@ export class MockOutputGenerator implements OutputGenerator {
   }
 }
 
-export class MockTestMethodCollector implements TestMethodCollector {
+export class MockTestMethodCollector extends TestMethodCollector {
   classIdName: Map<string, string>;
   testMethods: Map<string, Set<string>>;
 
   constructor(
+    logger: Logger,
+    connection: Connection,
+    namespace: string,
     classIdName: Map<string, string>,
     testMethods: Map<string, Set<string>>
   ) {
+    super(logger, connection, namespace);
     this.classIdName = classIdName;
     this.testMethods = testMethods;
   }

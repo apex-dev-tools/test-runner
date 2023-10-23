@@ -6,25 +6,25 @@ import { TestItem } from '@salesforce/apex-node';
 import { Connection } from '@salesforce/core';
 import { TestContext } from '@salesforce/core/lib/testSetup';
 import { expect } from 'chai';
-import { SinonSandbox, SinonStub, createSandbox } from 'sinon';
+import { SinonSandbox, SinonStubbedInstance, createSandbox } from 'sinon';
 import { OrgTestMethodCollector } from '../../src/collector/OrgTestMethodCollector';
 import { TestItemTestMethodCollector } from '../../src/collector/TestItemTestMethodCollector';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import { ApexClassInfo } from '../../src/query/ClassSymbolLoader';
 import { QueryHelper } from '../../src/query/QueryHelper';
-import { createMockConnection } from '../Setup';
+import { createMockConnection, createQueryHelper } from '../Setup';
 
 describe('TestItemTestMethodCollector', () => {
   const $$ = new TestContext();
   let sandbox: SinonSandbox;
 
   let mockConnection: Connection;
-  let queryStub: SinonStub;
+  let qhStub: SinonStubbedInstance<QueryHelper>;
 
   beforeEach(async () => {
     sandbox = createSandbox();
     mockConnection = await createMockConnection($$, sandbox);
-    queryStub = sandbox.stub(QueryHelper.instance(mockConnection), 'query');
+    qhStub = createQueryHelper(sandbox, mockConnection);
   });
 
   afterEach(() => {
@@ -40,7 +40,7 @@ describe('TestItemTestMethodCollector', () => {
       },
     ];
 
-    queryStub.resolves(mockApexClasses);
+    qhStub.query.resolves(mockApexClasses);
 
     const testMethodCollector = new TestItemTestMethodCollector(
       new CapturingLogger(),
@@ -69,7 +69,7 @@ describe('TestItemTestMethodCollector', () => {
       },
     ];
 
-    queryStub.resolves(mockApexClasses);
+    qhStub.query.resolves(mockApexClasses);
 
     const testMethodCollector = new OrgTestMethodCollector(
       new CapturingLogger(),
@@ -96,9 +96,9 @@ describe('TestItemTestMethodCollector', () => {
       });
     }
 
-    queryStub.onCall(0).resolves(mockApexClasses.slice(0, 200));
-    queryStub.onCall(1).resolves(mockApexClasses.slice(200, 400));
-    queryStub.onCall(2).resolves(mockApexClasses.slice(400));
+    qhStub.query.onCall(0).resolves(mockApexClasses.slice(0, 200));
+    qhStub.query.onCall(1).resolves(mockApexClasses.slice(200, 400));
+    qhStub.query.onCall(2).resolves(mockApexClasses.slice(400));
 
     const testMethodCollector = new TestItemTestMethodCollector(
       new CapturingLogger(),

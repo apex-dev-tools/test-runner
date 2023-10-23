@@ -13,9 +13,10 @@ import {
   CoverageReport,
 } from '../model/ApexCodeCoverage';
 import { ApexTestResult, ApexTestResultFields } from '../model/ApexTestResult';
-import { QueryHelper, QueryOptions } from '../query/QueryHelper';
+import { QueryHelper } from '../query/QueryHelper';
 import { TestError, TestErrorKind } from '../runner/TestError';
 import { TestResultMatcher } from './TestResultMatcher';
+import { chunk } from '../query/Chunk';
 
 const config: TableUserConfig = {
   border: {
@@ -50,34 +51,11 @@ export interface ResultsByType {
 export class ResultCollector {
   private static RECORD_QUERY_LIMIT = 500;
 
-  private static chunkArrays<T>(arr: T[], chunkSize: number): T[][] {
-    const chunks = [];
-    for (let i = 0; i < arr.length; i += chunkSize) {
-      chunks.push(arr.slice(i, i + chunkSize));
-    }
-    return chunks;
-  }
-
   static async gatherResults(
     connection: Connection,
     testRunId: string
   ): Promise<ApexTestResult[]> {
     return await QueryHelper.instance(connection).query<ApexTestResult>(
-      'ApexTestResult',
-      `AsyncApexJobId='${testRunId}'`,
-      ApexTestResultFields.join(', ')
-    );
-  }
-
-  static async gatherResultsWithRetry(
-    connection: Connection,
-    testRunId: string,
-    logger: Logger,
-    options: QueryOptions
-  ): Promise<ApexTestResult[]> {
-    return await QueryHelper.instance(
-      connection
-    ).queryWithRetry<ApexTestResult>(logger, options)(
       'ApexTestResult',
       `AsyncApexJobId='${testRunId}'`,
       ApexTestResultFields.join(', ')
@@ -119,10 +97,11 @@ export class ResultCollector {
     connection: Connection,
     tests: ApexTestResult[]
   ): Promise<CoverageReport> {
+    const helper = QueryHelper.instance(connection);
     const aggregate: ApexCodeCoverageAggregate[] =
-      await ResultCollector.gatherCoverage(connection, tests)
+      await ResultCollector.gatherCoverage(helper, tests)
         .then(coverage =>
-          ResultCollector.gatherCodeCoverageAggregate(connection, coverage)
+          ResultCollector.gatherCodeCoverageAggregate(helper, coverage)
         )
         .catch(e => {
           throw TestError.wrapError(
@@ -144,16 +123,16 @@ export class ResultCollector {
   }
 
   private static async gatherCoverage(
-    connection: Connection,
+    helper: QueryHelper,
     tests: ApexTestResult[]
   ): Promise<ApexCodeCoverage[]> {
     const ids = [...new Set(tests.map(t => `'${t.ApexClass.Id}'`))];
     if (ids.length <= 0) {
       return Promise.resolve([]);
     }
-    const chunked = this.chunkArrays<string>(ids, this.RECORD_QUERY_LIMIT);
+    const chunked = chunk<string>(ids, this.RECORD_QUERY_LIMIT);
     const promises = chunked.map(async chunk => {
-      return QueryHelper.instance(connection).query<ApexCodeCoverage[]>(
+      return helper.query<ApexCodeCoverage[]>(
         'ApexCodeCoverage',
         `ApexTestClassId IN (${chunk.join(', ')})`,
         ApexCodeCoverageFields.join(', ')
@@ -163,19 +142,17 @@ export class ResultCollector {
   }
 
   private static async gatherCodeCoverageAggregate(
-    connection: Connection,
+    helper: QueryHelper,
     coverage: ApexCodeCoverage[]
   ): Promise<ApexCodeCoverageAggregate[]> {
     const ids = [...new Set(coverage.map(t => `'${t.ApexClassOrTrigger.Id}'`))];
     if (ids.length <= 0) {
       return Promise.resolve([]);
     }
-    const chunked = this.chunkArrays<string>(ids, this.RECORD_QUERY_LIMIT);
+    const chunked = chunk<string>(ids, this.RECORD_QUERY_LIMIT);
 
     const promises = chunked.map(chunk => {
-      return QueryHelper.instance(connection).query<
-        ApexCodeCoverageAggregate[]
-      >(
+      return helper.query<ApexCodeCoverageAggregate[]>(
         'ApexCodeCoverageAggregate',
         `ApexClassorTriggerId IN (${chunk.join(', ')})`,
         ApexCodeCoverageAggregateFields.join(', ')

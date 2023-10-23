@@ -3,11 +3,7 @@
  */
 import { Logger } from '../log/Logger';
 import { CoverageReport } from '../model/ApexCodeCoverage';
-import {
-  ApexTestResult,
-  BaseTestResult,
-  OutcomeMap,
-} from '../model/ApexTestResult';
+import { ApexTestResult, BaseTestResult } from '../model/ApexTestResult';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
 
 export interface TestRerun {
@@ -32,22 +28,4 @@ export interface OutputGenerator {
     fileName: string,
     summary: TestRunSummary
   ): void;
-}
-
-export function groupByOutcome(
-  results: ApexTestResult[]
-): OutcomeMap<ApexTestResult[]> {
-  return results.reduce(
-    (acc, current) => {
-      const outcome = current.Outcome;
-      acc[outcome].push(current);
-      return acc;
-    },
-    {
-      Pass: [],
-      Fail: [],
-      CompileFail: [],
-      Skip: [],
-    } as OutcomeMap<ApexTestResult[]>
-  );
 }

@@ -5,6 +5,7 @@
 import { TestallOptions } from '../command/Testall';
 import { ApexTestResult, BaseTestResult } from '../model/ApexTestResult';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
+import { TestRunSummary } from '../results/OutputGenerator';
 
 export interface Logger {
   readonly logDirPath: string;
@@ -20,7 +21,6 @@ export interface Logger {
 
   // Testall main flow
   logTestallStart(options: TestallOptions): void;
-  logTestallAbort(options: TestallOptions): void;
   logTestallRerun(missing: Map<string, Set<string>>): void;
   logMaxErrorAbort(failed: ApexTestResult[]): void;
   logTestWillRerun(tests: ApexTestResult[], matches: number): void;
@@ -29,11 +29,13 @@ export interface Logger {
     result: BaseTestResult,
     otherResult: BaseTestResult
   ): void;
+  logTestReports(summary: TestRunSummary): void;
 
   // Test runner
   logRunStarted(testRunId: string): void;
   logNoProgress(testRunId: string): void;
   logStatus(status: ApexTestRunResult, tests: ApexTestResult[]): void;
+  logTestFailures(newResults: ApexTestResult[]): void;
 
   // Test job cancelling
   logRunCancelling(testRunId: string): void;

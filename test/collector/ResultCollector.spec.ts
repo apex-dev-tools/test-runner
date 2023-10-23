@@ -5,7 +5,7 @@
 import { Connection } from '@salesforce/core';
 import { TestContext } from '@salesforce/core/lib/testSetup';
 import { expect } from 'chai';
-import { SinonSandbox, SinonStub, createSandbox } from 'sinon';
+import { SinonSandbox, SinonStubbedInstance, createSandbox } from 'sinon';
 import { TestError, TestErrorKind } from '../../src';
 import {
   ResultCollector,
@@ -14,19 +14,28 @@ import {
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import { ApexTestResult } from '../../src/model/ApexTestResult';
 import { QueryHelper } from '../../src/query/QueryHelper';
-import { createMockConnection, testRunId } from '../Setup';
+import {
+  createMockConnection,
+  createMockTestResult,
+  createQueryHelper,
+  testRunId,
+} from '../Setup';
+import {
+  ApexCodeCoverage,
+  ApexCodeCoverageAggregate,
+} from '../../src/model/ApexCodeCoverage';
 
 describe('ResultCollector', () => {
   const $$ = new TestContext();
   let sandbox: SinonSandbox;
 
   let mockConnection: Connection;
-  let queryStub: SinonStub;
+  let qhStub: SinonStubbedInstance<QueryHelper>;
 
   beforeEach(async () => {
     sandbox = createSandbox();
     mockConnection = await createMockConnection($$, sandbox);
-    queryStub = sandbox.stub(QueryHelper.instance(mockConnection), 'query');
+    qhStub = createQueryHelper(sandbox, mockConnection);
   });
 
   afterEach(() => {
@@ -34,20 +43,13 @@ describe('ResultCollector', () => {
   });
 
   it('should return test results', async () => {
-    const mockTestRunResult: ApexTestResult = {
-      Id: 'The id',
-      QueueItemId: 'Queue id',
-      AsyncApexJobId: testRunId,
-      Outcome: 'Pass',
-      ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-      MethodName: 'MethodName',
-      Message: null,
-      StackTrace: null,
-      RunTime: 1,
-      TestTimestamp: '',
-    };
+    const mockTestRunResults: ApexTestResult[] = [
+      createMockTestResult({
+        Outcome: 'Pass',
+      }),
+    ];
 
-    queryStub.resolves([mockTestRunResult]);
+    qhStub.query.resolves(mockTestRunResults);
 
     const results = await ResultCollector.gatherResults(
       mockConnection,
@@ -55,59 +57,26 @@ describe('ResultCollector', () => {
     );
 
     expect(results.length).to.equal(1);
-    expect(results[0]).to.equal(mockTestRunResult);
+    expect(results[0]).to.equal(mockTestRunResults[0]);
   });
 
   it('should group test results by type', () => {
     const mockTestRunResults: ApexTestResult[] = [
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
+      createMockTestResult({
         Outcome: 'Pass',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'MethodName',
-        Message: null,
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
+      }),
+      createMockTestResult({
         Outcome: 'Fail',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'MethodName',
         Message: 'Some error message',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
+      }),
+      createMockTestResult({
         Outcome: 'Fail',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'MethodName',
         Message: 'Some UNABLE_TO_LOCK_ROW error',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
+      }),
+      createMockTestResult({
         Outcome: 'Fail',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'MethodName',
         Message: 'Some deadlock detected while waiting for resource error',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
+      }),
     ];
 
     const logger = new CapturingLogger();
@@ -124,54 +93,21 @@ describe('ResultCollector', () => {
 
   it('should re-group test results by type', () => {
     const mockTestRunResults: ApexTestResult[] = [
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
+      createMockTestResult({
         Outcome: 'Pass',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'MethodName',
-        Message: null,
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
+      }),
+      createMockTestResult({
         Outcome: 'Fail',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'MethodName',
         Message: 'Some error message',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
+      }),
+      createMockTestResult({
         Outcome: 'Fail',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'MethodName',
         Message: 'Some UNABLE_TO_LOCK_ROW error',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
+      }),
+      createMockTestResult({
         Outcome: 'Fail',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'MethodName',
         Message: 'Some deadlock detected while waiting for resource error',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
+      }),
     ];
 
     const badResultsByType: ResultsByType = {
@@ -194,32 +130,15 @@ describe('ResultCollector', () => {
 
   describe('getCoverageReport', () => {
     const mockTestRunResults: ApexTestResult[] = [
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
+      createMockTestResult({
         Outcome: 'Pass',
-        ApexClass: { Id: 'ClassId1', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'MethodName',
-        Message: null,
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
-      {
-        Id: 'The id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
+      }),
+      createMockTestResult({
         Outcome: 'Fail',
-        ApexClass: { Id: 'ClassId2', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'MethodName',
         Message: 'Some error message',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
+      }),
     ];
-    const mockCodeCoverage = [
+    const mockCodeCoverage: ApexCodeCoverage[] = [
       {
         Id: 'Coverage-Id',
         ApexTestClass: {
@@ -256,8 +175,9 @@ describe('ResultCollector', () => {
       },
     ];
 
-    const mockApexCodeCoverageAggregate = [
+    const mockApexCodeCoverageAggregate: ApexCodeCoverageAggregate[] = [
       {
+        Id: 'CoverageAgg-Id',
         ApexClassOrTrigger: {
           Id: 'ClassID',
           Name: 'FooClass',
@@ -270,8 +190,8 @@ describe('ResultCollector', () => {
     ];
 
     it('should collect and report code coverage', async () => {
-      queryStub.onFirstCall().resolves([mockCodeCoverage]);
-      queryStub.onSecondCall().resolves(mockApexCodeCoverageAggregate);
+      qhStub.query.onFirstCall().resolves(mockCodeCoverage);
+      qhStub.query.onSecondCall().resolves(mockApexCodeCoverageAggregate);
 
       const results = await ResultCollector.getCoverageReport(
         mockConnection,
@@ -290,8 +210,8 @@ describe('ResultCollector', () => {
     });
 
     it('should not produce table when code coverage is empty', async () => {
-      queryStub.onFirstCall().resolves([mockCodeCoverage]);
-      queryStub.onSecondCall().resolves([]);
+      qhStub.query.onFirstCall().resolves(mockCodeCoverage);
+      qhStub.query.onSecondCall().resolves([]);
 
       const results = await ResultCollector.getCoverageReport(
         mockConnection,
@@ -303,38 +223,50 @@ describe('ResultCollector', () => {
     });
 
     it('should not produce table when first query fails', async () => {
-      queryStub.onFirstCall().rejects(new Error('First Query Error'));
+      qhStub.query.onFirstCall().rejects(new Error('First Query Error'));
 
+      let err;
       try {
         await ResultCollector.getCoverageReport(
           mockConnection,
           mockTestRunResults
         );
       } catch (er) {
-        expect(er).to.be.instanceOf(TestError);
-        expect((er as TestError).message).to.equal(
-          'Failed getting coverage data: First Query Error'
-        );
-        expect((er as TestError).kind).to.equal(TestErrorKind.Query);
+        err = er as TestError;
       }
+      if (!err) {
+        expect.fail('Missing exception');
+      }
+
+      expect(err).to.be.instanceOf(TestError);
+      expect(err.message).to.equal(
+        'Failed getting coverage data: First Query Error'
+      );
+      expect(err.kind).to.equal(TestErrorKind.Query);
     });
 
     it('should not produce table when second query fails', async () => {
-      queryStub.onFirstCall().resolves([mockCodeCoverage]);
-      queryStub.onSecondCall().rejects(new Error('Second Query Error'));
+      qhStub.query.onFirstCall().resolves(mockCodeCoverage);
+      qhStub.query.onSecondCall().rejects(new Error('Second Query Error'));
 
+      let err;
       try {
         await ResultCollector.getCoverageReport(
           mockConnection,
           mockTestRunResults
         );
       } catch (er) {
-        expect(er).to.be.instanceOf(TestError);
-        expect((er as TestError).message).to.equal(
-          'Failed getting coverage data: Second Query Error'
-        );
-        expect((er as TestError).kind).to.equal(TestErrorKind.Query);
+        err = er as TestError;
       }
+      if (!err) {
+        expect.fail('Missing exception');
+      }
+
+      expect(err).to.be.instanceOf(TestError);
+      expect(err.message).to.equal(
+        'Failed getting coverage data: Second Query Error'
+      );
+      expect(err.kind).to.equal(TestErrorKind.Query);
     });
   });
 });

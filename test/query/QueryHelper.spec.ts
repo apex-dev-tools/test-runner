@@ -9,8 +9,9 @@ import { SinonSandbox, SinonStub, createSandbox } from 'sinon';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import { QueryHelper } from '../../src/query/QueryHelper';
 import { TestError, TestErrorKind } from '../../src/runner/TestError';
-import { createMockConnection, logRegex } from '../Setup';
+import { createMockConnection, logRegex, mockSetTimeout } from '../Setup';
 import { AuthHelper } from '@apexdevtools/sfdx-auth-helper';
+import { Connection as JSForceConnection } from 'jsforce';
 
 describe('QueryHelper', () => {
   const $$ = new TestContext();
@@ -24,17 +25,12 @@ describe('QueryHelper', () => {
   let queryMock: {
     execute: SinonStub;
   };
-  let timeoutSpy: jest.SpyInstance;
 
   beforeEach(async () => {
     sandbox = createSandbox();
     mockConnection = await createMockConnection($$, sandbox);
 
-    // always call timeouts immediately
-    timeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation(cb => {
-      cb();
-      return {} as NodeJS.Timeout;
-    });
+    mockSetTimeout(sandbox);
 
     sobjectMock = {
       find: sandbox.stub(),
@@ -43,16 +39,16 @@ describe('QueryHelper', () => {
       execute: sandbox.stub(),
     };
 
-    const conn = AuthHelper.toJsForceConnection(mockConnection);
-    sobjectStub = sandbox.stub(conn.tooling, 'sobject');
+    sobjectStub = sandbox.stub(mockConnection.tooling, 'sobject');
     sobjectStub.returns(sobjectMock);
     sobjectMock.find.returns(queryMock);
-    sandbox.stub(AuthHelper, 'toJsForceConnection').returns(conn);
+    sandbox
+      .stub(AuthHelper, 'toJsForceConnection')
+      .returns(mockConnection as unknown as JSForceConnection);
   });
 
   afterEach(() => {
     sandbox.restore();
-    timeoutSpy.mockRestore();
   });
 
   it('should retry with default options', async () => {
@@ -61,7 +57,7 @@ describe('QueryHelper', () => {
 
     const logger = new CapturingLogger();
 
-    await QueryHelper.instance(mockConnection).queryWithRetry(logger, {})(
+    await QueryHelper.instance(mockConnection, logger).query(
       'sobject',
       'clause',
       'fields'
@@ -70,11 +66,12 @@ describe('QueryHelper', () => {
     expect(queryMock.execute.callCount).to.equal(2);
     expect(sobjectStub.alwaysCalledWith('sobject')).to.be.true;
     expect(sobjectMock.find.alwaysCalledWith('clause', 'fields')).to.be.true;
-    expect(logger.entries.length).to.equal(1);
+    expect(logger.entries.length).to.equal(2);
     expect(logger.entries[0]).to.match(
-      logRegex(
-        'Request failed, waiting 30 seconds before trying again. Cause: 400'
-      )
+      logRegex('Warning: Request failed. Cause: 400')
+    );
+    expect(logger.entries[1]).to.match(
+      logRegex('Waiting \\d+ seconds to retry \\(attempts: 1\\)')
     );
   });
 
@@ -85,24 +82,26 @@ describe('QueryHelper', () => {
 
     const logger = new CapturingLogger();
 
-    await QueryHelper.instance(mockConnection).queryWithRetry(logger, {
+    await QueryHelper.instance(mockConnection, logger, {
       maxQueryRetries: 2,
       queryInitialIntervalMs: 500,
-    })('sobject', 'clause', 'fields');
+    }).query('sobject', 'clause', 'fields');
 
     expect(queryMock.execute.callCount).to.equal(3);
     expect(sobjectStub.alwaysCalledWith('sobject')).to.be.true;
     expect(sobjectMock.find.alwaysCalledWith('clause', 'fields')).to.be.true;
-    expect(logger.entries.length).to.equal(2);
+    expect(logger.entries.length).to.equal(4);
     expect(logger.entries[0]).to.match(
-      logRegex(
-        'Request failed, waiting 0.5 seconds before trying again. Cause: error'
-      )
+      logRegex('Warning: Request failed. Cause: error')
     );
     expect(logger.entries[1]).to.match(
-      logRegex(
-        'Request failed, waiting 1 seconds before trying again. Cause: 400'
-      )
+      logRegex('Waiting 0.5 seconds to retry \\(attempts: 1\\)')
+    );
+    expect(logger.entries[2]).to.match(
+      logRegex('Warning: Request failed. Cause: 400')
+    );
+    expect(logger.entries[3]).to.match(
+      logRegex('Waiting 1 seconds to retry \\(attempts: 2\\)')
     );
   });
 
@@ -114,42 +113,45 @@ describe('QueryHelper', () => {
 
     let capturedErr;
     try {
-      await QueryHelper.instance(mockConnection).queryWithRetry(logger, {})(
-        'sobject',
-        'clause',
-        'fields'
-      );
+      await QueryHelper.instance(mockConnection, logger, {
+        maxQueryRetries: 3,
+      }).query('sobject', 'clause', 'fields');
     } catch (err) {
-      capturedErr = err;
+      capturedErr = err as TestError;
+    }
+    if (!capturedErr) {
+      expect.fail('Missing exception');
     }
 
     expect(queryMock.execute.callCount).to.equal(4);
     expect(sobjectStub.alwaysCalledWith('sobject')).to.be.true;
     expect(sobjectMock.find.alwaysCalledWith('clause', 'fields')).to.be.true;
-    if (capturedErr instanceof TestError) {
-      expect(capturedErr.message).to.equal('400');
-      expect(capturedErr.kind).to.equal(TestErrorKind.Query);
-    } else {
-      expect.fail('Not a TestError');
-    }
-    expect(logger.entries.length).to.equal(4);
+    expect(capturedErr).to.be.instanceof(TestError);
+    expect(capturedErr.message).to.equal(
+      'All retries failed. Last error: Error: 400'
+    );
+    expect(capturedErr.kind).to.equal(TestErrorKind.Query);
+    expect(logger.entries.length).to.equal(7);
     expect(logger.entries[0]).to.match(
-      logRegex(
-        'Request failed, waiting 30 seconds before trying again. Cause: 400'
-      )
+      logRegex('Warning: Request failed. Cause: 400')
     );
     expect(logger.entries[1]).to.match(
-      logRegex(
-        'Request failed, waiting 60 seconds before trying again. Cause: 400'
-      )
+      logRegex('Waiting 15 seconds to retry \\(attempts: 1\\)')
     );
     expect(logger.entries[2]).to.match(
-      logRegex(
-        'Request failed, waiting 120 seconds before trying again. Cause: 400'
-      )
+      logRegex('Warning: Request failed. Cause: 400')
     );
     expect(logger.entries[3]).to.match(
-      logRegex('Request failed after 3 retries. Cause: 400')
+      logRegex('Waiting 30 seconds to retry \\(attempts: 2\\)')
+    );
+    expect(logger.entries[4]).to.match(
+      logRegex('Warning: Request failed. Cause: 400')
+    );
+    expect(logger.entries[5]).to.match(
+      logRegex('Waiting 60 seconds to retry \\(attempts: 3\\)')
+    );
+    expect(logger.entries[6]).to.match(
+      logRegex('Warning: Request failed. Cause: 400')
     );
   });
 });

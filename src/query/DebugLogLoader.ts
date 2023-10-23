@@ -14,7 +14,7 @@ export interface ApexLog {
 }
 
 export class DebugLogLoader {
-  connection: Connection;
+  helper: QueryHelper;
   namespace: string;
   logs: ApexLog[];
 
@@ -22,20 +22,17 @@ export class DebugLogLoader {
     connection: Connection,
     namespace: string
   ): Promise<DebugLogLoader> {
-    const logs = await QueryHelper.instance(connection).query<ApexLog>(
+    const qh = QueryHelper.instance(connection);
+    const logs = await qh.query<ApexLog>(
       'ApexLog',
       '',
       'Id, LogLength, Status'
     );
-    return new DebugLogLoader(connection, namespace, logs);
+    return new DebugLogLoader(qh, namespace, logs);
   }
 
-  private constructor(
-    connection: Connection,
-    namespace: string,
-    logs: ApexLog[]
-  ) {
-    this.connection = connection;
+  private constructor(helper: QueryHelper, namespace: string, logs: ApexLog[]) {
+    this.helper = helper;
     this.namespace = namespace;
     this.logs = logs;
   }
@@ -50,9 +47,9 @@ export class DebugLogLoader {
   }
 
   private async getLogContentById(logId: string): Promise<string> {
-    const baseUrl = this.connection.tooling._baseUrl();
+    const baseUrl = this.helper.connection.tooling._baseUrl();
     const url = `${baseUrl}/sobjects/ApexLog/${logId}/Body`;
-    return await this.connection.tooling.request(url);
+    return await this.helper.run(c => c.tooling.request(url));
   }
 
   async saveLogs(outputDir: string): Promise<void> {
@@ -65,9 +62,9 @@ export class DebugLogLoader {
 
   async clearLogs(): Promise<void> {
     // @types/jsforce does not have good types for this so just using defaults
-    await this.connection
-      .sobject('ApexLog')
-      .destroy(this.logs.map(log => log.Id));
+    await this.helper.run(c =>
+      c.sobject('ApexLog').destroy(this.logs.map(log => log.Id))
+    );
     this.logs = [];
   }
 }

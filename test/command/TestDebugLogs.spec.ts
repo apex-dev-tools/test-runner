@@ -4,15 +4,23 @@
 
 import { Connection } from '@salesforce/core';
 import { TestContext } from '@salesforce/core/lib/testSetup';
-import { SinonSandbox, SinonStub, createSandbox } from 'sinon';
+import {
+  SinonSandbox,
+  SinonStub,
+  SinonStubbedInstance,
+  createSandbox,
+} from 'sinon';
 import { expect } from 'chai';
 import { CapturingLogger } from '../../src/log/CapturingLogger';
 import {
   createMockConnection,
+  createMockRunResult,
+  createMockTestResult,
+  createQueryHelper,
+  defaultTestInfo,
   logRegex,
   MockTestMethodCollector,
   MockTestRunner,
-  testRunId,
 } from '../Setup';
 import { ApexTestRunResult } from '../../src/model/ApexTestRunResult';
 import { ApexTestResult } from '../../src/model/ApexTestResult';
@@ -21,13 +29,24 @@ import { TestDebugLogs } from '../../src/command/TestDebugLogs';
 import * as fs from 'fs';
 import * as os from 'os';
 import path from 'path';
+import { Logger } from '../../src/log/Logger';
+
+function mockDefaultCollector(logger: Logger, connection: Connection) {
+  return new MockTestMethodCollector(
+    logger,
+    connection,
+    '',
+    new Map(),
+    new Map()
+  );
+}
 
 describe('TestDebugLogs', () => {
   const $$ = new TestContext();
   let sandbox: SinonSandbox;
 
   let mockConnection: Connection;
-  let queryStub: SinonStub;
+  let qhStub: SinonStubbedInstance<QueryHelper>;
   let toolingQueryStub: SinonStub;
   let toolingCreateStub: SinonStub;
   let toolingRequestStub: SinonStub;
@@ -36,15 +55,12 @@ describe('TestDebugLogs', () => {
     sandbox = createSandbox();
     mockConnection = await createMockConnection($$, sandbox);
 
-    const qh = QueryHelper.instance(mockConnection);
-    queryStub = sandbox.stub(qh, 'query');
-    // delegate retry variant to basic query
-    sandbox.stub(qh, 'queryWithRetry').returns(queryStub);
-
     toolingQueryStub = sandbox.stub(mockConnection.tooling, 'query');
     toolingCreateStub = sandbox.stub(mockConnection.tooling, 'create');
     toolingRequestStub = sandbox.stub(mockConnection.tooling, 'request');
     sandbox.stub(mockConnection.tooling, 'destroy').resolves();
+
+    qhStub = createQueryHelper(sandbox, mockConnection);
   });
 
   afterEach(() => {
@@ -53,22 +69,14 @@ describe('TestDebugLogs', () => {
 
   it('unknown user should throw', async () => {
     const logger = new CapturingLogger();
-    const runnerResult: ApexTestRunResult = {
-      AsyncApexJobId: testRunId,
-      StartTime: '',
-      EndTime: '',
-      Status: 'Completed',
-      TestTime: 1,
-      UserId: 'user',
-      ClassesCompleted: 100,
-      ClassesEnqueued: 10,
-      MethodsCompleted: 1000,
-      MethodsEnqueued: 900,
-      MethodsFailed: 0,
-    };
-    const runner = new MockTestRunner(runnerResult);
-    const methodCollector = new MockTestMethodCollector(new Map(), new Map());
-    queryStub.onCall(0).resolves([]);
+    const runnerResult: ApexTestRunResult = createMockRunResult();
+    const mockTestResults: ApexTestResult[] = [createMockTestResult()];
+    const runner = new MockTestRunner({
+      run: runnerResult,
+      tests: mockTestResults,
+    });
+    const methodCollector = mockDefaultCollector(logger, mockConnection);
+    qhStub.query.onCall(0).resolves([]);
 
     try {
       await TestDebugLogs.run(
@@ -97,24 +105,16 @@ describe('TestDebugLogs', () => {
 
   it('creates output directory', async () => {
     const logger = new CapturingLogger();
-    const runnerResult: ApexTestRunResult = {
-      AsyncApexJobId: testRunId,
-      StartTime: '',
-      EndTime: '',
-      Status: 'Completed',
-      TestTime: 1,
-      UserId: 'user',
-      ClassesCompleted: 100,
-      ClassesEnqueued: 10,
-      MethodsCompleted: 1000,
-      MethodsEnqueued: 900,
-      MethodsFailed: 0,
-    };
-    const runner = new MockTestRunner(runnerResult);
-    const methodCollector = new MockTestMethodCollector(new Map(), new Map());
-    queryStub.onCall(0).resolves([{ Id: 'AnId' }]); // User Id
-    queryStub.onCall(1).resolves([]); // Debug logs
-    queryStub.onCall(2).resolves([]); // ApexClassInfo
+    const runnerResult: ApexTestRunResult = createMockRunResult();
+    const mockTestResults: ApexTestResult[] = [createMockTestResult()];
+    const runner = new MockTestRunner({
+      run: runnerResult,
+      tests: mockTestResults,
+    });
+    const methodCollector = mockDefaultCollector(logger, mockConnection);
+    qhStub.query.onCall(0).resolves([{ Id: 'AnId' }]); // User Id
+    qhStub.query.onCall(1).resolves([]); // Debug logs
+    qhStub.query.onCall(2).resolves([]); // ApexClassInfo
     toolingQueryStub.resolves({ records: [] }); // Debug trace
     toolingCreateStub.resolves({ success: true }); // Debug trace
 
@@ -149,24 +149,16 @@ describe('TestDebugLogs', () => {
 
   it('re-creates output directory', async () => {
     const logger = new CapturingLogger();
-    const runnerResult: ApexTestRunResult = {
-      AsyncApexJobId: testRunId,
-      StartTime: '',
-      EndTime: '',
-      Status: 'Completed',
-      TestTime: 1,
-      UserId: 'user',
-      ClassesCompleted: 100,
-      ClassesEnqueued: 10,
-      MethodsCompleted: 1000,
-      MethodsEnqueued: 900,
-      MethodsFailed: 0,
-    };
-    const runner = new MockTestRunner(runnerResult);
-    const methodCollector = new MockTestMethodCollector(new Map(), new Map());
-    queryStub.onCall(0).resolves([{ Id: 'AnId' }]); // User Id
-    queryStub.onCall(1).resolves([]); // Debug logs
-    queryStub.onCall(2).resolves([]); // ApexClassInfo
+    const runnerResult: ApexTestRunResult = createMockRunResult();
+    const mockTestResults: ApexTestResult[] = [createMockTestResult()];
+    const runner = new MockTestRunner({
+      run: runnerResult,
+      tests: mockTestResults,
+    });
+    const methodCollector = mockDefaultCollector(logger, mockConnection);
+    qhStub.query.onCall(0).resolves([{ Id: 'AnId' }]); // User Id
+    qhStub.query.onCall(1).resolves([]); // Debug logs
+    qhStub.query.onCall(2).resolves([]); // ApexClassInfo
     toolingQueryStub.resolves({ records: [] }); // Debug trace
     toolingCreateStub.resolves({ success: true }); // Debug trace
 
@@ -201,43 +193,24 @@ describe('TestDebugLogs', () => {
 
   it('clears trace flags/logs & saves logs', async () => {
     const logger = new CapturingLogger();
-    const runnerResult: ApexTestRunResult = {
-      AsyncApexJobId: testRunId,
-      StartTime: '',
-      EndTime: '',
-      Status: 'Completed',
-      TestTime: 1,
-      UserId: 'user',
-      ClassesCompleted: 100,
-      ClassesEnqueued: 10,
-      MethodsCompleted: 1000,
-      MethodsEnqueued: 900,
-      MethodsFailed: 0,
-    };
-    const runner = new MockTestRunner(runnerResult);
+    const runnerResult: ApexTestRunResult = createMockRunResult();
+    const mockTestResults: ApexTestResult[] = [createMockTestResult()];
+    const runner = new MockTestRunner({
+      run: runnerResult,
+      tests: mockTestResults,
+    });
+    const { classId, className, methodName } = defaultTestInfo;
     const methodCollector = new MockTestMethodCollector(
-      new Map<string, string>([['Class id', 'FooClass']]),
-      new Map<string, Set<string>>([['FooClass', new Set(['testMethod'])]])
+      logger,
+      mockConnection,
+      '',
+      new Map<string, string>([[classId, className]]),
+      new Map<string, Set<string>>([[className, new Set([methodName])]])
     );
-    const mockTestRunResult: ApexTestResult[] = [
-      {
-        Id: 'Class id',
-        QueueItemId: 'Queue id',
-        AsyncApexJobId: testRunId,
-        Outcome: 'Pass',
-        ApexClass: { Id: 'Class id', Name: 'FooClass', NamespacePrefix: '' },
-        MethodName: 'testMethod',
-        Message: '',
-        StackTrace: null,
-        RunTime: 1,
-        TestTimestamp: '',
-      },
-    ];
 
-    queryStub.onCall(0).resolves([{ Id: 'AnId' }]); // User Id
-    queryStub.onCall(1).resolves([{ Id: 'LogId' }]); // Debug logs
-    queryStub.onCall(2).resolves([mockTestRunResult[0]]);
-    queryStub.onCall(3).resolves([{ Id: 'LogId' }]); // Debug logs
+    qhStub.query.onCall(0).resolves([{ Id: 'AnId' }]); // User Id
+    qhStub.query.onCall(1).resolves([{ Id: 'LogId' }]); // Debug logs
+    qhStub.query.onCall(2).resolves([{ Id: 'LogId' }]); // Debug logs
     toolingQueryStub.resolves({ records: [{ Id: 'AnId' }] }); // Debug trace
     toolingCreateStub.resolves({ success: true }); // Debug trace
     toolingRequestStub.resolves('Log Content');
@@ -258,7 +231,7 @@ describe('TestDebugLogs', () => {
       // Ignore
     }
 
-    expect(logger.entries.length).to.be.equal(8);
+    expect(logger.entries.length).to.be.equal(9);
     expect(logger.entries[0]).to.match(
       logRegex(`Removing & recreating output directory '${tmpDir}'`)
     );
@@ -269,13 +242,16 @@ describe('TestDebugLogs', () => {
     );
     expect(logger.entries[4]).to.match(logRegex('Found 1 test classes'));
     expect(logger.entries[5]).to.match(
-      logRegex('Queued all of method of class FooClass')
+      logRegex('Queued all of method of class Class')
     );
     expect(logger.entries[6]).to.match(
       logRegex('Starting test run, with max failing tests for re-run 10')
     );
     expect(logger.entries[7]).to.match(
       logRegex('No matching test failures to re-run')
+    );
+    expect(logger.entries[8]).to.match(
+      logRegex('Generated reports for 1 tests')
     );
 
     const logFile = path.join(tmpDir, 'LogId.log');

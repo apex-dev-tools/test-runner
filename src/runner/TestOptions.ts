@@ -16,9 +16,7 @@ export interface CancelTestRunOptions {
   cancelPollTimoutMins?: number; // mins for timeout when waiting for cancelled test queue items, default 10 minutes
 }
 
-export function getCancelPollIntervalMs(
-  options: CancelTestRunOptions
-): Duration {
+export function getCancelPollInterval(options: CancelTestRunOptions): Duration {
   if (
     options.cancelPollIntervalMs !== undefined &&
     options.cancelPollIntervalMs >= 0
@@ -27,9 +25,7 @@ export function getCancelPollIntervalMs(
   else return Duration.milliseconds(DEFAULT_POLL_INTERVAL_MS);
 }
 
-export function getCancelPollTimeoutMins(
-  options: CancelTestRunOptions
-): Duration {
+export function getCancelPollTimeout(options: CancelTestRunOptions): Duration {
   if (
     options.cancelPollTimoutMins !== undefined &&
     options.cancelPollTimoutMins >= 0
@@ -82,7 +78,7 @@ export function getMaxTestRunRetries(options: TestRunnerOptions): number {
   else return DEFAULT_MAX_TEST_RUN_RETRIES;
 }
 
-export function getStatusPollIntervalMs(options: TestRunnerOptions): Duration {
+export function getStatusPollInterval(options: TestRunnerOptions): Duration {
   if (
     options.statusPollIntervalMs !== undefined &&
     options.statusPollIntervalMs >= 0
@@ -91,13 +87,22 @@ export function getStatusPollIntervalMs(options: TestRunnerOptions): Duration {
   else return Duration.milliseconds(DEFAULT_STATUS_POLL_INTERVAL_MS);
 }
 
-export function getTestRunTimeoutMins(options: TestRunnerOptions): Duration {
+export function getTestRunTimeout(options: TestRunnerOptions): Duration {
   if (
     options.testRunTimeoutMins !== undefined &&
     options.testRunTimeoutMins >= 0
   )
     return Duration.minutes(options.testRunTimeoutMins);
   else return Duration.minutes(DEFAULT_TEST_RUN_TIMEOUT_MINS);
+}
+
+export function getTestRunTimeoutMessage(
+  id: string,
+  options: TestRunnerOptions
+): string {
+  return `Test run '${id}' has exceeded test runner max allowed run time of ${getTestRunTimeout(
+    options
+  ).toString()}`;
 }
 
 export function getPollLimitToAssumeHangingTests(

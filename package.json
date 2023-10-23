@@ -48,7 +48,8 @@
     "istanbul-reports": "^3.1.6",
     "jsforce": "^1.11.0",
     "moment": "^2.29.4",
-    "table": "^6.8.1"
+    "table": "^6.8.1",
+    "ts-retry-promise": "^0.7.0"
   },
   "devDependencies": {
     "@ryansonshine/commitizen": "^4.2.8",

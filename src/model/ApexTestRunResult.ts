@@ -17,6 +17,7 @@ export const ApexTestRunResultFields = [
 ];
 
 export interface ApexTestRunResult {
+  Id?: string;
   AsyncApexJobId: string;
   StartTime: string;
   EndTime: string;

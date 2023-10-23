@@ -26,17 +26,21 @@ export class TestError extends Error {
 
   static wrapError(
     err: unknown,
-    type: TestErrorKind,
+    type: TestErrorKind = TestErrorKind.General,
     preamble?: string
   ): TestError {
-    if (err instanceof Error) {
+    if (err instanceof TestError && !preamble) {
+      return err;
+    } else if (err instanceof Error) {
+      // do not overwrite err kind
+      const kind = err instanceof TestError ? err.kind : type;
       const msg = preamble ? `${preamble} ${err.message}` : err.message;
-      const runnerErr = new TestError(msg, type);
+      const testErr = new TestError(msg, kind);
 
-      runnerErr.stack = err.stack;
-      runnerErr.data = (err as MaybeError).data;
+      testErr.stack = err.stack;
+      testErr.data = (err as MaybeError).data;
 
-      return runnerErr;
+      return testErr;
     } else if (typeof err == 'string') {
       return new TestError(err, type);
     }

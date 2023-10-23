@@ -3,64 +3,48 @@
  */
 
 import { AuthHelper } from '@apexdevtools/sfdx-auth-helper';
-import { Connection as JSForceConnection, Record, RequestInfo } from 'jsforce';
+import { Connection as JSForceConnection, Record } from 'jsforce';
 import { Logger } from '../log/Logger';
-import { TestError, TestErrorKind } from '../runner/TestError';
 import { Connection } from '@salesforce/core';
-
-type QueryFunction<T> = (
-  sobject: string,
-  clause: string,
-  fields: string
-) => Promise<Record<T>[]>;
-
-const DEFAULT_QUERY_MAX_RETRIES = 3;
-const DEFAULT_QUERY_RETRY_INTERVAL_MS = 30000;
+import { retry } from '../runner/Poll';
+import { TestError, TestErrorKind } from '../runner/TestError';
 
 export interface QueryOptions {
-  maxQueryRetries?: number; // Maximum number of times to retry queries that support it, default 3
-  queryInitialIntervalMs?: number; // First delay after query fail - doubles every retry, default 30 secs
-}
-
-export function getQueryInitialIntervalMs(options: QueryOptions): number {
-  if (
-    options.queryInitialIntervalMs !== undefined &&
-    options.queryInitialIntervalMs >= 0
-  )
-    return options.queryInitialIntervalMs;
-  else return DEFAULT_QUERY_RETRY_INTERVAL_MS;
-}
-
-export function getMaxQueryRetries(options: QueryOptions): number {
-  if (options.maxQueryRetries !== undefined && options.maxQueryRetries >= 0)
-    return options.maxQueryRetries;
-  else return DEFAULT_QUERY_MAX_RETRIES;
+  maxQueryRetries?: number; // Maximum number of times to retry queries
+  queryInitialIntervalMs?: number; // First delay after query fail - doubles every retry
 }
 
 export class QueryHelper {
-  static helpers: Map<Connection, QueryHelper> = new Map<
-    Connection,
-    QueryHelper
-  >();
   // Until we can upgrade to new jsforce / core types
   // use fallback jsforce v1
   connection: JSForceConnection;
+  retryConfig: { delay?: number; retries?: number };
+  logger?: Logger;
 
-  static instance(connection: Connection): QueryHelper {
-    let helper = this.helpers.get(connection);
-    if (helper == undefined) {
-      helper = new QueryHelper(connection);
-      this.helpers.set(connection, helper);
-    }
-    return helper;
+  static instance(
+    connection: Connection,
+    logger?: Logger,
+    options: QueryOptions = {}
+  ): QueryHelper {
+    const jsforce = AuthHelper.toJsForceConnection(connection);
+    return new QueryHelper(jsforce, options, logger);
   }
 
-  private constructor(connection: Connection) {
-    this.connection = AuthHelper.toJsForceConnection(connection);
+  private constructor(
+    connection: JSForceConnection,
+    options: QueryOptions,
+    logger?: Logger
+  ) {
+    this.connection = connection;
+    this.retryConfig = {
+      retries: options.maxQueryRetries,
+      delay: options.queryInitialIntervalMs,
+    };
+    this.logger = logger;
   }
 
-  async request<T>(req: string | RequestInfo): Promise<T> {
-    return this.connection.tooling.request<T>(req);
+  async run<T>(fn: (connection: JSForceConnection) => Promise<T>): Promise<T> {
+    return this.retryFn(() => fn(this.connection));
   }
 
   async query<T>(
@@ -68,73 +52,19 @@ export class QueryHelper {
     clause: string,
     fields: string
   ): Promise<Record<T>[]> {
-    return this.connection.tooling
-      .sobject(sobject)
-      .find<T>(clause, fields)
-      .execute({ autoFetch: true, maxFetch: 100000 });
+    return this.retryFn(() =>
+      this.connection.tooling
+        .sobject(sobject)
+        .find<T>(clause, fields)
+        .execute({ autoFetch: true, maxFetch: 100000 })
+    );
   }
 
-  queryWithRetry<T>(logger: Logger, options: QueryOptions): QueryFunction<T> {
-    const retries = getMaxQueryRetries(options);
-    const delay = getQueryInitialIntervalMs(options);
-
-    return async (sobject: string, clause: string, fields: string) => {
-      const boundQuery = this.query.bind<
-        this,
-        string,
-        string,
-        string,
-        [],
-        Promise<Record<T>[]>
-      >(this, sobject, clause, fields);
-
-      try {
-        // await required to catch errors
-        return await this.doRetry(logger, boundQuery, retries, delay);
-      } catch (err) {
-        logger.logMessage(
-          `Request failed after ${retries} retries. Cause: ${this.getErrorCause(
-            err
-          )}`
-        );
-
-        throw TestError.wrapError(err, TestErrorKind.Query);
-      }
-    };
-  }
-
-  private async doRetry<T>(
-    logger: Logger,
-    boundFn: () => Promise<T>,
-    retries: number,
-    delay: number
-  ): Promise<T> {
+  private async retryFn<T>(fn: () => Promise<T>): Promise<T> {
     try {
-      // await required to catch errors
-      return await boundFn();
+      return await retry(fn, this.logger, this.retryConfig);
     } catch (err) {
-      if (retries > 0) {
-        logger.logMessage(
-          `Request failed, waiting ${
-            delay / 1000
-          } seconds before trying again. Cause: ${this.getErrorCause(err)}`
-        );
-        await new Promise(r => setTimeout(r, delay));
-        return this.doRetry(logger, boundFn, retries - 1, delay * 2);
-      }
-
-      // always internal error, no wrap needed
-      throw err;
+      throw TestError.wrapError(err, TestErrorKind.Query);
     }
-  }
-
-  private getErrorCause(err: unknown): string {
-    let cause = 'Unknown';
-    if (err instanceof Error) {
-      cause = err.message;
-    } else if (typeof err == 'string') {
-      cause = err;
-    }
-    return cause;
   }
 }
