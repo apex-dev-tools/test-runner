@@ -12,6 +12,7 @@
 * Added retries to many external request promises.
   * Currently fixed 3 additional attempts made over ~2 minutes.
 * Added inline logging of test failures as they happen.
+* Fix rounding error with test status logging, show completed number.
 * `TestAborter` no longer waits after marking aborted tests.
 
 ## 2.1.0 - 2023-10-13
