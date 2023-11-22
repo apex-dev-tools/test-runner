@@ -314,7 +314,7 @@ export class Testall {
 
       return this.convertToSyncResult(result, timestamp);
     } catch (err) {
-      this._logger.logMessage(
+      this._logger.logErrorMessage(
         `${getTestName(currentResult)} re-run failed. ${this.getErrorMsg(err)}`
       );
     }
@@ -383,7 +383,7 @@ export class Testall {
 
       store.saveCoverage(coverage);
     } catch (err) {
-      this._logger.logMessage(
+      this._logger.logErrorMessage(
         `Failed to get coverage: ${this.getErrorMsg(err)}`
       );
     }

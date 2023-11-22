@@ -13,6 +13,7 @@ export interface Logger {
 
   // For general use
   logError(error: any): void;
+  logErrorMessage(message: any): void;
   logWarning(message: any): void;
   logMessage(message: any): void;
 
