@@ -163,13 +163,13 @@ export class ReportGenerator implements OutputGenerator {
     )}"/>\n`;
     junit += `            <property name="testExecutionTime" value="${msToSeconds(
       summary.testExecutionTime
-    )} s"/>\n`;
+    )}"/>\n`;
     junit += `            <property name="testTotalTime" value="${msToSeconds(
       summary.testTotalTime
-    )} s"/>\n`;
+    )}"/>\n`;
     junit += `            <property name="commandTime" value="${msToSeconds(
       summary.commandTime
-    )} s"/>\n`;
+    )}"/>\n`;
     junit += `            <property name="hostname" value="${summary.hostname}"/>\n`;
     junit += `            <property name="orgId" value="${summary.orgId}"/>\n`;
     junit += `            <property name="username" value="${summary.username}"/>\n`;
@@ -209,16 +209,16 @@ export class ReportGenerator implements OutputGenerator {
     json += '  "summary": {\n';
 
     json += `    "outcome": "${summary.outcome}",\n`;
-    json += `    "testsRan": "${summary.testsRan}",\n`;
-    json += `    "passing": "${summary.passing}",\n`;
-    json += `    "failing": "${summary.failing}",\n`;
-    json += `    "skipped": "${summary.skipped}",\n`;
+    json += `    "testsRan": ${summary.testsRan},\n`;
+    json += `    "passing": ${summary.passing},\n`;
+    json += `    "failing": ${summary.failing},\n`;
+    json += `    "skipped": ${summary.skipped},\n`;
     json += `    "passRate": "${summary.passRate}",\n`;
     json += `    "failRate": "${summary.failRate}",\n`;
     json += `    "testStartTime": "${summary.testStartTime.format('lll')}",\n`;
-    json += `    "testExecutionTime": "${summary.testExecutionTime} ms",\n`;
-    json += `    "testTotalTime": "${summary.testTotalTime} ms",\n`;
-    json += `    "commandTime": "${summary.commandTime} ms",\n`;
+    json += `    "testExecutionTime": ${summary.testExecutionTime},\n`;
+    json += `    "testTotalTime": ${summary.testTotalTime},\n`;
+    json += `    "commandTime": ${summary.commandTime},\n`;
     json += `    "hostname": "${summary.hostname}",\n`;
     json += `    "orgId": "${summary.orgId}",\n`;
     json += `    "username": "${summary.username}",\n`;
