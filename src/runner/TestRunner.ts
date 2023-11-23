@@ -276,7 +276,7 @@ export class AsyncTestRunner implements TestRunner {
     results: ApexTestResult[],
     startTime: Moment
   ): Promise<void> {
-    const time = moment.utc(moment().diff(startTime)).format('H:mm:ss');
+    const time = moment.utc(moment().diff(startTime)).format('HH:mm:ss');
     this._logger.logStatus(testRunResult, results, time);
     this._stats = this._stats.update(results.length);
 
