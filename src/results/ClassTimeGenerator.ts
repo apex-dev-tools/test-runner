@@ -56,7 +56,7 @@ export class ClassTimeGenerator implements OutputGenerator {
     });
     logger.logOutputFile(
       path.join(outputDirBase, fileName + '-time.csv'),
-      'ClassName, StartTime, EndTime, TotalTime\n' +
+      'ClassName,StartTime,EndTime,TotalTime\n' +
         `# ${this.instanceUrl} ${this.orgId} ${this.username}\n` +
         lines.join('\n')
     );
