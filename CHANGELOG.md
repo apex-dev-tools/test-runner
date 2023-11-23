@@ -1,5 +1,17 @@
 # test-runner - Changelog
 
+## 3.1.0 - 2023-11-24
+
+* Format millisecond/second time values in reports as numbers.
+  * For JSON: `"time": "12030 ms"` is now `"time": 12030`.
+  * For JUnit XML: `value="12.03 s"` is now `value="12.03"`.
+* Add elapsed time to test run status logging.
+* Add `rerunExecutionTime` value to main test reports.
+  * This is sum of all the re-run `RunTime`s. Similar to `testExecutionTime`.
+* Remove spaces in class time CSV report.
+* Add output of class time report to JSON.
+* Optimise missing test re-run request payload when requesting all tests in a class.
+
 ## 3.0.0 - 2023-10-23
 
 * **BREAKING**: `AsyncTestRunner` now does not re-throw errors. Instead it returns a `TestRunnerResult` type which includes all test results retrieved and optional error.
