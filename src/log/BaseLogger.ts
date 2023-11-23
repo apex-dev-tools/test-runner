@@ -141,7 +141,11 @@ export abstract class BaseLogger implements Logger {
     );
   }
 
-  logStatus(testRunResult: ApexTestRunResult, tests: ApexTestResult[]): void {
+  logStatus(
+    testRunResult: ApexTestRunResult,
+    tests: ApexTestResult[],
+    elapsedTime: string
+  ): void {
     const status = testRunResult.Status;
     const outcomes = groupByOutcome(tests);
     const completed = tests.length;
@@ -151,7 +155,7 @@ export abstract class BaseLogger implements Logger {
     const complete = total > 0 ? Math.floor((completed * 100) / total) : 0;
 
     this.logMessage(
-      `[${status}] Passed: ${passed} | Failed: ${failed} | ${completed}/${total} Complete (${complete}%)`
+      `${elapsedTime} [${status}] Passed: ${passed} | Failed: ${failed} | ${completed}/${total} Complete (${complete}%)`
     );
   }
 

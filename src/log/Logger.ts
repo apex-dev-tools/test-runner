@@ -35,7 +35,11 @@ export interface Logger {
   // Test runner
   logRunStarted(testRunId: string): void;
   logNoProgress(testRunId: string): void;
-  logStatus(status: ApexTestRunResult, tests: ApexTestResult[]): void;
+  logStatus(
+    status: ApexTestRunResult,
+    tests: ApexTestResult[],
+    elapsedTime: string
+  ): void;
   logTestFailures(newResults: ApexTestResult[]): void;
 
   // Test job cancelling
