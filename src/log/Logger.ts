@@ -13,6 +13,7 @@ export interface Logger {
 
   // For general use
   logError(error: any): void;
+  logErrorMessage(message: any): void;
   logWarning(message: any): void;
   logMessage(message: any): void;
 
@@ -34,7 +35,11 @@ export interface Logger {
   // Test runner
   logRunStarted(testRunId: string): void;
   logNoProgress(testRunId: string): void;
-  logStatus(status: ApexTestRunResult, tests: ApexTestResult[]): void;
+  logStatus(
+    status: ApexTestRunResult,
+    tests: ApexTestResult[],
+    elapsedTime: string
+  ): void;
   logTestFailures(newResults: ApexTestResult[]): void;
 
   // Test job cancelling

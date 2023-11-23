@@ -40,6 +40,8 @@ export const defaultTestInfo = {
 export const isoDateFormat =
   '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}Z';
 
+export const timeFormat = '[0-9]{1,2}:[0-9]{2}:[0-9]{2}';
+
 export const timeoutMs = Duration.minutes(120).milliseconds;
 
 export function mockSetTimeout(sandbox: SinonSandbox, testTimeoutMs = 50) {
@@ -82,7 +84,7 @@ export async function createMockConnection(
 }
 
 export function logRegex(entry: string): RegExp {
-  return new RegExp(`^${isoDateFormat} - ${entry}$`, 'gm');
+  return new RegExp(`^${isoDateFormat} -\\s*${entry}\\s*$`, 'gm');
 }
 
 export function createQueryHelper(

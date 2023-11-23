@@ -3,6 +3,7 @@
  */
 
 import path from 'path';
+import os from 'os';
 import { TestallOptions, getMaxErrorsForReRun } from '../command/Testall';
 import { ApexTestResult, BaseTestResult } from '../model/ApexTestResult';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
@@ -26,25 +27,29 @@ export abstract class BaseLogger implements Logger {
   logError(error: MaybeError): void {
     if (error instanceof Error) {
       if (error.name == 'ALREADY_IN_PROCESS') {
-        this.logMessage(
+        this.logErrorMessage(
           "One or more of the tests is already queued to run, they can't be requeued"
         );
       } else {
-        this.logMessage(error.message);
+        this.logErrorMessage(error.message);
         if (error.stack !== undefined)
-          this.logMessage('Error stack: ' + error.stack);
+          this.logErrorMessage('Error stack: ' + error.stack);
       }
     } else {
-      this.logMessage('Error: ' + JSON.stringify(error));
+      this.logErrorMessage('Error: ' + JSON.stringify(error));
     }
 
     if (error.data !== undefined) {
-      this.logMessage('Additional data: ' + JSON.stringify(error.data));
+      this.logErrorMessage('Additional data: ' + JSON.stringify(error.data));
     }
   }
 
   logWarning(message: string): void {
     this.logMessage('Warning: ' + message);
+  }
+
+  logErrorMessage(message: string): void {
+    this.logMessage(message);
   }
 
   logOutputFile(filepath: string, contents: string): void {
@@ -106,10 +111,12 @@ export abstract class BaseLogger implements Logger {
     // i.e its failed with a different message, show what happened
     if (rerunMsg && firstMsg) {
       if (rerunMsg !== firstMsg) {
-        this.logMessage(` [Before] ${firstMsg}`);
-        this.logMessage(` [After] ${rerunMsg}`);
+        this.logErrorMessage(`${os.EOL} [Before] ${firstMsg}`);
+        this.logErrorMessage(` [After] ${rerunMsg}${os.EOL}`);
       } else {
-        this.logMessage(` [Before and After] ${rerunMsg}`);
+        this.logErrorMessage(
+          `${os.EOL} [Before and After] ${rerunMsg}${os.EOL}`
+        );
       }
     }
   }
@@ -134,7 +141,11 @@ export abstract class BaseLogger implements Logger {
     );
   }
 
-  logStatus(testRunResult: ApexTestRunResult, tests: ApexTestResult[]): void {
+  logStatus(
+    testRunResult: ApexTestRunResult,
+    tests: ApexTestResult[],
+    elapsedTime: string
+  ): void {
     const status = testRunResult.Status;
     const outcomes = groupByOutcome(tests);
     const completed = tests.length;
@@ -144,7 +155,7 @@ export abstract class BaseLogger implements Logger {
     const complete = total > 0 ? Math.floor((completed * 100) / total) : 0;
 
     this.logMessage(
-      `[${status}] Passed: ${passed} | Failed: ${failed} | ${completed}/${total} Complete (${complete}%)`
+      `${elapsedTime} [${status}] Passed: ${passed} | Failed: ${failed} | ${completed}/${total} Complete (${complete}%)`
     );
   }
 
@@ -159,16 +170,22 @@ export abstract class BaseLogger implements Logger {
 
     Object.entries(failedResultsByClassId).forEach(([, results]) => {
       const tests = results.slice(0, 2);
+      const hasMore = results.length > 2;
 
-      this.logMessage(`  Failing Tests: ${getClassName(tests[0])}`);
+      this.logErrorMessage(
+        `${os.EOL}  Failing tests in '${getClassName(tests[0])}':`
+      );
 
-      tests.forEach(t => {
+      tests.forEach((t, i) => {
         const msg = t.Message ? ` - ${t.Message}` : '';
-        this.logMessage(`    * ${t.MethodName}${msg}`);
+        const suffix = !hasMore && i == tests.length - 1 ? os.EOL : '';
+        this.logErrorMessage(`    * ${t.MethodName}${msg}${suffix}`);
       });
 
-      results.length > 2 &&
-        this.logMessage(`    (and ${results.length - 2} more...)`);
+      hasMore &&
+        this.logErrorMessage(
+          `    (and ${results.length - 2} more...)${os.EOL}`
+        );
     });
   }
 

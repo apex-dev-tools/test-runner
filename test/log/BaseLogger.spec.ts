@@ -29,7 +29,8 @@ describe('BaseLogger', () => {
     const logger = new CapturingLogger();
     logger.logStatus(
       mockTestRunResult as ApexTestRunResult,
-      mockTestResults as ApexTestResult[]
+      mockTestResults as ApexTestResult[],
+      ''
     );
 
     expect(logger.entries.length).to.equal(1);

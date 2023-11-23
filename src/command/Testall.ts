@@ -194,20 +194,18 @@ export class Testall {
 
     // Filter expected by actual results to find residual
     // Try again if something was missed
-    const missingTests = await this.resolveMissingTests(
-      expectedTestsPromise,
-      store.tests
-    );
+    const expectedTests = await expectedTestsPromise;
+    const missingTests = this.resolveMissingTests(expectedTests, store.tests);
 
     if (missingTests.size > 0) {
       this._logger.logTestallRerun(missingTests);
 
       const testItems: TestItem[] = Array.from(
         missingTests,
-        ([className, methods]) => ({
-          className,
-          testMethods: Array.from(methods),
-        })
+        ([className, methods]) =>
+          methods.size === expectedTests.get(className)?.size
+            ? { className } // run all methods
+            : { className, testMethods: Array.from(methods) }
       );
 
       await this.asyncRun(
@@ -219,11 +217,10 @@ export class Testall {
     }
   }
 
-  private async resolveMissingTests(
-    expectedTestsPromise: Promise<Map<string, Set<string>>>,
+  private resolveMissingTests(
+    expectedTests: Map<string, Set<string>>,
     results: Map<string, ApexTestResult>
-  ): Promise<Map<string, Set<string>>> {
-    const expectedTests = await expectedTestsPromise;
+  ): Map<string, Set<string>> {
     const missingTests = new Map<string, Set<string>>();
 
     expectedTests.forEach((methods, className) => {
@@ -314,7 +311,7 @@ export class Testall {
 
       return this.convertToSyncResult(result, timestamp);
     } catch (err) {
-      this._logger.logMessage(
+      this._logger.logErrorMessage(
         `${getTestName(currentResult)} re-run failed. ${this.getErrorMsg(err)}`
       );
     }
@@ -383,7 +380,7 @@ export class Testall {
 
       store.saveCoverage(coverage);
     } catch (err) {
-      this._logger.logMessage(
+      this._logger.logErrorMessage(
         `Failed to get coverage: ${this.getErrorMsg(err)}`
       );
     }

@@ -8,7 +8,7 @@ import { SfDate } from 'jsforce';
 import path from 'path';
 
 /*
- * Create a report (CSV) of summary stats for each test class. The report can be useful in finding long running
+ * Create a report (CSV/JSON) of summary stats for each test class. The report can be useful in finding long running
  * test which are delaying the completion of a test run.
  */
 export class ClassTimeGenerator implements OutputGenerator {
@@ -52,13 +52,33 @@ export class ClassTimeGenerator implements OutputGenerator {
     // Report results as CSV
     const lines: string[] = [];
     classRanges.forEach((v, k) => {
-      lines.push(`${k}, ${v[0]}, ${v[1]}, ${v[2]}`);
+      lines.push(`${k},${v[0]},${v[1]},${v[2]}`);
     });
     logger.logOutputFile(
       path.join(outputDirBase, fileName + '-time.csv'),
-      'ClassName, StartTime, EndTime, TotalTime\n' +
+      'ClassName,StartTime,EndTime,TotalTime\n' +
         `# ${this.instanceUrl} ${this.orgId} ${this.username}\n` +
         lines.join('\n')
+    );
+
+    // Report results as json
+    const json: {
+      className: string;
+      startTime: number;
+      endTime: number;
+      totalTime: number;
+    }[] = [];
+    classRanges.forEach((v, k) => {
+      json.push({
+        className: k,
+        startTime: v[0],
+        endTime: v[1],
+        totalTime: v[2],
+      });
+    });
+    logger.logOutputFile(
+      path.join(outputDirBase, fileName + '-time.json'),
+      JSON.stringify(json, undefined, 2)
     );
   }
 }

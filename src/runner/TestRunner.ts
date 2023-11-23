@@ -11,6 +11,7 @@ import {
   AsyncTestArrayConfiguration,
   TestItem,
 } from '@salesforce/apex-node';
+import moment, { Moment } from 'moment';
 import { Logger } from '../log/Logger';
 import {
   ApexTestRunResult,
@@ -204,6 +205,7 @@ export class AsyncTestRunner implements TestRunner {
   ): Promise<TestRunnerResult> {
     let seenTests: Set<string> = new Set();
     let lastResult: TestRunnerResult | undefined;
+    const start = moment();
 
     const testRunStatus: Pollable<TestRunnerResult> = {
       pollDelay: getStatusPollInterval(this._options).milliseconds,
@@ -214,7 +216,7 @@ export class AsyncTestRunner implements TestRunner {
         const run = await this.testRunResult(testRunId);
         const tests = await this.testResults(testRunId);
 
-        await this.updateProgress(run, tests);
+        await this.updateProgress(run, tests, start);
         seenTests = this.notifyNewResults(tests, seenTests);
 
         return (lastResult = {
@@ -271,9 +273,11 @@ export class AsyncTestRunner implements TestRunner {
 
   private async updateProgress(
     testRunResult: ApexTestRunResult,
-    results: ApexTestResult[]
+    results: ApexTestResult[],
+    startTime: Moment
   ): Promise<void> {
-    this._logger.logStatus(testRunResult, results);
+    const time = moment.utc(moment().diff(startTime)).format('HH:mm:ss');
+    this._logger.logStatus(testRunResult, results, time);
     this._stats = this._stats.update(results.length);
 
     if (this._logger.verbose) {
