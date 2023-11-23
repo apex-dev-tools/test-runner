@@ -170,21 +170,22 @@ export abstract class BaseLogger implements Logger {
 
     Object.entries(failedResultsByClassId).forEach(([, results]) => {
       const tests = results.slice(0, 2);
+      const hasMore = results.length > 2;
 
       this.logErrorMessage(
-        `${os.EOL}  Failing Tests: ${getClassName(tests[0])}`
+        `${os.EOL}  Failing tests in '${getClassName(tests[0])}':`
       );
 
-      tests.forEach(t => {
+      tests.forEach((t, i) => {
         const msg = t.Message ? ` - ${t.Message}` : '';
-        this.logErrorMessage(`    * ${t.MethodName}${msg}`);
+        const suffix = !hasMore && i == tests.length - 1 ? os.EOL : '';
+        this.logErrorMessage(`    * ${t.MethodName}${msg}${suffix}`);
       });
 
-      (results.length > 2 &&
+      hasMore &&
         this.logErrorMessage(
           `    (and ${results.length - 2} more...)${os.EOL}`
-        )) ||
-        this.logMessage('');
+        );
     });
   }
 

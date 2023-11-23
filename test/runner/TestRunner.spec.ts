@@ -32,6 +32,7 @@ import {
   setupMultipleQueryApexTestResults,
   setupQueryApexTestResults,
   testRunId,
+  timeFormat,
 } from '../Setup';
 
 describe('TestRunner', () => {
@@ -118,12 +119,12 @@ describe('TestRunner', () => {
     );
     expect(logger.entries[1]).to.match(
       logRegex(
-        '\\[Completed\\] Passed: 1 \\| Failed: 1 \\| 2/2 Complete \\(100%\\)'
+        `${timeFormat} \\[Completed\\] Passed: 1 \\| Failed: 1 \\| 2/2 Complete \\(100%\\)`
       )
     );
-    expect(logger.entries[2]).to.match(logRegex('\\s*Failing Tests: Class3'));
+    expect(logger.entries[2]).to.match(logRegex("Failing tests in 'Class3':"));
     expect(logger.entries[3]).to.match(
-      logRegex('\\s*\\* Method2 - Exception: Test Failed')
+      logRegex('\\* Method2 - Exception: Test Failed')
     );
   });
 
@@ -151,12 +152,12 @@ describe('TestRunner', () => {
     );
     expect(logger.entries[1]).to.match(
       logRegex(
-        '\\[Completed\\] Passed: 1 \\| Failed: 1 \\| 2/2 Complete \\(100%\\)'
+        `${timeFormat} \\[Completed\\] Passed: 1 \\| Failed: 1 \\| 2/2 Complete \\(100%\\)`
       )
     );
-    expect(logger.entries[2]).to.match(logRegex('\\s*Failing Tests: Class3'));
+    expect(logger.entries[2]).to.match(logRegex("Failing tests in 'Class3':"));
     expect(logger.entries[3]).to.match(
-      logRegex('\\s*\\* Method2 - Exception: Test Failed')
+      logRegex('\\* Method2 - Exception: Test Failed')
     );
   });
 
@@ -190,12 +191,12 @@ describe('TestRunner', () => {
     );
     expect(logger.entries[1]).to.match(
       logRegex(
-        '\\[Failed\\] Passed: 0 \\| Failed: 1 \\| 1/2 Complete \\(50%\\)'
+        `${timeFormat} \\[Failed\\] Passed: 0 \\| Failed: 1 \\| 1/2 Complete \\(50%\\)`
       )
     );
-    expect(logger.entries[2]).to.match(logRegex('\\s*Failing Tests: Class3'));
+    expect(logger.entries[2]).to.match(logRegex("Failing tests in 'Class3':"));
     expect(logger.entries[3]).to.match(
-      logRegex('\\s*\\* Method2 - Exception: Test Failed')
+      logRegex('\\* Method2 - Exception: Test Failed')
     );
   });
 
@@ -227,7 +228,7 @@ describe('TestRunner', () => {
     );
     expect(logger.entries[1]).to.match(
       logRegex(
-        '\\[Aborted\\] Passed: 0 \\| Failed: 0 \\| 0/2 Complete \\(0%\\)'
+        `${timeFormat} \\[Aborted\\] Passed: 0 \\| Failed: 0 \\| 0/2 Complete \\(0%\\)`
       )
     );
   });
@@ -331,21 +332,21 @@ describe('TestRunner', () => {
     );
     expect(logger.entries[1]).to.match(
       logRegex(
-        '\\[Processing\\] Passed: 1 \\| Failed: 0 \\| 1/2 Complete \\(50%\\)'
+        `${timeFormat} \\[Processing\\] Passed: 1 \\| Failed: 0 \\| 1/2 Complete \\(50%\\)`
       )
     );
     expect(logger.entries[2]).to.match(
       logRegex(
-        '\\[Processing\\] Passed: 1 \\| Failed: 1 \\| 2/2 Complete \\(100%\\)'
+        `${timeFormat} \\[Processing\\] Passed: 1 \\| Failed: 1 \\| 2/2 Complete \\(100%\\)`
       )
     );
-    expect(logger.entries[3]).to.match(logRegex('\\s*Failing Tests: Class3'));
+    expect(logger.entries[3]).to.match(logRegex("Failing tests in 'Class3':"));
     expect(logger.entries[4]).to.match(
-      logRegex('\\s*\\* Method2 - Exception: Test Failed')
+      logRegex('\\* Method2 - Exception: Test Failed')
     );
     expect(logger.entries[5]).to.match(
       logRegex(
-        '\\[Completed\\] Passed: 1 \\| Failed: 1 \\| 2/2 Complete \\(100%\\)'
+        `${timeFormat} \\[Completed\\] Passed: 1 \\| Failed: 1 \\| 2/2 Complete \\(100%\\)`
       )
     );
   });
@@ -424,16 +425,16 @@ describe('TestRunner', () => {
     );
     expect(logger.entries[1]).to.match(
       logRegex(
-        '\\[Processing\\] Passed: 1 \\| Failed: 1 \\| 2/2 Complete \\(100%\\)'
+        `${timeFormat} \\[Processing\\] Passed: 1 \\| Failed: 1 \\| 2/2 Complete \\(100%\\)`
       )
     );
-    expect(logger.entries[2]).to.match(logRegex('\\s*Failing Tests: Class3'));
+    expect(logger.entries[2]).to.match(logRegex("Failing tests in 'Class3':"));
     expect(logger.entries[3]).to.match(
-      logRegex('\\s*\\* Method2 - Exception: Test Failed')
+      logRegex('\\* Method2 - Exception: Test Failed')
     );
     expect(logger.entries[4]).to.match(
       logRegex(
-        '\\[Processing\\] Passed: 1 \\| Failed: 1 \\| 2/2 Complete \\(100%\\)'
+        `${timeFormat} \\[Processing\\] Passed: 1 \\| Failed: 1 \\| 2/2 Complete \\(100%\\)`
       )
     );
     expect(logger.entries[5]).to.match(
@@ -446,7 +447,7 @@ describe('TestRunner', () => {
     );
     expect(logger.entries[7]).to.match(
       logRegex(
-        '\\[Completed\\] Passed: 1 \\| Failed: 1 \\| 2/2 Complete \\(100%\\)'
+        `${timeFormat} \\[Completed\\] Passed: 1 \\| Failed: 1 \\| 2/2 Complete \\(100%\\)`
       )
     );
   });
@@ -522,26 +523,26 @@ describe('TestRunner', () => {
     );
     expect(logger.entries[1]).to.match(
       logRegex(
-        '\\[Processing\\] Passed: 1 \\| Failed: 0 \\| 1/3 Complete \\(33%\\)'
+        `${timeFormat} \\[Processing\\] Passed: 1 \\| Failed: 0 \\| 1/3 Complete \\(33%\\)`
       )
     );
     expect(logger.entries[2]).to.match(
       logRegex(
-        '\\[Processing\\] Passed: 1 \\| Failed: 1 \\| 2/3 Complete \\(66%\\)'
+        `${timeFormat} \\[Processing\\] Passed: 1 \\| Failed: 1 \\| 2/3 Complete \\(66%\\)`
       )
     );
-    expect(logger.entries[3]).to.match(logRegex('\\s*Failing Tests: Class3'));
+    expect(logger.entries[3]).to.match(logRegex("Failing tests in 'Class3':"));
     expect(logger.entries[4]).to.match(
-      logRegex('\\s*\\* Method2 - Exception: Test Failed')
+      logRegex('\\* Method2 - Exception: Test Failed')
     );
     expect(logger.entries[5]).to.match(
       logRegex(
-        '\\[Processing\\] Passed: 2 \\| Failed: 1 \\| 3/3 Complete \\(100%\\)'
+        `${timeFormat} \\[Processing\\] Passed: 2 \\| Failed: 1 \\| 3/3 Complete \\(100%\\)`
       )
     );
     expect(logger.entries[6]).to.match(
       logRegex(
-        '\\[Completed\\] Passed: 2 \\| Failed: 1 \\| 3/3 Complete \\(100%\\)'
+        `${timeFormat} \\[Completed\\] Passed: 2 \\| Failed: 1 \\| 3/3 Complete \\(100%\\)`
       )
     );
   });

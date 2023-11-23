@@ -52,7 +52,7 @@ export class ClassTimeGenerator implements OutputGenerator {
     // Report results as CSV
     const lines: string[] = [];
     classRanges.forEach((v, k) => {
-      lines.push(`${k}, ${v[0]}, ${v[1]}, ${v[2]}`);
+      lines.push(`${k},${v[0]},${v[1]},${v[2]}`);
     });
     logger.logOutputFile(
       path.join(outputDirBase, fileName + '-time.csv'),
