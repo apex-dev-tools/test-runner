@@ -15,7 +15,7 @@ import path from 'path';
 import { Logger } from '../log/Logger';
 import { ApexTestResult } from '../model/ApexTestResult';
 import { ApexTestRunResult } from '../model/ApexTestRunResult';
-import { OutputGenerator, TestRunSummary } from './OutputGenerator';
+import { OutputGenerator, TestRerun, TestRunSummary } from './OutputGenerator';
 
 export class ReportGenerator implements OutputGenerator {
   private instanceUrl: string;
@@ -41,9 +41,9 @@ export class ReportGenerator implements OutputGenerator {
     fileName: string,
     runSummary: TestRunSummary
   ): void {
-    const { startTime, testResults, runResult } = runSummary;
+    const { startTime, testResults, runResult, reruns } = runSummary;
     const results = testResults as ExtendedApexTestResult[];
-    const summary = this.summary(startTime, results, runResult);
+    const summary = this.summary(startTime, results, runResult, reruns);
     logger.logOutputFile(
       path.join(outputDirBase, fileName + '.xml'),
       this.generateJunit(summary, results)
@@ -57,7 +57,8 @@ export class ReportGenerator implements OutputGenerator {
   summary(
     startTime: Date,
     testResults: ExtendedApexTestResult[],
-    runResults: ApexTestRunResult
+    runResults: ApexTestRunResult,
+    reruns: TestRerun[]
   ): SummaryData {
     // combine test and method names for fullname
     testResults.forEach(test => {
@@ -83,18 +84,14 @@ export class ReportGenerator implements OutputGenerator {
     const failures = testResults.filter(
       test => test.Outcome !== 'Pass' && test.Outcome !== 'Skip'
     );
-    const totalFailed = failures.length;
+    const failing = failures.length;
     const skips = testResults.filter(test => test.Outcome === 'Skip');
-    const totalSkipped = skips.length;
-    const total = testResults.length;
-    const outcome = totalFailed > 0 ? 'Failed' : 'Passed';
-    const totalPassed = total - totalFailed - totalSkipped;
-    const passRate = `${((totalPassed / (total - totalSkipped)) * 100).toFixed(
-      2
-    )}%`;
-    const failRate = `${((totalFailed / (total - totalSkipped)) * 100).toFixed(
-      2
-    )}%`;
+    const skipped = skips.length;
+    const testsRan = testResults.length;
+    const outcome = failing > 0 ? 'Failed' : 'Passed';
+    const passing = testsRan - failing - skipped;
+    const passRate = `${((passing / (testsRan - skipped)) * 100).toFixed(2)}%`;
+    const failRate = `${((failing / (testsRan - skipped)) * 100).toFixed(2)}%`;
 
     // time of cmd invocation
     const commandTime = moment().diff(moment(startTime), 'millisecond', true);
@@ -110,19 +107,24 @@ export class ReportGenerator implements OutputGenerator {
       (result, test) => result + test.RunTime,
       0
     );
+    const rerunExecutionTime = reruns.reduce(
+      (result, rerun) => result + rerun.after.RunTime,
+      0
+    );
 
     return {
-      outcome: outcome,
-      testsRan: total,
-      passing: totalPassed,
-      failing: totalFailed,
-      skipped: totalSkipped,
-      passRate: passRate,
-      failRate: failRate,
-      testStartTime: testStartTime,
-      testExecutionTime: testExecutionTime,
-      testTotalTime: testTotalTime,
-      commandTime: commandTime,
+      outcome,
+      testsRan,
+      passing,
+      failing,
+      skipped,
+      passRate,
+      failRate,
+      testStartTime,
+      testExecutionTime,
+      testTotalTime,
+      commandTime,
+      rerunExecutionTime,
       hostname: this.instanceUrl,
       orgId: this.orgId,
       username: this.username,
@@ -169,6 +171,9 @@ export class ReportGenerator implements OutputGenerator {
     )}"/>\n`;
     junit += `            <property name="commandTime" value="${msToSeconds(
       summary.commandTime
+    )}"/>\n`;
+    junit += `            <property name="rerunExecutionTime" value="${msToSeconds(
+      summary.rerunExecutionTime
     )}"/>\n`;
     junit += `            <property name="hostname" value="${summary.hostname}"/>\n`;
     junit += `            <property name="orgId" value="${summary.orgId}"/>\n`;
@@ -219,6 +224,7 @@ export class ReportGenerator implements OutputGenerator {
     json += `    "testExecutionTime": ${summary.testExecutionTime},\n`;
     json += `    "testTotalTime": ${summary.testTotalTime},\n`;
     json += `    "commandTime": ${summary.commandTime},\n`;
+    json += `    "rerunExecutionTime": ${summary.rerunExecutionTime},\n`;
     json += `    "hostname": "${summary.hostname}",\n`;
     json += `    "orgId": "${summary.orgId}",\n`;
     json += `    "username": "${summary.username}",\n`;
@@ -286,6 +292,7 @@ interface SummaryData {
   testExecutionTime: number; // ms
   testTotalTime: number; // ms
   commandTime: number; //ms
+  rerunExecutionTime: number;
   hostname: string;
   orgId: string;
   username: string;
