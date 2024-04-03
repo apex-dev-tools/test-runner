@@ -28,16 +28,19 @@ export async function poll<T>(
   logger?: Logger
 ): Promise<T> {
   try {
-    return await retryPromise(() => pollable.poll(), {
-      retries: 'INFINITELY',
-      delay: pollable.pollDelay,
-      timeout: pollable.pollTimeout,
-      until: r => pollable.pollUntil(r),
-      retryIf: error => {
-        logger?.logMessage(`Poll failed: ${getErrorCause(error)}`);
-        return pollable.pollRetryIf(error);
-      },
-    });
+    return await retryPromise(
+      () => addRequestTimeout(() => pollable.poll(), pollable.pollDelay),
+      {
+        retries: 'INFINITELY',
+        delay: pollable.pollDelay,
+        timeout: pollable.pollTimeout,
+        until: r => pollable.pollUntil(r),
+        retryIf: error => {
+          logger?.logMessage(`Poll failed: ${getErrorCause(error)}`);
+          return pollable.pollRetryIf(error);
+        },
+      }
+    );
   } catch (error) {
     throw wrapPollError(
       error,
@@ -88,6 +91,21 @@ export async function retry<T>(
   } catch (error) {
     throw unwrapRetryError(error);
   }
+}
+
+function addRequestTimeout<T>(f: () => Promise<T>, time: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const ref = setTimeout(() => {
+      reject(new Error(`Request exceeded allowed time of ${time}ms.`));
+    }, time);
+
+    f()
+      .then(
+        r => resolve(r),
+        e => reject(e)
+      )
+      .finally(() => clearTimeout(ref));
+  });
 }
 
 function cleanOptions(opt?: { [index: string]: any }) {
