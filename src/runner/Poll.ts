@@ -33,8 +33,8 @@ export async function poll<T>(
 
     return await retryPromise(
       () =>
-        addRequestTimeout(
-          () => pollable.poll(getPollElapsedTime(startTime)),
+        withTimeout(
+          () => pollable.poll(getElapsedTime(startTime)),
           pollable.pollDelay
         ),
       {
@@ -44,9 +44,7 @@ export async function poll<T>(
         until: r => pollable.pollUntil(r),
         retryIf: error => {
           logger?.logMessage(
-            `${getPollElapsedTime(startTime)} Poll failed: ${getErrorCause(
-              error
-            )}`
+            `${getElapsedTime(startTime)} Poll failed: ${getErrorCause(error)}`
           );
           return pollable.pollRetryIf(error);
         },
@@ -104,11 +102,11 @@ export async function retry<T>(
   }
 }
 
-function getPollElapsedTime(startTime: Moment): string {
+function getElapsedTime(startTime: Moment): string {
   return moment.utc(moment().diff(startTime)).format('HH:mm:ss');
 }
 
-function addRequestTimeout<T>(f: () => Promise<T>, time: number): Promise<T> {
+function withTimeout<T>(f: () => Promise<T>, time: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const ref = setTimeout(() => {
       reject(new Error(`Request exceeded allowed time of ${time}ms.`));
