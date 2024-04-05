@@ -9,6 +9,7 @@ import {
 } from 'ts-retry-promise';
 import { Logger } from '../log/Logger';
 import { TestError, TestErrorKind } from './TestError';
+import moment, { Moment } from 'moment';
 
 export interface Pollable<T> {
   // wait in ms
@@ -18,7 +19,7 @@ export interface Pollable<T> {
   pollTimeout: number;
   pollTimeoutMessage?: string;
 
-  poll(): Promise<T>;
+  poll(elapsedTime: string): Promise<T>;
   pollUntil(result: T): boolean;
   pollRetryIf(error: unknown): boolean;
 }
@@ -28,15 +29,25 @@ export async function poll<T>(
   logger?: Logger
 ): Promise<T> {
   try {
+    const startTime = moment();
+
     return await retryPromise(
-      () => addRequestTimeout(() => pollable.poll(), pollable.pollDelay),
+      () =>
+        addRequestTimeout(
+          () => pollable.poll(getPollElapsedTime(startTime)),
+          pollable.pollDelay
+        ),
       {
         retries: 'INFINITELY',
         delay: pollable.pollDelay,
         timeout: pollable.pollTimeout,
         until: r => pollable.pollUntil(r),
         retryIf: error => {
-          logger?.logMessage(`Poll failed: ${getErrorCause(error)}`);
+          logger?.logMessage(
+            `${getPollElapsedTime(startTime)} Poll failed: ${getErrorCause(
+              error
+            )}`
+          );
           return pollable.pollRetryIf(error);
         },
       }
@@ -91,6 +102,10 @@ export async function retry<T>(
   } catch (error) {
     throw unwrapRetryError(error);
   }
+}
+
+function getPollElapsedTime(startTime: Moment): string {
+  return moment.utc(moment().diff(startTime)).format('HH:mm:ss');
 }
 
 function addRequestTimeout<T>(f: () => Promise<T>, time: number): Promise<T> {
