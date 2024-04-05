@@ -43,17 +43,29 @@ export const isoDateFormat =
 export const timeFormat = '[0-9]{1,2}:[0-9]{2}:[0-9]{2}';
 
 export const timeoutMs = Duration.minutes(120).milliseconds;
+export const pollMs = Duration.seconds(30).milliseconds;
 
-export function mockSetTimeout(sandbox: SinonSandbox, testTimeoutMs = 50) {
-  // NOTE: for debugging within polling, increase testTimeoutMs
+export function mockSetTimeout(
+  sandbox: SinonSandbox,
+  testPollMs = 10,
+  testTimeoutMs = 100
+) {
+  // NOTE: for debugging within polling, increase Ms params
 
   // stub timeout only for default durations
-  // always call timeouts for polling/retry immediately
   // make global timeouts fit within test
 
   const timeoutStub = sandbox.stub(global, 'setTimeout');
-  timeoutStub.withArgs(match.any, 0).callThrough();
-  timeoutStub.callsFake(cb => setTimeout(cb, 0));
+
+  // always call timeouts for retry immediately
+  // timeoutStub.withArgs(match.any, 0).callThrough();
+  // timeoutStub.callsFake(cb => setTimeout(cb, 0));
+
+  // replace default timeouts with fixed delay
+  timeoutStub.withArgs(match.any, testPollMs).callThrough();
+  timeoutStub.callsFake(cb => setTimeout(cb, testPollMs));
+
+  // replace default global 120 min timeout
   timeoutStub.withArgs(match.any, testTimeoutMs).callThrough();
   timeoutStub
     .withArgs(match.any, timeoutMs)

@@ -292,7 +292,7 @@ describe('TestRunner', () => {
     expect(
       logger.entries.some(str =>
         logRegex(
-          `Poll failed: Wrong number of ApexTestRunResult records found for '${testRunId}', found 0, expected 1`
+          `${timeFormat} Poll failed: Wrong number of ApexTestRunResult records found for '${testRunId}', found 0, expected 1`
         ).test(str)
       )
     ).to.be.true;
@@ -629,6 +629,67 @@ describe('TestRunner', () => {
     );
     expect(logger.files[0][1]).to.equal(
       JSON.stringify(mockQueueItems, undefined, 2)
+    );
+  });
+
+  it('should timeout on failed poll and continue', async () => {
+    setupMultipleQueryApexTestResults(qhStub, mockTestResult, [
+      { Status: 'Processing' }, // poll
+      { Status: 'Processing' }, // poll
+      { Status: 'Completed' }, // poll
+    ]);
+
+    // poll results
+    qhStub.query
+      .withArgs('ApexTestResult', match.any, match.any)
+      .onCall(0)
+      .resolves([mockTestResult[0]])
+      .onCall(1)
+      .returns(
+        new Promise(() => {
+          // never resolved promise
+        })
+      )
+      .onCall(2)
+      .resolves(mockTestResult);
+
+    const logger = new CapturingLogger();
+    const runner = new AsyncTestRunner(logger, mockConnection, [], {
+      maxTestRunRetries: 1,
+    });
+
+    const testRunResult = await runner.run();
+
+    expect(testServiceAsyncStub.calledOnce).to.be.true;
+    expect(testServiceAsyncStub.args[0][0]).to.deep.equal({
+      suiteNames: undefined,
+      testLevel: TestLevel.RunLocalTests,
+      skipCodeCoverage: true,
+    });
+    expect(testRunResult.run.AsyncApexJobId).to.equal(testRunId);
+    expect(testRunResult.run.Status).to.equal('Completed');
+    expect(logger.entries.length).to.equal(6);
+    expect(logger.entries[0]).to.match(
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
+    );
+    expect(logger.entries[1]).to.match(
+      logRegex(
+        `${timeFormat} \\[Processing\\] Passed: 1 \\| Failed: 0 \\| 1/2 Complete \\(50%\\)`
+      )
+    );
+    expect(logger.entries[2]).to.match(
+      logRegex(
+        `${timeFormat} Poll failed: Request exceeded allowed time of 30000ms.`
+      )
+    );
+    expect(logger.entries[3]).to.match(
+      logRegex(
+        `${timeFormat} \\[Completed\\] Passed: 1 \\| Failed: 1 \\| 2/2 Complete \\(100%\\)`
+      )
+    );
+    expect(logger.entries[4]).to.match(logRegex("Failing tests in 'Class3':"));
+    expect(logger.entries[5]).to.match(
+      logRegex('\\* Method2 - Exception: Test Failed')
     );
   });
 });
