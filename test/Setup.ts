@@ -54,12 +54,7 @@ export function mockSetTimeout(
 
   // stub timeout only for default durations
   // make global timeouts fit within test
-
   const timeoutStub = sandbox.stub(global, 'setTimeout');
-
-  // always call timeouts for retry immediately
-  // timeoutStub.withArgs(match.any, 0).callThrough();
-  // timeoutStub.callsFake(cb => setTimeout(cb, 0));
 
   // replace default timeouts with fixed delay
   timeoutStub.withArgs(match.any, testPollMs).callThrough();
