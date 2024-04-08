@@ -1,5 +1,11 @@
 # test-runner - Changelog
 
+## 3.1.1 - 2024-04-08
+
+* Add timeout to each poll call during test run.
+  * Uses `statusPollIntervalMs` as the timeout value.
+* Test failure logging now limits at 4+ failures in the same class.
+
 ## 3.1.0 - 2023-11-24
 
 * Format millisecond/second time values in reports as numbers.

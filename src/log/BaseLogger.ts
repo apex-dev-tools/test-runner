@@ -169,8 +169,8 @@ export abstract class BaseLogger implements Logger {
     }, {} as Record<string, ApexTestResult[]>);
 
     Object.entries(failedResultsByClassId).forEach(([, results]) => {
-      const tests = results.slice(0, 2);
-      const hasMore = results.length > 2;
+      const hasMore = results.length >= 4;
+      const tests = hasMore ? results.slice(0, 2) : results;
 
       this.logErrorMessage(
         `${os.EOL}  Failing tests in '${getClassName(tests[0])}':`
