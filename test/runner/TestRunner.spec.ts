@@ -656,6 +656,7 @@ describe('TestRunner', () => {
     const logger = new CapturingLogger();
     const runner = new AsyncTestRunner(logger, mockConnection, [], {
       maxTestRunRetries: 1,
+      statusPollIntervalMs: 2000, // testing min time limit
     });
 
     const testRunResult = await runner.run();

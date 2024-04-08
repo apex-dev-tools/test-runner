@@ -20,6 +20,8 @@ import {
 } from '../src/results/OutputGenerator';
 import {
   CancelTestRunOptions,
+  DEFAULT_STATUS_POLL_INTERVAL_MS,
+  DEFAULT_TEST_RUN_TIMEOUT_MINS,
   TestRunAborter,
 } from '../src/runner/TestOptions';
 import { TestRunner, TestRunnerResult } from '../src/runner/TestRunner';
@@ -42,8 +44,10 @@ export const isoDateFormat =
 
 export const timeFormat = '[0-9]{1,2}:[0-9]{2}:[0-9]{2}';
 
-export const timeoutMs = Duration.minutes(120).milliseconds;
-export const pollMs = Duration.seconds(30).milliseconds;
+export const timeoutMs = Duration.minutes(
+  DEFAULT_TEST_RUN_TIMEOUT_MINS
+).milliseconds;
+export const pollMs = DEFAULT_STATUS_POLL_INTERVAL_MS;
 
 export function mockSetTimeout(
   sandbox: SinonSandbox,
