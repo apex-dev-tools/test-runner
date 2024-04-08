@@ -1,5 +1,9 @@
 # test-runner - Changelog
 
+## 3.1.2 - 2024-04-08
+
+* Set minimum timeout to 30s on polling requests.
+
 ## 3.1.1 - 2024-04-08
 
 * Add timeout to each poll call during test run.

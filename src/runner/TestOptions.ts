@@ -34,8 +34,8 @@ export function getCancelPollTimeout(options: CancelTestRunOptions): Duration {
   else return Duration.minutes(DEFAULT_POLL_TIMEOUT_MINS);
 }
 
-const DEFAULT_STATUS_POLL_INTERVAL_MS = 30000;
-const DEFAULT_TEST_RUN_TIMEOUT_MINS = 120;
+export const DEFAULT_STATUS_POLL_INTERVAL_MS = 30000;
+export const DEFAULT_TEST_RUN_TIMEOUT_MINS = 120;
 const DEFAULT_MAX_TEST_RUN_RETRIES = 3;
 const DEFAULT_POLL_LIMIT_TO_ASSUME_TESTS_HANGING = 60;
 
