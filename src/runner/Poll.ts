@@ -10,6 +10,7 @@ import {
 import { Logger } from '../log/Logger';
 import { TestError, TestErrorKind } from './TestError';
 import moment, { Moment } from 'moment';
+import { DEFAULT_STATUS_POLL_INTERVAL_MS } from './TestOptions';
 
 export interface Pollable<T> {
   // wait in ms
@@ -35,7 +36,7 @@ export async function poll<T>(
       () =>
         withTimeout(
           () => pollable.poll(getElapsedTime(startTime)),
-          pollable.pollDelay
+          Math.max(DEFAULT_STATUS_POLL_INTERVAL_MS, pollable.pollDelay)
         ),
       {
         retries: 'INFINITELY',
