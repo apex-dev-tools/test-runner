@@ -264,7 +264,7 @@ export class AsyncTestRunner implements TestRunner {
   private async testResults(testRunId: string): Promise<ApexTestResult[]> {
     return this._queryHelper.query<ApexTestResult>(
       'ApexTestResult',
-      `AsyncApexJobId='${testRunId}'`,
+      `AsyncApexJobId='${testRunId}' AND IsTestSetup=FALSE`,
       ApexTestResultFields.join(', ')
     );
   }
