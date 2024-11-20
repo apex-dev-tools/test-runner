@@ -2,19 +2,26 @@
  * Copyright (c) 2019, FinancialForce.com, inc. All rights reserved.
  */
 
+/*
+ Unselected fields:
+  ApexLogId: string;
+  ApexTestRunResultId: string;
+  IsTestSetup: boolean;
+*/
+
 export const ApexTestResultFields = [
-  'Id',
-  'QueueItemId',
-  'AsyncApexJobId',
-  'Outcome',
-  'MethodName',
-  'Message',
-  'StackTrace',
-  'RunTime',
-  'TestTimestamp',
   'ApexClass.Id',
   'ApexClass.Name',
   'ApexClass.NamespacePrefix',
+  'AsyncApexJobId',
+  'Id',
+  'Message',
+  'MethodName',
+  'Outcome',
+  'QueueItemId',
+  'RunTime',
+  'StackTrace',
+  'TestTimestamp',
 ];
 
 export type Outcome = 'Pass' | 'Fail' | 'CompileFail' | 'Skip';
@@ -30,17 +37,17 @@ export interface ApexClass {
 }
 
 export interface BaseTestResult {
-  Outcome: Outcome;
   ApexClass: ApexClass;
-  MethodName: string;
   Message: string | null;
-  StackTrace: string | null;
+  MethodName: string;
+  Outcome: Outcome;
   RunTime: number;
+  StackTrace: string | null;
   TestTimestamp: string;
 }
 
 export interface ApexTestResult extends BaseTestResult {
+  AsyncApexJobId: string;
   Id: string;
   QueueItemId: string;
-  AsyncApexJobId: string;
 }

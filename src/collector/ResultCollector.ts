@@ -57,7 +57,7 @@ export class ResultCollector {
   ): Promise<ApexTestResult[]> {
     return await QueryHelper.instance(connection).query<ApexTestResult>(
       'ApexTestResult',
-      `AsyncApexJobId='${testRunId}'`,
+      `AsyncApexJobId='${testRunId}' AND IsTestSetup=FALSE`,
       ApexTestResultFields.join(', ')
     );
   }

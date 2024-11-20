@@ -1,5 +1,9 @@
 # test-runner - Changelog
 
+## 3.1.3 - 2024-11-20
+
+* Exclude `@testSetup` methods from `ApexTestResult` queries.
+
 ## 3.1.2 - 2024-04-08
 
 * Set minimum timeout to 30s on polling requests.
