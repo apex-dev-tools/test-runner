@@ -96,6 +96,7 @@ export class TestResultStore {
       this.run.Status = newRun.Status;
       this.run.EndTime = newRun.EndTime;
       this.run.TestTime += newRun.TestTime;
+      this.run.TestSetupTime += newRun.TestSetupTime;
       this.run.ClassesCompleted += newRun.ClassesCompleted;
       this.run.ClassesEnqueued += newRun.ClassesEnqueued;
       this.run.MethodsCompleted += newRun.MethodsCompleted;

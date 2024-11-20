@@ -7,7 +7,6 @@
   IsAllTests boolean;
   JobName string;
   Source string;
-  TestSetupTime: number;
 */
 
 export const ApexTestRunResultFields = [
@@ -20,6 +19,7 @@ export const ApexTestRunResultFields = [
   'MethodsFailed',
   'StartTime',
   'Status',
+  'TestSetupTime',
   'TestTime',
   'UserId',
 ];
@@ -35,6 +35,7 @@ export interface ApexTestRunResult {
   MethodsFailed: number;
   StartTime: string;
   Status: string;
+  TestSetupTime: number;
   TestTime: number;
   UserId: string;
 }

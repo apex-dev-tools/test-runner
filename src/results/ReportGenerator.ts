@@ -99,6 +99,9 @@ export class ReportGenerator implements OutputGenerator {
     // start time per run summary
     const testStartTime = moment.parseZone(runResults.StartTime).local();
 
+    // time running @testSetup methods, included in other test times
+    const testSetupTime = runResults.TestSetupTime;
+
     // total time per run summary
     const testTotalTime = runResults.TestTime;
 
@@ -121,6 +124,7 @@ export class ReportGenerator implements OutputGenerator {
       passRate,
       failRate,
       testStartTime,
+      testSetupTime,
       testExecutionTime,
       testTotalTime,
       commandTime,
@@ -162,6 +166,9 @@ export class ReportGenerator implements OutputGenerator {
     junit += `            <property name="failRate" value="${summary.failRate}"/>\n`;
     junit += `            <property name="testStartTime" value="${summary.testStartTime.format(
       'lll'
+    )}"/>\n`;
+    junit += `            <property name="testSetupTime" value="${msToSeconds(
+      summary.testSetupTime
     )}"/>\n`;
     junit += `            <property name="testExecutionTime" value="${msToSeconds(
       summary.testExecutionTime
@@ -221,6 +228,7 @@ export class ReportGenerator implements OutputGenerator {
     json += `    "passRate": "${summary.passRate}",\n`;
     json += `    "failRate": "${summary.failRate}",\n`;
     json += `    "testStartTime": "${summary.testStartTime.format('lll')}",\n`;
+    json += `    "testSetupTime": ${summary.testSetupTime},\n`;
     json += `    "testExecutionTime": ${summary.testExecutionTime},\n`;
     json += `    "testTotalTime": ${summary.testTotalTime},\n`;
     json += `    "commandTime": ${summary.commandTime},\n`;
@@ -289,6 +297,7 @@ interface SummaryData {
   passRate: string;
   failRate: string;
   testStartTime: Moment;
+  testSetupTime: number; // ms
   testExecutionTime: number; // ms
   testTotalTime: number; // ms
   commandTime: number; //ms
