@@ -21,6 +21,12 @@ export class QueryHelper {
   retryConfig: { delay?: number; retries?: number };
   logger?: Logger;
 
+  private static globalOptions?: QueryOptions;
+
+  static setGlobalRetryOptions(opts?: QueryOptions) {
+    QueryHelper.globalOptions = opts;
+  }
+
   static instance(
     connection: Connection,
     logger?: Logger,
@@ -37,8 +43,11 @@ export class QueryHelper {
   ) {
     this.connection = connection;
     this.retryConfig = {
-      retries: options.maxQueryRetries,
-      delay: options.queryInitialIntervalMs,
+      retries:
+        options.maxQueryRetries || QueryHelper.globalOptions?.maxQueryRetries,
+      delay:
+        options.queryInitialIntervalMs ||
+        QueryHelper.globalOptions?.queryInitialIntervalMs,
     };
     this.logger = logger;
   }
