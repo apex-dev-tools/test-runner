@@ -1,5 +1,10 @@
 # test-runner - Changelog
 
+## 3.2.0 - 2024-12-10
+
+* Add `QueryHelper.setGlobalRetryOptions()` static method.
+  * Use to change the retry behaviour of queries across all instances.
+
 ## 3.1.3 - 2024-11-20
 
 * Exclude `@testSetup` methods from `ApexTestResult` queries.

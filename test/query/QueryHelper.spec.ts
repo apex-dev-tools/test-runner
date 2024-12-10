@@ -49,6 +49,7 @@ describe('QueryHelper', () => {
 
   afterEach(() => {
     sandbox.restore();
+    QueryHelper.setGlobalRetryOptions(undefined);
   });
 
   it('should retry with default options', async () => {
@@ -86,6 +87,42 @@ describe('QueryHelper', () => {
       maxQueryRetries: 2,
       queryInitialIntervalMs: 500,
     }).query('sobject', 'clause', 'fields');
+
+    expect(queryMock.execute.callCount).to.equal(3);
+    expect(sobjectStub.alwaysCalledWith('sobject')).to.be.true;
+    expect(sobjectMock.find.alwaysCalledWith('clause', 'fields')).to.be.true;
+    expect(logger.entries.length).to.equal(4);
+    expect(logger.entries[0]).to.match(
+      logRegex('Warning: Request failed. Cause: error')
+    );
+    expect(logger.entries[1]).to.match(
+      logRegex('Waiting 0.5 seconds to retry \\(attempts: 1\\)')
+    );
+    expect(logger.entries[2]).to.match(
+      logRegex('Warning: Request failed. Cause: 400')
+    );
+    expect(logger.entries[3]).to.match(
+      logRegex('Waiting 1 seconds to retry \\(attempts: 2\\)')
+    );
+  });
+
+  it('should retry with custom global options', async () => {
+    queryMock.execute.resolves([]);
+    queryMock.execute.onFirstCall().rejects(new Error('error'));
+    queryMock.execute.onSecondCall().rejects(new Error('400'));
+
+    const logger = new CapturingLogger();
+
+    QueryHelper.setGlobalRetryOptions({
+      maxQueryRetries: 2,
+      queryInitialIntervalMs: 500,
+    });
+
+    await QueryHelper.instance(mockConnection, logger).query(
+      'sobject',
+      'clause',
+      'fields'
+    );
 
     expect(queryMock.execute.callCount).to.equal(3);
     expect(sobjectStub.alwaysCalledWith('sobject')).to.be.true;
