@@ -113,6 +113,7 @@ describe('TestRunner', () => {
     });
     expect(testRunResult.run.AsyncApexJobId).to.equal(testRunId);
     expect(testRunResult.run.Status).to.equal('Completed');
+    expect(testRunResult.numberOfResets).to.equal(0);
     expect(logger.entries.length).to.equal(4);
     expect(logger.entries[0]).to.match(
       logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
@@ -146,6 +147,7 @@ describe('TestRunner', () => {
     });
     expect(testRunResult.run.AsyncApexJobId).to.equal(testRunId);
     expect(testRunResult.run.Status).to.equal('Completed');
+    expect(testRunResult.numberOfResets).to.equal(0);
     expect(logger.entries.length).to.equal(4);
     expect(logger.entries[0]).to.match(
       logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
@@ -185,6 +187,7 @@ describe('TestRunner', () => {
     });
     expect(testRunResult.run.AsyncApexJobId).to.equal(testRunId);
     expect(testRunResult.run.Status).to.equal('Failed');
+    expect(testRunResult.numberOfResets).to.equal(0);
     expect(logger.entries.length).to.equal(4);
     expect(logger.entries[0]).to.match(
       logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
@@ -222,6 +225,7 @@ describe('TestRunner', () => {
     });
     expect(testRunResult.run.AsyncApexJobId).to.equal(testRunId);
     expect(testRunResult.run.Status).to.equal('Aborted');
+    expect(testRunResult.numberOfResets).to.equal(0);
     expect(logger.entries.length).to.equal(2);
     expect(logger.entries[0]).to.match(
       logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
@@ -326,6 +330,7 @@ describe('TestRunner', () => {
     expect(testServiceAsyncStub.calledOnce).to.be.true;
     expect(testRunResult.run.AsyncApexJobId).to.equal(testRunId);
     expect(testRunResult.run.Status).to.equal('Completed');
+    expect(testRunResult.numberOfResets).to.equal(0);
     expect(logger.entries.length).to.equal(6);
     expect(logger.entries[0]).to.match(
       logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
@@ -408,7 +413,7 @@ describe('TestRunner', () => {
       ['TestSample'],
       {
         maxTestRunRetries: 2,
-        pollLimitToAssumeHangingTests: 1, // Will asumme hanging on each poll
+        pollLimitToAssumeHangingTests: 1, // Will assume hanging on each poll
         aborter: mockAborter, // Skip over aborting
       }
     );
@@ -419,6 +424,7 @@ describe('TestRunner', () => {
     expect(testServiceAsyncStub.calledTwice).to.be.true;
     expect(testRunResult.run.AsyncApexJobId).to.equal(testRunId);
     expect(testRunResult.run.Status).to.equal('Completed');
+    expect(testRunResult.numberOfResets).to.equal(1);
     expect(logger.entries.length).to.equal(10);
     expect(logger.entries[0]).to.match(
       logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
@@ -517,6 +523,7 @@ describe('TestRunner', () => {
     expect(testServiceAsyncStub.calledOnce).to.be.true;
     expect(testRunResult.run.AsyncApexJobId).to.equal(testRunId);
     expect(testRunResult.run.Status).to.equal('Completed');
+    expect(testRunResult.numberOfResets).to.equal(0);
     expect(logger.entries.length).to.equal(7);
     expect(logger.entries[0]).to.match(
       logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
@@ -623,6 +630,7 @@ describe('TestRunner', () => {
     expect(testServiceAsyncStub.calledOnce).to.be.true;
     expect(testRunResult.run.AsyncApexJobId).to.equal(testRunId);
     expect(testRunResult.run.Status).to.equal('Completed');
+    expect(testRunResult.numberOfResets).to.equal(0);
     expect(logger.files.length).to.equal(1);
     expect(logger.files[0][0]).to.match(
       new RegExp(`^${process.cwd()}/testqueue-${isoDateFormat}.json`)
@@ -669,6 +677,7 @@ describe('TestRunner', () => {
     });
     expect(testRunResult.run.AsyncApexJobId).to.equal(testRunId);
     expect(testRunResult.run.Status).to.equal('Completed');
+    expect(testRunResult.numberOfResets).to.equal(0);
     expect(logger.entries.length).to.equal(6);
     expect(logger.entries[0]).to.match(
       logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)

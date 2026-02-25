@@ -71,6 +71,7 @@ describe('CoverageReporter', () => {
           },
         ],
       },
+      numberOfResets: 0,
     });
 
     expect(executeStub.calledOnce).to.be.true;
@@ -99,6 +100,7 @@ describe('CoverageReporter', () => {
       runIds: ['job Id'],
       reruns: [],
       coverageResult: undefined,
+      numberOfResets: 0,
     });
 
     expect(executeStub.called).to.be.false;

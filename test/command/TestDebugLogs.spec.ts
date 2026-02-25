@@ -74,6 +74,7 @@ describe('TestDebugLogs', () => {
     const runner = new MockTestRunner({
       run: runnerResult,
       tests: mockTestResults,
+      numberOfResets: 0,
     });
     const methodCollector = mockDefaultCollector(logger, mockConnection);
     qhStub.query.onCall(0).resolves([]);
@@ -110,6 +111,7 @@ describe('TestDebugLogs', () => {
     const runner = new MockTestRunner({
       run: runnerResult,
       tests: mockTestResults,
+      numberOfResets: 0,
     });
     const methodCollector = mockDefaultCollector(logger, mockConnection);
     qhStub.query.onCall(0).resolves([{ Id: 'AnId' }]); // User Id
@@ -154,6 +156,7 @@ describe('TestDebugLogs', () => {
     const runner = new MockTestRunner({
       run: runnerResult,
       tests: mockTestResults,
+      numberOfResets: 0,
     });
     const methodCollector = mockDefaultCollector(logger, mockConnection);
     qhStub.query.onCall(0).resolves([{ Id: 'AnId' }]); // User Id
@@ -198,6 +201,7 @@ describe('TestDebugLogs', () => {
     const runner = new MockTestRunner({
       run: runnerResult,
       tests: mockTestResults,
+      numberOfResets: 0,
     });
     const { classId, className, methodName } = defaultTestInfo;
     const methodCollector = new MockTestMethodCollector(

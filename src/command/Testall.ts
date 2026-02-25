@@ -214,6 +214,8 @@ export class Testall {
         Promise.resolve(missingTests),
         store
       );
+
+      store.numberOfResets = result.numberOfResets;
     }
   }
 
