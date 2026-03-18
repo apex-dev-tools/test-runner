@@ -1,5 +1,10 @@
 # test-runner - Changelog
 
+## 3.3.0 - 2026-02-25
+
+* Add `numberOfResets` to `TestRunnerResult`, tracking how many times a test run was cancelled and restarted due to lack of progress.
+  * Included in JSON output and JUnit XML report properties.
+
 ## 3.2.0 - 2024-12-10
 
 * Add `QueryHelper.setGlobalRetryOptions()` static method.

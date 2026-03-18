@@ -100,6 +100,7 @@ describe('ExecutionMapGenerator', () => {
       },
       runIds: ['job Id'],
       reruns: [],
+      numberOfResets: 0,
     });
 
     expect(logger.files.length).to.equal(1);

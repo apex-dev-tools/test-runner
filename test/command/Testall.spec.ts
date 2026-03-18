@@ -176,6 +176,7 @@ describe('TestAll', () => {
     const runner = new MockTestRunner({
       run: mockRunResult,
       tests: mockTestResults,
+      numberOfResets: 1,
     });
     const testMethods = mockDefaultCollector(logger, mockConnection);
 
@@ -197,6 +198,7 @@ describe('TestAll', () => {
       reruns: [],
       runIds: [testRunId],
       coverageResult: undefined,
+      numberOfResets: 1,
     });
   });
 
@@ -208,6 +210,7 @@ describe('TestAll', () => {
     const runner = new MockTestRunner({
       run: mockRunResult,
       tests: [],
+      numberOfResets: 0,
     });
     const testMethods = mockDefaultCollector(logger, mockConnection);
 
@@ -247,6 +250,7 @@ describe('TestAll', () => {
     const runner = new MockTestRunner({
       run: mockRunResult,
       tests: mockTestResults,
+      numberOfResets: 0,
     });
     const testMethods = mockDefaultCollector(logger, mockConnection);
 
@@ -294,6 +298,7 @@ describe('TestAll', () => {
     const runner = new MockTestRunner({
       run: mockRunResult,
       tests: mockTestResults,
+      numberOfResets: 0,
     });
     const testMethods = mockDefaultCollector(logger, mockConnection);
     const mockTestResult = {
@@ -343,6 +348,7 @@ describe('TestAll', () => {
     const runner = new MockTestRunner({
       run: mockRunResult,
       tests: mockTestResults,
+      numberOfResets: 0,
     });
     const testMethods = mockDefaultCollector(logger, mockConnection);
     const mockTestResult = {
@@ -398,6 +404,7 @@ describe('TestAll', () => {
     const runner = new MockTestRunner({
       run: mockRunResult,
       tests: mockTestResults,
+      numberOfResets: 0,
     });
     const testMethods = mockDefaultCollector(logger, mockConnection);
     testingServiceSyncStub.rejects(new Error('Request Error'));
@@ -465,6 +472,7 @@ describe('TestAll', () => {
     const runner = new MockTestRunner({
       run: mockRunResult,
       tests: mockTestResults,
+      numberOfResets: 0,
     });
     const testMethods = mockDefaultCollector(logger, mockConnection);
     const mockTestResult = {
@@ -524,6 +532,7 @@ describe('TestAll', () => {
     const runner = new MockTestRunner({
       run: mockRunResult,
       tests: mockTestResults,
+      numberOfResets: 0,
     });
     const testMethods = mockDefaultCollector(logger, mockConnection);
 
@@ -590,6 +599,7 @@ describe('TestAll', () => {
     const runner = new MockTestRunner({
       run: mockRunResult,
       tests: mockTestResults,
+      numberOfResets: 0,
     });
     const testMethods = mockDefaultCollector(logger, mockConnection);
 
@@ -663,9 +673,11 @@ describe('TestAll', () => {
     const runner = new MockTestRunner({
       run: mockRunResult,
       tests: [mockTestResults[0]],
+      numberOfResets: 0,
     }).addNextResult({
       run: mockRunResult,
       tests: [mockTestResults[1]],
+      numberOfResets: 0,
     });
     const testMethods = new MockTestMethodCollector(
       logger,

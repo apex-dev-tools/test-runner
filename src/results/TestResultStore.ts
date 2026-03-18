@@ -21,6 +21,7 @@ export class TestResultStore {
   asyncError?: TestError;
   reruns: TestRerun[];
   coverage?: CoverageReport;
+  numberOfResets: number;
 
   get resultsArray() {
     return Array.from(this.tests.values());
@@ -31,6 +32,7 @@ export class TestResultStore {
     this.runIds = [];
     this.tests = new Map<string, ApexTestResult>();
     this.reruns = [];
+    this.numberOfResets = 0;
   }
 
   public saveAsyncResult(res: TestRunnerResult): void {
@@ -43,6 +45,7 @@ export class TestResultStore {
     });
 
     this.asyncError = res.error;
+    this.numberOfResets = res.numberOfResets;
   }
 
   public saveSyncResult(reruns: TestRerun[]): void {
@@ -88,6 +91,7 @@ export class TestResultStore {
       runIds: this.runIds,
       reruns: this.reruns,
       coverageResult: this.coverage,
+      numberOfResets: this.numberOfResets,
     };
   }
 

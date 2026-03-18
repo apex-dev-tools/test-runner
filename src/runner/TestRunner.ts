@@ -44,6 +44,7 @@ export interface TestRunnerResult {
   run: ApexTestRunResult;
   tests: ApexTestResult[];
   error?: TestError;
+  numberOfResets: number; // Track the number of times the test run has been reset due to hanging or cancellation
 }
 
 export interface TestRunner {
@@ -66,7 +67,7 @@ export class AsyncTestRunner implements TestRunner {
   private readonly _testItems: TestItem[];
   private readonly _options: TestRunnerOptions;
   private readonly _testService: TestService;
-  private _stats;
+  private _stats: TestStats;
 
   static forClasses(
     logger: Logger,
@@ -140,6 +141,9 @@ export class AsyncTestRunner implements TestRunner {
       testRunIdResult.testRunId,
       token
     );
+
+    // Add numberOfResets to the result object
+    result.numberOfResets = this._stats.getNumberOfTimesReset();
 
     // Ensure result for partial reporting
     try {
@@ -220,6 +224,7 @@ export class AsyncTestRunner implements TestRunner {
         return (lastResult = {
           run,
           tests,
+          numberOfResets: this._stats.getNumberOfTimesReset(),
         });
       },
 

@@ -41,9 +41,16 @@ export class ReportGenerator implements OutputGenerator {
     fileName: string,
     runSummary: TestRunSummary
   ): void {
-    const { startTime, testResults, runResult, reruns } = runSummary;
+    const { startTime, testResults, runResult, reruns, numberOfResets } =
+      runSummary;
     const results = testResults as ExtendedApexTestResult[];
-    const summary = this.summary(startTime, results, runResult, reruns);
+    const summary = this.summary(
+      startTime,
+      results,
+      runResult,
+      reruns,
+      numberOfResets
+    );
     logger.logOutputFile(
       path.join(outputDirBase, fileName + '.xml'),
       this.generateJunit(summary, results)
@@ -58,7 +65,8 @@ export class ReportGenerator implements OutputGenerator {
     startTime: Date,
     testResults: ExtendedApexTestResult[],
     runResults: ApexTestRunResult,
-    reruns: TestRerun[]
+    reruns: TestRerun[],
+    numberOfResets: number
   ): SummaryData {
     // combine test and method names for fullname
     testResults.forEach(test => {
@@ -130,6 +138,7 @@ export class ReportGenerator implements OutputGenerator {
       username: this.username,
       testRunId: runResults.AsyncApexJobId,
       userId: runResults.UserId,
+      numberOfResets,
     };
   }
 
@@ -180,6 +189,7 @@ export class ReportGenerator implements OutputGenerator {
     junit += `            <property name="username" value="${summary.username}"/>\n`;
     junit += `            <property name="testRunId" value="${summary.testRunId}"/>\n`;
     junit += `            <property name="userId" value="${summary.userId}"/>\n`;
+    junit += `            <property name="numberOfResets" value="${summary.numberOfResets}"/>\n`;
     junit += '        </properties>\n';
     testResults.forEach(test => {
       const success = test.Outcome === 'Pass';
@@ -229,7 +239,8 @@ export class ReportGenerator implements OutputGenerator {
     json += `    "orgId": "${summary.orgId}",\n`;
     json += `    "username": "${summary.username}",\n`;
     json += `    "testRunId": "${summary.testRunId}",\n`;
-    json += `    "userId": "${summary.userId}"\n`;
+    json += `    "userId": "${summary.userId}",\n`;
+    json += `    "numberOfResets": ${summary.numberOfResets}\n`;
     json += '  },\n';
     json += '  "tests": [\n';
 
@@ -298,4 +309,5 @@ interface SummaryData {
   username: string;
   testRunId: string;
   userId: string;
+  numberOfResets: number;
 }

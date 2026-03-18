@@ -62,6 +62,7 @@ describe('RerunReportGenerator', () => {
           },
         },
       ],
+      numberOfResets: 0,
     });
 
     expect(logger.files.length).to.be.equal(1);

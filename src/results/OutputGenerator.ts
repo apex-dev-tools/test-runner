@@ -19,6 +19,7 @@ export interface TestRunSummary {
   runIds: string[];
   reruns: TestRerun[];
   coverageResult?: CoverageReport;
+  numberOfResets: number;
 }
 
 export interface OutputGenerator {
