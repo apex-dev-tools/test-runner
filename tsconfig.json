@@ -1,17 +1,17 @@
 {
   "compilerOptions": {
-    /* Visit https://aka.ms/tsconfig.json to read more about this file */
-    "target": "es2020",
+    "target": "es2022",
     "module": "commonjs",
     "lib": [
-      "es2020"
+      "es2022"
     ],
     "declaration": true,
     "outDir": "./lib/",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node", "jest"]
   },
   "include": ["src/**/*.ts", "test/**/*.ts"]
 }

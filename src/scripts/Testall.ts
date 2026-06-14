@@ -61,7 +61,7 @@ async function runTestall(username: string, namespace: string) {
       ],
       {}
     );
-  } catch (err) {
+  } catch {
     // only log errors
   }
 }

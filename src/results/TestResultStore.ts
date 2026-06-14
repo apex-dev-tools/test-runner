@@ -77,11 +77,13 @@ export class TestResultStore {
 
   public toRunSummary(error?: unknown): TestRunSummary {
     if (!this.run) {
-      throw (
+      // Preserve original thrown value so callers log non-Error failures as before.
+      const cause =
         this.asyncError ||
         error ||
-        new TestError('Failed to generate results, no test run record')
-      );
+        new TestError('Failed to generate results, no test run record');
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
+      throw cause;
     }
 
     return {

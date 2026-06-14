@@ -16,7 +16,6 @@ export class ConsoleLogger extends BaseLogger {
     console.log(`${timestamp} - ${message}`);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected logFile(filepath: string, contents: string): void {
     fs.mkdirSync(path.dirname(filepath), { recursive: true });
     fs.writeFileSync(filepath, contents);
