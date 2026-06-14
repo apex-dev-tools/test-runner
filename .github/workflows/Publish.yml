@@ -23,7 +23,11 @@ jobs:
           pnpm install
           pnpm build
           pnpm test
-          pnpm publish --access public --no-git-checks
+          if [ "${{ github.event.release.prerelease }}" = "true" ]; then
+            pnpm publish --access public --no-git-checks --tag beta
+          else
+            pnpm publish --access public --no-git-checks
+          fi
 
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
