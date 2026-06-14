@@ -42,7 +42,7 @@
     "node": "^20.19.0 || ^22.13.0 || >=24"
   },
   "dependencies": {
-    "@apexdevtools/sfdx-auth-helper": "^2.1.0",
+    "@apexdevtools/sfdx-auth-helper": "^2.1.1",
     "@salesforce/apex-node": "^1.6.2",
     "@salesforce/core": "^4.3.11",
     "@salesforce/kit": "^3.2.6",

@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@apexdevtools/sfdx-auth-helper':
-        specifier: ^2.1.0
-        version: 2.1.0
+        specifier: ^2.1.1
+        version: 2.1.1
       '@salesforce/apex-node':
         specifier: ^1.6.2
         version: 1.6.2
@@ -132,8 +132,9 @@ importers:
 
 packages:
 
-  '@apexdevtools/sfdx-auth-helper@2.1.0':
-    resolution: {integrity: sha512-D/oNZwxP4erngD007XgunMaVJdmUfptGhB02lboUvA8yIn2g1+CUPAeSaYhuZqD8reb3ezRdaSYuZo7AIOraGQ==}
+  '@apexdevtools/sfdx-auth-helper@2.1.1':
+    resolution: {integrity: sha512-4/8G8knf6NIHRNwDR1XWHR51gxAdWxS2zV90E7sCmb6HZSbHNOqZ0hmR3xNhhzJO8GDVv9Exz2KW1INDMf+9PA==}
+    engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
@@ -3326,7 +3327,7 @@ packages:
 
 snapshots:
 
-  '@apexdevtools/sfdx-auth-helper@2.1.0':
+  '@apexdevtools/sfdx-auth-helper@2.1.1':
     dependencies:
       '@salesforce/core': 4.3.11
       jsforce: 1.11.1
