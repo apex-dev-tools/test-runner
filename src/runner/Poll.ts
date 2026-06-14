@@ -116,7 +116,7 @@ function withTimeout<T>(f: () => Promise<T>, time: number): Promise<T> {
     f()
       .then(
         r => resolve(r),
-        e => reject(e)
+        e => reject(TestError.wrapError(e))
       )
       .finally(() => clearTimeout(ref));
   });

@@ -5,7 +5,7 @@
 import { Logger } from '../log/Logger';
 import { Connection } from '@salesforce/core';
 import { ExecuteService } from '@salesforce/apex-node';
-import { CancelTestRunOptions, TestRunAborter } from './TestOptions';
+import { TestRunAborter } from './TestOptions';
 import { QueryHelper } from '../query/QueryHelper';
 import { chunk } from '../query/Chunk';
 import { TestError } from './TestError';
@@ -16,8 +16,7 @@ export class TestRunCancelAborter implements TestRunAborter {
   async abortRun(
     logger: Logger,
     connection: Connection,
-    testRunId: string,
-    options: CancelTestRunOptions = {}
+    testRunId: string
   ): Promise<string[]> {
     logger.logRunCancelling(testRunId);
 

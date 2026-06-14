@@ -86,8 +86,12 @@ export class DebugTraceLoader {
       await this.helper.run(c =>
         c.tooling.create('TraceFlag', {
           DebugLevelId: level.id,
-          StartDate: SfDate.toDateTimeLiteral(start).toString(),
-          ExpirationDate: SfDate.toDateTimeLiteral(end).toString(),
+          StartDate: (
+            SfDate.toDateTimeLiteral(start) as unknown as { toJSON(): string }
+          ).toJSON(),
+          ExpirationDate: (
+            SfDate.toDateTimeLiteral(end) as unknown as { toJSON(): string }
+          ).toJSON(),
           LogType: 'USER_DEBUG',
           TracedEntityId: userId,
         })

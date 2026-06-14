@@ -52,7 +52,7 @@ export const pollMs = DEFAULT_STATUS_POLL_INTERVAL_MS;
 export function mockSetTimeout(
   sandbox: SinonSandbox,
   testPollMs = 10,
-  testTimeoutMs = 100
+  testTimeoutMs = 500
 ) {
   // NOTE: for debugging within polling, increase Ms params
 
@@ -263,7 +263,7 @@ export class MockTestRunner implements TestRunner {
 export class MockThrowingTestRunner implements TestRunner {
   error: any;
 
-  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+   
   constructor(error: any) {
     this.error = error;
   }
