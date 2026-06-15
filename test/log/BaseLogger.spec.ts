@@ -96,6 +96,19 @@ describe('BaseLogger', () => {
     expect(logger.files[0][1]).to.equal(content);
   });
 
+  it('should log a run reset summary', () => {
+    const logger = new CapturingLogger();
+    logger.logRunReset(14000, 320, 6000, 140);
+
+    expect(logger.entries.length).to.equal(1);
+    expect(logger.entries[0]).to.match(
+      logRegex(
+        'Reusing 14000 tests from 320 completed classes; ' +
+          'rerunning 6000 remaining tests across 140 classes'
+      )
+    );
+  });
+
   it('should generate warning messages', () => {
     const logger = new CapturingLogger('', true);
     logger.logWarning('A message');

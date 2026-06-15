@@ -141,6 +141,18 @@ export abstract class BaseLogger implements Logger {
     );
   }
 
+  logRunReset(
+    reusedTests: number,
+    completedClasses: number,
+    remainingTests: number,
+    pendingClasses: number
+  ): void {
+    this.logMessage(
+      `Reusing ${reusedTests} tests from ${completedClasses} completed classes; ` +
+        `rerunning ${remainingTests} remaining tests across ${pendingClasses} classes`
+    );
+  }
+
   logStatus(
     testRunResult: ApexTestRunResult,
     tests: ApexTestResult[],

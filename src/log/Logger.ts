@@ -35,6 +35,12 @@ export interface Logger {
   // Test runner
   logRunStarted(testRunId: string): void;
   logNoProgress(testRunId: string): void;
+  logRunReset(
+    reusedTests: number,
+    completedClasses: number,
+    remainingTests: number,
+    pendingClasses: number
+  ): void;
   logStatus(
     status: ApexTestRunResult,
     tests: ApexTestResult[],
