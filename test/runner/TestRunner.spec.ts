@@ -569,6 +569,68 @@ describe('TestRunner', () => {
     expect(logger.entries.some(e => /Reusing/.test(e))).to.be.false;
   });
 
+  it('should fall back to a full re-run when the queue cannot be queried', async () => {
+    // The query for incomplete classes fails, so we must not drop tests - fall
+    // back to re-running everything and warn.
+    qhStub.query
+      .withArgs('ApexTestQueueItem', match.any, match.any)
+      .rejects(new Error('query boom'));
+    setupMultipleQueryApexTestResults(qhStub, mockTestResult, [
+      { Status: 'Processing' },
+      { Status: 'Processing' },
+      { Status: 'Completed' },
+    ]);
+    setupExecuteAnonymous(
+      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
+      {
+        column: -1,
+        line: -1,
+        compiled: 'true',
+        compileProblem: '',
+        exceptionMessage: '',
+        exceptionStackTrace: '',
+        success: 'true',
+      }
+    );
+
+    const logger = new CapturingLogger();
+    const mockAborter = new MockAborter();
+    const runner = AsyncTestRunner.forClasses(
+      logger,
+      mockConnection,
+      '',
+      ['TestSample'],
+      {
+        maxTestRunRetries: 2,
+        pollLimitToAssumeHangingTests: 1,
+        aborter: mockAborter,
+      }
+    );
+
+    const testRunResult = await runner.run();
+
+    expect(mockAborter.calls).to.equal(1);
+    expect(testServiceAsyncStub.calledTwice).to.be.true;
+    expect(testServiceAsyncStub.args[1][0]).to.deep.equal({
+      tests: [{ className: 'TestSample', namespace: undefined }],
+      testLevel: TestLevel.RunSpecifiedTests,
+      skipCodeCoverage: true,
+    });
+    expect(testRunResult.run.Status).to.equal('Completed');
+    expect(testRunResult.numberOfResets).to.equal(1);
+    expect(logger.entries.some(e => /Reusing/.test(e))).to.be.false;
+    expect(
+      logger.entries.some(e =>
+        logRegex(
+          'Warning: Could not determine completed tests for restart, ' +
+            're-running all: query boom'
+        ).test(e)
+      )
+    ).to.be.true;
+    // No snapshot written when we could not inspect the queue
+    expect(logger.files.length).to.equal(0);
+  });
+
   it('should not cancel if progress detected', async () => {
     const finalResults: ApexTestResult[] = [
       ...mockTestResult,
