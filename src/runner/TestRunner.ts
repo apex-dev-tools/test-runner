@@ -26,10 +26,11 @@ import {
 } from './TestOptions';
 import TestStats from './TestStats';
 import { QueryHelper } from '../query/QueryHelper';
-import { ApexTestQueueItem } from '../model/ApexTestQueueItem';
+import { ApexTestQueueItem, QueueItemStatus } from '../model/ApexTestQueueItem';
 import { TestError, TestErrorKind } from './TestError';
 import { Pollable, poll, retry } from './Poll';
 import { ApexTestResult, ApexTestResultFields } from '../model/ApexTestResult';
+import { getTestName } from '../results/TestResultUtils';
 
 /**
  * Parallel unit test runner that includes the ability to cancel & restart a run should it not make sufficient progress
@@ -46,6 +47,20 @@ export interface TestRunnerResult {
   error?: TestError;
   numberOfResets: number; // Track the number of times the test run has been reset due to hanging or cancellation
 }
+
+// Queue item statuses for tests that have not finished running. After a reset
+// these are the classes we re-run; classes that finished keep their results
+// (mirrors the statuses the aborter cancels). Note this is only the async
+// re-run - failed tests in finished classes are still re-run afterwards by
+// Testall.syncRun, which applies the configurable rerun filter and runs them
+// sequentially to avoid the row-lock contention that may have caused
+// them.
+const PENDING_QUEUE_STATUSES: QueueItemStatus[] = [
+  'Holding',
+  'Queued',
+  'Preparing',
+  'Processing',
+];
 
 export interface TestRunner {
   getTestClasses(): string[];
@@ -68,6 +83,9 @@ export class AsyncTestRunner implements TestRunner {
   private readonly _options: TestRunnerOptions;
   private readonly _testService: TestService;
   private _stats: TestStats;
+  // Results from classes that finished before a reset, kept so they are not
+  // re-run. Keyed by full test name and reset at the start of each run().
+  private _completedResults: Map<string, ApexTestResult> = new Map();
 
   static forClasses(
     logger: Logger,
@@ -118,7 +136,9 @@ export class AsyncTestRunner implements TestRunner {
   }
 
   public async run(token?: CancellationToken): Promise<TestRunnerResult> {
-    return this.runInternal(token);
+    this._completedResults = new Map();
+    const result = await this.runInternal(token);
+    return this.mergeCompletedResults(result);
   }
 
   /**
@@ -168,9 +188,13 @@ export class AsyncTestRunner implements TestRunner {
 
       if (result.run.Status == 'Processing' && this._stats.isTestRunHanging()) {
         this._logger.logNoProgress(testRunIdResult.testRunId);
+        const restartItems = await this.prepareRestart(
+          testRunIdResult.testRunId,
+          result
+        );
         this._stats = this._stats.reset();
         await this.abortTestRun(result.run.AsyncApexJobId);
-        return await this.runInternal(token);
+        return await this.runInternal(token, restartItems);
       }
     } catch (err) {
       // error may already be defined from wait()
@@ -186,6 +210,90 @@ export class AsyncTestRunner implements TestRunner {
     // The number of resets is one less than the number of retries, i.e. 2 resets === 3 runs
     const maxNumberOfResets = getMaxTestRunRetries(this._options) - 1;
     return this._stats.getNumberOfTimesReset() > maxNumberOfResets;
+  }
+
+  /**
+   * After a hang, work out which classes still need running so the restart only
+   * re-runs those. Results from classes that already finished are kept (in
+   * _completedResults) rather than thrown away and re-run. Returns the test
+   * items to re-run, or undefined to fall back to a full re-run (e.g. if we
+   * can't determine progress) so a reset is never worse than before.
+   */
+  private async prepareRestart(
+    testRunId: string,
+    result: TestRunnerResult
+  ): Promise<TestItem[] | undefined> {
+    try {
+      const queueItems = await this.getQueueItems(testRunId);
+
+      const pendingClassIds = this.uniqueClassIds(
+        queueItems.filter(item => PENDING_QUEUE_STATUSES.includes(item.Status))
+      );
+      const completedClassIds = new Set(
+        this.uniqueClassIds(
+          queueItems.filter(
+            item => !PENDING_QUEUE_STATUSES.includes(item.Status)
+          )
+        )
+      );
+
+      // Keep results from classes that finished; drop the rest so the restart
+      // re-runs them cleanly.
+      result.tests
+        .filter(test => completedClassIds.has(test.ApexClass.Id))
+        .forEach(test => this._completedResults.set(getTestName(test), test));
+
+      if (pendingClassIds.length === 0) {
+        // Nothing identified to re-run - fall back to a full re-run.
+        return undefined;
+      }
+
+      const remainingTests =
+        result.run.MethodsEnqueued - result.run.MethodsCompleted;
+      this._logger.logRunReset(
+        this._completedResults.size,
+        completedClassIds.size,
+        remainingTests,
+        pendingClassIds.length
+      );
+
+      return pendingClassIds.map(classId => ({ classId }));
+    } catch (err) {
+      // Be defensive: a reset should never be worse than a full re-run.
+      this._logger.logWarning(
+        `Could not determine completed tests for restart, re-running all: ${
+          TestError.wrapError(err).message
+        }`
+      );
+      return undefined;
+    }
+  }
+
+  private async getQueueItems(testRunId: string): Promise<ApexTestQueueItem[]> {
+    return this._queryHelper.query<ApexTestQueueItem>(
+      'ApexTestQueueItem',
+      `ParentJobId='${testRunId}'`,
+      'Id, ApexClassId, Status'
+    );
+  }
+
+  private uniqueClassIds(queueItems: ApexTestQueueItem[]): string[] {
+    return Array.from(new Set(queueItems.map(item => item.ApexClassId)));
+  }
+
+  /**
+   * Merge the results kept from completed classes with the final attempt's
+   * results so the returned result covers every test that ran across attempts.
+   */
+  private mergeCompletedResults(result: TestRunnerResult): TestRunnerResult {
+    if (this._completedResults.size === 0) {
+      return result;
+    }
+
+    const merged = new Map<string, ApexTestResult>(this._completedResults);
+    result.tests.forEach(test => merged.set(getTestName(test), test));
+
+    return { ...result, tests: Array.from(merged.values()) };
   }
 
   private getTestClassPayload(): null | AsyncTestArrayConfiguration {

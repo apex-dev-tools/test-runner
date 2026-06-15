@@ -385,7 +385,24 @@ describe('TestRunner', () => {
     expect(error.kind).to.equal(TestErrorKind.Timeout);
   });
 
-  it('should cancel and restart after no progress detected', async () => {
+  it('should cancel and re-run only incomplete classes after no progress detected', async () => {
+    // Class1 finishes (its pass is kept); Class3 is still running when the run
+    // stalls, so only Class3 should be re-run after the reset.
+    qhStub.query
+      .withArgs('ApexTestResult', match.any, match.any)
+      .onCall(0)
+      .resolves([mockTestResult[0]]) // Class1 pass
+      .onCall(1)
+      .resolves([mockTestResult[0]]) // no progress -> hang
+      .onCall(2)
+      .resolves([mockTestResult[1]]); // re-run produces Class3 result
+    const queueItems = [
+      { Id: 'q1', ApexClassId: 'Class1', Status: 'Completed' },
+      { Id: 'q3', ApexClassId: 'Class3', Status: 'Processing' },
+    ];
+    qhStub.query
+      .withArgs('ApexTestQueueItem', match.any, match.any)
+      .resolves(queueItems);
     setupMultipleQueryApexTestResults(qhStub, mockTestResult, [
       { Status: 'Processing' },
       { Status: 'Processing' },
@@ -422,40 +439,111 @@ describe('TestRunner', () => {
 
     expect(mockAborter.calls).to.equal(1);
     expect(testServiceAsyncStub.calledTwice).to.be.true;
+    // The re-run only asks for the class that had not completed
+    expect(testServiceAsyncStub.args[1][0]).to.deep.equal({
+      tests: [{ classId: 'Class3' }],
+      testLevel: TestLevel.RunSpecifiedTests,
+      skipCodeCoverage: true,
+    });
     expect(testRunResult.run.AsyncApexJobId).to.equal(testRunId);
     expect(testRunResult.run.Status).to.equal('Completed');
     expect(testRunResult.numberOfResets).to.equal(1);
-    expect(logger.entries.length).to.equal(10);
+    // Kept Class1's result and added Class3's from the re-run
+    expect(testRunResult.tests.map(t => t.Id).sort()).to.deep.equal([
+      'test1',
+      'test2',
+    ]);
+    expect(logger.entries.length).to.equal(9);
     expect(logger.entries[0]).to.match(
       logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
     );
     expect(logger.entries[1]).to.match(
       logRegex(
-        `${timeFormat} \\[Processing\\] Passed: 1 \\| Failed: 1 \\| 2/2 Complete \\(100%\\)`
+        `${timeFormat} \\[Processing\\] Passed: 1 \\| Failed: 0 \\| 1/2 Complete \\(50%\\)`
       )
     );
-    expect(logger.entries[2]).to.match(logRegex("Failing tests in 'Class3':"));
-    expect(logger.entries[3]).to.match(
-      logRegex('\\* Method2 - Exception: Test Failed')
-    );
-    expect(logger.entries[4]).to.match(
+    expect(logger.entries[2]).to.match(
       logRegex(
-        `${timeFormat} \\[Processing\\] Passed: 1 \\| Failed: 1 \\| 2/2 Complete \\(100%\\)`
+        `${timeFormat} \\[Processing\\] Passed: 1 \\| Failed: 0 \\| 1/2 Complete \\(50%\\)`
       )
     );
-    expect(logger.entries[5]).to.match(
+    expect(logger.entries[3]).to.match(
       logRegex(
         `Test run '${testRunId}' was not progressing, cancelling and retrying...`
       )
     );
-    expect(logger.entries[6]).to.match(
-      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
-    );
-    expect(logger.entries[7]).to.match(
+    expect(logger.entries[4]).to.match(
       logRegex(
-        `${timeFormat} \\[Completed\\] Passed: 1 \\| Failed: 1 \\| 2/2 Complete \\(100%\\)`
+        'Reusing 1 tests from 1 completed classes; ' +
+          'rerunning 2 remaining tests across 1 classes'
       )
     );
+    expect(logger.entries[5]).to.match(
+      logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
+    );
+    expect(logger.entries[6]).to.match(
+      logRegex(
+        `${timeFormat} \\[Completed\\] Passed: 0 \\| Failed: 1 \\| 1/2 Complete \\(50%\\)`
+      )
+    );
+    expect(logger.entries[7]).to.match(logRegex("Failing tests in 'Class3':"));
+    expect(logger.entries[8]).to.match(
+      logRegex('\\* Method2 - Exception: Test Failed')
+    );
+  });
+
+  it('should fall back to a full re-run when no incomplete classes can be identified', async () => {
+    // No queue items returned -> we cannot tell what is incomplete, so re-run
+    // everything rather than risk dropping tests.
+    qhStub.query
+      .withArgs('ApexTestQueueItem', match.any, match.any)
+      .resolves([]);
+    setupMultipleQueryApexTestResults(qhStub, mockTestResult, [
+      { Status: 'Processing' },
+      { Status: 'Processing' },
+      { Status: 'Completed' },
+    ]);
+    setupExecuteAnonymous(
+      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
+      {
+        column: -1,
+        line: -1,
+        compiled: 'true',
+        compileProblem: '',
+        exceptionMessage: '',
+        exceptionStackTrace: '',
+        success: 'true',
+      }
+    );
+
+    const logger = new CapturingLogger();
+    const mockAborter = new MockAborter();
+    const runner = AsyncTestRunner.forClasses(
+      logger,
+      mockConnection,
+      '',
+      ['TestSample'],
+      {
+        maxTestRunRetries: 2,
+        pollLimitToAssumeHangingTests: 1,
+        aborter: mockAborter,
+      }
+    );
+
+    const testRunResult = await runner.run();
+
+    expect(mockAborter.calls).to.equal(1);
+    expect(testServiceAsyncStub.calledTwice).to.be.true;
+    // Re-run uses the original full payload, not a pending subset
+    expect(testServiceAsyncStub.args[1][0]).to.deep.equal({
+      tests: [{ className: 'TestSample', namespace: undefined }],
+      testLevel: TestLevel.RunSpecifiedTests,
+      skipCodeCoverage: true,
+    });
+    expect(testRunResult.run.Status).to.equal('Completed');
+    expect(testRunResult.numberOfResets).to.equal(1);
+    // No reset reuse summary was logged
+    expect(logger.entries.some(e => /Reusing/.test(e))).to.be.false;
   });
 
   it('should not cancel if progress detected', async () => {
