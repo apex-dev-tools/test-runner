@@ -453,6 +453,12 @@ describe('TestRunner', () => {
       'test1',
       'test2',
     ]);
+    // Run-level counts reflect the merged set, not just the re-run subset
+    expect(testRunResult.run.MethodsCompleted).to.equal(2);
+    expect(testRunResult.run.MethodsEnqueued).to.equal(2);
+    expect(testRunResult.run.MethodsFailed).to.equal(1);
+    expect(testRunResult.run.ClassesCompleted).to.equal(2);
+    expect(testRunResult.run.TestTime).to.equal(30); // 10 + 20
     expect(logger.entries.length).to.equal(9);
     expect(logger.entries[0]).to.match(
       logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)

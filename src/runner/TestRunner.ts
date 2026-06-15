@@ -284,6 +284,8 @@ export class AsyncTestRunner implements TestRunner {
   /**
    * Merge the results kept from completed classes with the final attempt's
    * results so the returned result covers every test that ran across attempts.
+   * The run-level counts (which otherwise only reflect the final restart
+   * subset) are recomputed from the merged set so the summary stays consistent.
    */
   private mergeCompletedResults(result: TestRunnerResult): TestRunnerResult {
     if (this._completedResults.size === 0) {
@@ -292,8 +294,34 @@ export class AsyncTestRunner implements TestRunner {
 
     const merged = new Map<string, ApexTestResult>(this._completedResults);
     result.tests.forEach(test => merged.set(getTestName(test), test));
+    const tests = Array.from(merged.values());
 
-    return { ...result, tests: Array.from(merged.values()) };
+    return {
+      ...result,
+      tests,
+      run: this.recomputeRunCounts(result.run, tests),
+    };
+  }
+
+  private recomputeRunCounts(
+    run: ApexTestRunResult,
+    tests: ApexTestResult[]
+  ): ApexTestRunResult {
+    const classes = new Set(tests.map(test => test.ApexClass.Id));
+    const failed = tests.filter(
+      test => test.Outcome !== 'Pass' && test.Outcome !== 'Skip'
+    ).length;
+    const testTime = tests.reduce((total, test) => total + test.RunTime, 0);
+
+    return {
+      ...run,
+      ClassesCompleted: classes.size,
+      ClassesEnqueued: classes.size,
+      MethodsCompleted: tests.length,
+      MethodsEnqueued: tests.length,
+      MethodsFailed: failed,
+      TestTime: testTime,
+    };
   }
 
   private getTestClassPayload(): null | AsyncTestArrayConfiguration {
