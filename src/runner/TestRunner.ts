@@ -118,6 +118,18 @@ export class AsyncTestRunner implements TestRunner {
   }
 
   public async run(token?: CancellationToken): Promise<TestRunnerResult> {
+    return this.runInternal(token);
+  }
+
+  /**
+   * Runs (or re-runs) the tests. On a restart following a hang, `restartItems`
+   * carries the subset of tests still to run so we don't re-run ones that have
+   * already completed.
+   */
+  private async runInternal(
+    token?: CancellationToken,
+    restartItems?: TestItem[]
+  ): Promise<TestRunnerResult> {
     if (this.hasHitMaxNumberOfTestRunRetries()) {
       throw new TestError(
         `Max number of test run retries reached, max allowed retries: ${getMaxTestRunRetries(
@@ -127,7 +139,9 @@ export class AsyncTestRunner implements TestRunner {
       );
     }
 
-    const payload = this.testClassPayload() || (await this.testAllPayload());
+    const payload = restartItems
+      ? this.getSpecifiedTestsPayload(restartItems)
+      : this.getTestClassPayload() || (await this.getTestAllPayload());
 
     const testRunIdResult = (await retry(
       () => this._testService.runTestAsynchronous(payload, false, true),
@@ -156,7 +170,7 @@ export class AsyncTestRunner implements TestRunner {
         this._logger.logNoProgress(testRunIdResult.testRunId);
         this._stats = this._stats.reset();
         await this.abortTestRun(result.run.AsyncApexJobId);
-        return await this.run(token);
+        return await this.runInternal(token);
       }
     } catch (err) {
       // error may already be defined from wait()
@@ -174,20 +188,23 @@ export class AsyncTestRunner implements TestRunner {
     return this._stats.getNumberOfTimesReset() > maxNumberOfResets;
   }
 
-  private testClassPayload(): null | AsyncTestArrayConfiguration {
-    if (this._testItems.length > 0) {
-      const config: AsyncTestArrayConfiguration = {
-        tests: this._testItems,
-        testLevel: TestLevel.RunSpecifiedTests,
-        skipCodeCoverage: this.skipCollectCoverage(),
-      };
-      return config;
-    } else {
-      return null;
-    }
+  private getTestClassPayload(): null | AsyncTestArrayConfiguration {
+    return this._testItems.length > 0
+      ? this.getSpecifiedTestsPayload(this._testItems)
+      : null;
   }
 
-  private async testAllPayload(): Promise<
+  private getSpecifiedTestsPayload(
+    testItems: TestItem[]
+  ): AsyncTestArrayConfiguration {
+    return {
+      tests: testItems,
+      testLevel: TestLevel.RunSpecifiedTests,
+      skipCodeCoverage: this.skipCollectCoverage(),
+    };
+  }
+
+  private async getTestAllPayload(): Promise<
     AsyncTestConfiguration | AsyncTestArrayConfiguration
   > {
     const payload = await retry(
