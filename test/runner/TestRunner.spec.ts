@@ -496,6 +496,23 @@ describe('TestRunner', () => {
     expect(logger.entries[8]).to.match(
       logRegex('\\* Method2 - Exception: Test Failed')
     );
+    // A per-reset diagnostic snapshot is written
+    expect(logger.files.length).to.equal(1);
+    expect(logger.files[0][0]).to.equal(
+      `${process.cwd()}/reset-1-${testRunId}.json`
+    );
+    const snapshot = JSON.parse(logger.files[0][1]) as {
+      resetNumber: number;
+      completedClasses: number;
+      pendingClasses: number;
+      reusedTests: number;
+      queueItems: unknown[];
+    };
+    expect(snapshot.resetNumber).to.equal(1);
+    expect(snapshot.completedClasses).to.equal(1);
+    expect(snapshot.pendingClasses).to.equal(1);
+    expect(snapshot.reusedTests).to.equal(1);
+    expect(snapshot.queueItems).to.have.length(2);
   });
 
   it('should fall back to a full re-run when no incomplete classes can be identified', async () => {

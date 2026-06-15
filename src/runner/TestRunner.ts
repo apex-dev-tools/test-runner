@@ -30,7 +30,7 @@ import { ApexTestQueueItem, QueueItemStatus } from '../model/ApexTestQueueItem';
 import { TestError, TestErrorKind } from './TestError';
 import { Pollable, poll, retry } from './Poll';
 import { ApexTestResult, ApexTestResultFields } from '../model/ApexTestResult';
-import { getTestName } from '../results/TestResultUtils';
+import { getTestName, groupByOutcome } from '../results/TestResultUtils';
 
 /**
  * Parallel unit test runner that includes the ability to cancel & restart a run should it not make sufficient progress
@@ -243,6 +243,16 @@ export class AsyncTestRunner implements TestRunner {
         .filter(test => completedClassIds.has(test.ApexClass.Id))
         .forEach(test => this._completedResults.set(getTestName(test), test));
 
+      // Keep a per-reset diagnostic snapshot of what the org looked like when
+      // the run stalled, so resets can be investigated after the fact.
+      this.writeResetSnapshot(
+        testRunId,
+        queueItems,
+        completedClassIds,
+        pendingClassIds,
+        result
+      );
+
       if (pendingClassIds.length === 0) {
         // Nothing identified to re-run - fall back to a full re-run.
         return undefined;
@@ -279,6 +289,35 @@ export class AsyncTestRunner implements TestRunner {
 
   private uniqueClassIds(queueItems: ApexTestQueueItem[]): string[] {
     return Array.from(new Set(queueItems.map(item => item.ApexClassId)));
+  }
+
+  private writeResetSnapshot(
+    testRunId: string,
+    queueItems: ApexTestQueueItem[],
+    completedClassIds: Set<string>,
+    pendingClassIds: string[],
+    result: TestRunnerResult
+  ): void {
+    const resetNumber = this._stats.getNumberOfTimesReset() + 1;
+    const outcomes = groupByOutcome(result.tests);
+    const snapshot = {
+      testRunId,
+      resetNumber,
+      completedClasses: completedClassIds.size,
+      pendingClasses: pendingClassIds.length,
+      reusedTests: this._completedResults.size,
+      results: {
+        total: result.tests.length,
+        passed: outcomes.Pass.length,
+        failed: outcomes.Fail.length + outcomes.CompileFail.length,
+        skipped: outcomes.Skip.length,
+      },
+      queueItems,
+    };
+    this._logger.logOutputFile(
+      `reset-${resetNumber}-${testRunId}.json`,
+      JSON.stringify(snapshot, undefined, 2)
+    );
   }
 
   /**
