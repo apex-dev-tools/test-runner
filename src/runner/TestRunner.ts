@@ -471,8 +471,19 @@ export class AsyncTestRunner implements TestRunner {
     results: ApexTestResult[],
     time: string
   ): Promise<void> {
-    this._logger.logStatus(testRunResult, results, time);
     this._stats = this._stats.update(results.length);
+
+    // No-progress count is only meaningful while the run is still in flight.
+    const noProgressPolls = this.hasTestRunComplete(testRunResult.Status)
+      ? 0
+      : this._stats.getNoProgressPollCount();
+    this._logger.logStatus(
+      testRunResult,
+      results,
+      time,
+      noProgressPolls,
+      this._stats.getNoProgressPollLimit()
+    );
 
     if (this._logger.verbose) {
       await this.reportQueueItems(testRunResult.AsyncApexJobId);

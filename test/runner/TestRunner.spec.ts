@@ -470,7 +470,7 @@ describe('TestRunner', () => {
     );
     expect(logger.entries[2]).to.match(
       logRegex(
-        `${timeFormat} \\[Processing\\] Passed: 1 \\| Failed: 0 \\| 1/2 Complete \\(50%\\)`
+        `${timeFormat} \\[Processing\\] Passed: 1 \\| Failed: 0 \\| 1/2 Complete \\(50%\\) \\| No progress 1/1`
       )
     );
     expect(logger.entries[3]).to.match(

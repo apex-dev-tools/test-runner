@@ -44,7 +44,9 @@ export interface Logger {
   logStatus(
     status: ApexTestRunResult,
     tests: ApexTestResult[],
-    elapsedTime: string
+    elapsedTime: string,
+    noProgressPolls: number,
+    noProgressLimit: number
   ): void;
   logTestFailures(newResults: ApexTestResult[]): void;
 

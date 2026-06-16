@@ -30,13 +30,40 @@ describe('BaseLogger', () => {
     logger.logStatus(
       mockTestRunResult as ApexTestRunResult,
       mockTestResults as ApexTestResult[],
-      ''
+      '',
+      0,
+      5
     );
 
     expect(logger.entries.length).to.equal(1);
     expect(logger.entries[0]).to.match(
       logRegex(
         '\\[Processing\\] Passed: 2 \\| Failed: 1 \\| 3\\/6 Complete \\(50%\\)'
+      )
+    );
+  });
+
+  it('should append a no-progress count to the status line when stalled', () => {
+    const mockTestRunResult: Partial<ApexTestRunResult> = {
+      Status: 'Processing',
+      MethodsEnqueued: 6,
+    };
+    const mockTestResults: Partial<ApexTestResult>[] = [{ Outcome: 'Pass' }];
+
+    const logger = new CapturingLogger();
+    logger.logStatus(
+      mockTestRunResult as ApexTestRunResult,
+      mockTestResults as ApexTestResult[],
+      '',
+      3,
+      5
+    );
+
+    expect(logger.entries.length).to.equal(1);
+    expect(logger.entries[0]).to.match(
+      logRegex(
+        '\\[Processing\\] Passed: 1 \\| Failed: 0 \\| 1\\/6 Complete \\(16%\\)' +
+          ' \\| No progress 3/5'
       )
     );
   });

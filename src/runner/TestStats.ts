@@ -66,4 +66,12 @@ export default class TestStats {
   public getNumberOfTimesReset(): number {
     return this._numberOfTimesReset;
   }
+
+  public getNoProgressPollCount(): number {
+    return this._numberOfTimesUpdatedWithoutChange;
+  }
+
+  public getNoProgressPollLimit(): number {
+    return this._updateLimitToAssumeTestHanging;
+  }
 }
