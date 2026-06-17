@@ -36,6 +36,7 @@ export interface Logger {
   logRunStarted(testRunId: string): void;
   logNoProgress(testRunId: string): void;
   logRunStuck(testRunId: string, status: string): void;
+  logResetCount(resetNumber: number, maxResets: number): void;
   logRunReset(
     reusedTests: number,
     completedClasses: number,

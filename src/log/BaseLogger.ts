@@ -147,6 +147,10 @@ export abstract class BaseLogger implements Logger {
     );
   }
 
+  logResetCount(resetNumber: number, maxResets: number): void {
+    this.logMessage(`Reset ${resetNumber}/${maxResets} before abandoning run`);
+  }
+
   logRunReset(
     reusedTests: number,
     completedClasses: number,

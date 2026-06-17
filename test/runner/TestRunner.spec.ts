@@ -265,6 +265,49 @@ describe('TestRunner', () => {
     expect(error.kind).to.equal(TestErrorKind.Timeout);
   });
 
+  it('should abort and abandon without re-running when retries are exhausted', async () => {
+    // One retry allowed. The run stalls, exhausting it - so we abort and
+    // abandon without pretending to re-run (no reset/reusing logs, no extra
+    // queue query).
+    qhStub.query
+      .withArgs('ApexTestResult', match.any, match.any)
+      .resolves([mockTestResult[0]]);
+    setupMultipleQueryApexTestResults(qhStub, mockTestResult, [
+      { Status: 'Processing' },
+      { Status: 'Processing' },
+    ]);
+
+    const logger = new CapturingLogger();
+    const mockAborter = new MockAborter();
+    const runner = AsyncTestRunner.forClasses(
+      logger,
+      mockConnection,
+      '',
+      ['TestSample'],
+      {
+        maxTestRunRetries: 1,
+        pollLimitToAssumeHangingTests: 1,
+        aborter: mockAborter,
+      }
+    );
+
+    // Exhausting retries surfaces as a result error (caught for partial
+    // reporting), not a throw.
+    const testRunResult = await runner.run();
+    expect(testRunResult.error).to.be.instanceof(TestError);
+    expect(testRunResult.error?.message).to.equal(
+      'Max number of test run retries reached, max allowed retries: 1'
+    );
+    // The stalled run was aborted, and not re-run
+    expect(mockAborter.calls).to.equal(1);
+    expect(testServiceAsyncStub.calledOnce).to.be.true;
+    // No queue query, no reset/reusing logs - we did not pretend to re-run
+    expect(qhStub.query.calledWith('ApexTestQueueItem', match.any, match.any))
+      .to.be.false;
+    expect(logger.entries.some(e => /Reusing/.test(e))).to.be.false;
+    expect(logger.entries.some(e => /Reset \d/.test(e))).to.be.false;
+  });
+
   it('should throw on timeout if no results found', async () => {
     qhStub.query.resolves([]);
 
@@ -459,7 +502,7 @@ describe('TestRunner', () => {
     expect(testRunResult.run.MethodsFailed).to.equal(1);
     expect(testRunResult.run.ClassesCompleted).to.equal(2);
     expect(testRunResult.run.TestTime).to.equal(30); // 10 + 20
-    expect(logger.entries.length).to.equal(9);
+    expect(logger.entries.length).to.equal(10);
     expect(logger.entries[0]).to.match(
       logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
     );
@@ -479,27 +522,30 @@ describe('TestRunner', () => {
       )
     );
     expect(logger.entries[4]).to.match(
+      logRegex('Reset 1/1 before abandoning run')
+    );
+    expect(logger.entries[5]).to.match(
       logRegex(
         'Reusing 1 tests from 1 completed classes; ' +
           'rerunning 1 remaining tests across 1 classes'
       )
     );
-    expect(logger.entries[5]).to.match(
+    expect(logger.entries[6]).to.match(
       logRegex(`Test run started with AsyncApexJob Id: ${testRunId}`)
     );
-    expect(logger.entries[6]).to.match(
+    expect(logger.entries[7]).to.match(
       logRegex(
         `${timeFormat} \\[Completed\\] Passed: 0 \\| Failed: 1 \\| 1/2 Complete \\(50%\\)`
       )
     );
-    expect(logger.entries[7]).to.match(logRegex("Failing tests in 'Class3':"));
-    expect(logger.entries[8]).to.match(
+    expect(logger.entries[8]).to.match(logRegex("Failing tests in 'Class3':"));
+    expect(logger.entries[9]).to.match(
       logRegex('\\* Method2 - Exception: Test Failed')
     );
     // A per-reset diagnostic snapshot is written
     expect(logger.files.length).to.equal(1);
     expect(logger.files[0][0]).to.equal(
-      `${process.cwd()}/reset-1-${testRunId}.json`
+      `${process.cwd()}/test-result-reset-1-${testRunId}.json`
     );
     const snapshot = JSON.parse(logger.files[0][1]) as {
       resetNumber: number;

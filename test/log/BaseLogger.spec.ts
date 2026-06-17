@@ -136,6 +136,16 @@ describe('BaseLogger', () => {
     );
   });
 
+  it('should log the reset count', () => {
+    const logger = new CapturingLogger();
+    logger.logResetCount(1, 2);
+
+    expect(logger.entries.length).to.equal(1);
+    expect(logger.entries[0]).to.match(
+      logRegex('Reset 1/2 before abandoning run')
+    );
+  });
+
   it('should log when a run is abandoned while stuck', () => {
     const logger = new CapturingLogger();
     logger.logRunStuck('707xx', 'Queued');

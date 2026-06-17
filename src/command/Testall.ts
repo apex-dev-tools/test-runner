@@ -20,7 +20,7 @@ import {
   TestRerun,
   TestRunSummary,
 } from '../results/OutputGenerator';
-import { TestRunnerOptions } from '../runner/TestOptions';
+import { getOutputFileBase, TestRunnerOptions } from '../runner/TestOptions';
 import { TestRunner } from '../runner/TestRunner';
 import { formatTestName, getTestName } from '../results/TestResultUtils';
 import { TestResultStore } from '../results/TestResultStore';
@@ -43,8 +43,6 @@ import { retry } from '../runner/Poll';
 
 export interface TestallOptions extends TestRunnerOptions, QueryOptions {
   maxErrorsForReRun?: number; // Don't re-run if > failed tests (excluding pattern matched tests), default 10
-  outputDirBase?: string; // Base for junit and other output files, default 'test-result*'
-  outputFileName?: string; //File name base
   disableCoverageReport?: boolean; // if enabled disables coverage collection
   rerunOption?: RerunOption; // see RerunOption - default 'pattern'
 }
@@ -56,25 +54,12 @@ export enum RerunOption {
 }
 
 const DEFAULT_MAX_ERRORS_FOR_RERUN = 10;
-const DEFAULT_OUTPUT_FILE_BASE = 'test-result';
 const DEFAULT_RERUN_OPTION = RerunOption.Pattern;
 
 export function getMaxErrorsForReRun(options: TestallOptions): number {
   if (options.maxErrorsForReRun !== undefined && options.maxErrorsForReRun >= 0)
     return options.maxErrorsForReRun;
   else return DEFAULT_MAX_ERRORS_FOR_RERUN;
-}
-
-export function getOutputFileBase(options: TestallOptions): {
-  fileName: string;
-  outputDir: string;
-} {
-  if (options.outputDirBase && options.outputFileName)
-    return {
-      outputDir: options.outputDirBase,
-      fileName: options.outputFileName,
-    };
-  else return { outputDir: '', fileName: DEFAULT_OUTPUT_FILE_BASE };
 }
 
 export function getReRunOption(options: TestallOptions): RerunOption {

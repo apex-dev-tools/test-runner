@@ -18,12 +18,14 @@ import {
 } from '../model/ApexTestRunResult';
 import {
   getMaxTestRunRetries,
+  getOutputFileBase,
   getStatusPollInterval,
   getTestRunAborter,
   getTestRunTimeout,
   getTestRunTimeoutMessage,
   TestRunnerOptions,
 } from './TestOptions';
+import path from 'path';
 import TestStats from './TestStats';
 import { QueryHelper } from '../query/QueryHelper';
 import { ApexTestQueueItem, QueueItemStatus } from '../model/ApexTestQueueItem';
@@ -188,10 +190,22 @@ export class AsyncTestRunner implements TestRunner {
 
       if (result.run.Status == 'Processing' && this._stats.isTestRunHanging()) {
         this._logger.logNoProgress(testRunIdResult.testRunId);
-        const restartItems = await this.prepareRestart(
-          testRunIdResult.testRunId,
-          result
-        );
+
+        // Only work out what to re-run if we have a reset left. Once retries are
+        // exhausted the recursive run will abandon (throw), so skip the
+        // prepareRestart work to avoid a misleading "rerunning" log, a wasted
+        // queue query and snapshot.
+        const resetNumber = this._stats.getNumberOfTimesReset() + 1;
+        const maxResets = getMaxTestRunRetries(this._options) - 1;
+        let restartItems: TestItem[] | undefined;
+        if (resetNumber <= maxResets) {
+          this._logger.logResetCount(resetNumber, maxResets);
+          restartItems = await this.prepareRestart(
+            testRunIdResult.testRunId,
+            result
+          );
+        }
+
         this._stats = this._stats.reset();
         await this.abortTestRun(result.run.AsyncApexJobId);
         return await this.runInternal(token, restartItems);
@@ -346,8 +360,13 @@ export class AsyncTestRunner implements TestRunner {
         Status: item.Status,
       })),
     };
+    // Write alongside the other output files, using the same dir/name prefix.
+    const { outputDir, fileName } = getOutputFileBase(this._options);
     this._logger.logOutputFile(
-      `reset-${resetNumber}-${testRunId}.json`,
+      path.join(
+        outputDir,
+        `${fileName}-reset-${resetNumber}-${testRunId}.json`
+      ),
       JSON.stringify(snapshot, undefined, 2)
     );
   }
