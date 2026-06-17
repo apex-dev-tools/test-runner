@@ -196,6 +196,19 @@ export class AsyncTestRunner implements TestRunner {
         await this.abortTestRun(result.run.AsyncApexJobId);
         return await this.runInternal(token, restartItems);
       }
+
+      if (
+        !this.hasTestRunComplete(result.run.Status) &&
+        this._stats.isTestRunHanging()
+      ) {
+        // Hung before it started processing (e.g. stuck in Queued). Re-running
+        // would likely just stall again, and leaving it in-flight would block
+        // the caller from re-running the missing tests (ALREADY_IN_PROCESS), so
+        // abort it and give up on this attempt.
+        this._logger.logRunStuck(testRunIdResult.testRunId, result.run.Status);
+        await this.abortTestRun(result.run.AsyncApexJobId);
+        return result;
+      }
     } catch (err) {
       // error may already be defined from wait()
       if (!result.error) {
@@ -239,9 +252,12 @@ export class AsyncTestRunner implements TestRunner {
 
       // Keep results from classes that finished; drop the rest so the restart
       // re-runs them cleanly.
-      result.tests
-        .filter(test => completedClassIds.has(test.ApexClass.Id))
-        .forEach(test => this._completedResults.set(getTestName(test), test));
+      const completedResults = result.tests.filter(test =>
+        completedClassIds.has(test.ApexClass.Id)
+      );
+      completedResults.forEach(test =>
+        this._completedResults.set(getTestName(test), test)
+      );
 
       // Keep a per-reset diagnostic snapshot of what the org looked like when
       // the run stalled, so resets can be investigated after the fact.
@@ -258,8 +274,10 @@ export class AsyncTestRunner implements TestRunner {
         return undefined;
       }
 
+      // Tests still to run = those enqueued this attempt that weren't in a
+      // completed class (i.e. the pending classes' methods).
       const remainingTests =
-        result.run.MethodsEnqueued - result.run.MethodsCompleted;
+        result.run.MethodsEnqueued - completedResults.length;
       this._logger.logRunReset(
         this._completedResults.size,
         completedClassIds.size,
@@ -300,6 +318,14 @@ export class AsyncTestRunner implements TestRunner {
   ): void {
     const resetNumber = this._stats.getNumberOfTimesReset() + 1;
     const outcomes = groupByOutcome(result.tests);
+
+    // Resolve class names from the results we already have (no extra org call).
+    // Classes that produced no results won't have a name available.
+    const classNames = new Map<string, string>();
+    result.tests.forEach(test =>
+      classNames.set(test.ApexClass.Id, test.ApexClass.Name)
+    );
+
     const snapshot = {
       testRunId,
       resetNumber,
@@ -312,7 +338,13 @@ export class AsyncTestRunner implements TestRunner {
         failed: outcomes.Fail.length + outcomes.CompileFail.length,
         skipped: outcomes.Skip.length,
       },
-      queueItems,
+      // Slimmed down (drop the jsforce attributes) and annotated with the
+      // class name where we know it.
+      queueItems: queueItems.map(item => ({
+        ApexClassId: item.ApexClassId,
+        className: classNames.get(item.ApexClassId),
+        Status: item.Status,
+      })),
     };
     this._logger.logOutputFile(
       `reset-${resetNumber}-${testRunId}.json`,

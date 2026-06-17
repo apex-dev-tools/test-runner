@@ -141,6 +141,12 @@ export abstract class BaseLogger implements Logger {
     );
   }
 
+  logRunStuck(testRunId: string, status: string): void {
+    this.logMessage(
+      `Test run '${testRunId}' stuck in ${status} with no progress, abandoning this attempt`
+    );
+  }
+
   logRunReset(
     reusedTests: number,
     completedClasses: number,

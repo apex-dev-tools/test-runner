@@ -35,6 +35,7 @@ export interface Logger {
   // Test runner
   logRunStarted(testRunId: string): void;
   logNoProgress(testRunId: string): void;
+  logRunStuck(testRunId: string, status: string): void;
   logRunReset(
     reusedTests: number,
     completedClasses: number,

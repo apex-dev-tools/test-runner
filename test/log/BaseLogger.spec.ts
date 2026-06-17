@@ -136,6 +136,19 @@ describe('BaseLogger', () => {
     );
   });
 
+  it('should log when a run is abandoned while stuck', () => {
+    const logger = new CapturingLogger();
+    logger.logRunStuck('707xx', 'Queued');
+
+    expect(logger.entries.length).to.equal(1);
+    expect(logger.entries[0]).to.match(
+      logRegex(
+        "Test run '707xx' stuck in Queued with no progress, " +
+          'abandoning this attempt'
+      )
+    );
+  });
+
   it('should generate warning messages', () => {
     const logger = new CapturingLogger('', true);
     logger.logWarning('A message');

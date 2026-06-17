@@ -481,7 +481,7 @@ describe('TestRunner', () => {
     expect(logger.entries[4]).to.match(
       logRegex(
         'Reusing 1 tests from 1 completed classes; ' +
-          'rerunning 2 remaining tests across 1 classes'
+          'rerunning 1 remaining tests across 1 classes'
       )
     );
     expect(logger.entries[5]).to.match(
@@ -629,6 +629,47 @@ describe('TestRunner', () => {
     ).to.be.true;
     // No snapshot written when we could not inspect the queue
     expect(logger.files.length).to.equal(0);
+  });
+
+  it('should abort and give up when a run is stuck before processing', async () => {
+    // Run never leaves 'Queued' and makes no progress. It should be aborted and
+    // abandoned (not reset/retried) so its tests aren't left enqueued for the
+    // caller's missing-test re-run to collide with.
+    qhStub.query.withArgs('ApexTestResult', match.any, match.any).resolves([]);
+    setupMultipleQueryApexTestResults(qhStub, mockTestResult, [
+      { Status: 'Queued' },
+      { Status: 'Queued' },
+    ]);
+
+    const logger = new CapturingLogger();
+    const mockAborter = new MockAborter();
+    const runner = AsyncTestRunner.forClasses(
+      logger,
+      mockConnection,
+      '',
+      ['TestSample'],
+      {
+        maxTestRunRetries: 2,
+        pollLimitToAssumeHangingTests: 1,
+        aborter: mockAborter,
+      }
+    );
+
+    const testRunResult = await runner.run();
+
+    // Aborted once, and not restarted
+    expect(mockAborter.calls).to.equal(1);
+    expect(testServiceAsyncStub.calledOnce).to.be.true;
+    expect(testRunResult.run.Status).to.equal('Queued');
+    expect(testRunResult.numberOfResets).to.equal(0);
+    expect(
+      logger.entries.some(e =>
+        logRegex(
+          `Test run '${testRunId}' stuck in Queued with no progress, ` +
+            'abandoning this attempt'
+        ).test(e)
+      )
+    ).to.be.true;
   });
 
   it('should not cancel if progress detected', async () => {
