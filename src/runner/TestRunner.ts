@@ -183,6 +183,11 @@ export class AsyncTestRunner implements TestRunner {
 
     // Ensure result for partial reporting
     try {
+      if (result.error?.kind === TestErrorKind.Timeout) {
+        await this.abortTestRun(result.run.AsyncApexJobId);
+        return result;
+      }
+
       if (token?.isCancellationRequested) {
         await this.abortTestRun(result.run.AsyncApexJobId);
         return result;

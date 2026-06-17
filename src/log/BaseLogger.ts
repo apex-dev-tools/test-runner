@@ -213,10 +213,11 @@ export abstract class BaseLogger implements Logger {
         this.logErrorMessage(`    * ${t.MethodName}${msg}${suffix}`);
       });
 
-      hasMore &&
+      if (hasMore) {
         this.logErrorMessage(
           `    (and ${results.length - 2} more...)${os.EOL}`
         );
+      }
     });
   }
 

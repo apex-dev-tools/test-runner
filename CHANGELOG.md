@@ -8,6 +8,12 @@
 * Abort and abandon a run that stalls before it starts processing (e.g. while stuck queued), rather than leaving it in-flight to be re-run.
 * Test run status logging now shows a `No progress <n>/<limit>` suffix while a run is stalling, and resets log the reuse summary and a `Reset <n>/<max>` count.
 
+## 3.3.1-beta.0 - 2026-06-14
+
+* Attempt to abort Apex test runs after runner timeout while preserving the original timeout error if aborting fails.
+* Refresh TypeScript, lint, test, package manager, and GitHub Actions tooling for beta release readiness.
+* Adopt `@apexdevtools/sfdx-auth-helper` 2.1.1.
+
 ## 3.3.0 - 2026-02-25
 
 * Add `numberOfResets` to `TestRunnerResult`, tracking how many times a test run was cancelled and restarted due to lack of progress.

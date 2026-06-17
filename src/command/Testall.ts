@@ -286,7 +286,9 @@ export class Testall {
     };
 
     try {
-      const timestamp = SfDate.toDateTimeLiteral(new Date()).toString();
+      const timestamp = (
+        SfDate.toDateTimeLiteral(new Date()) as unknown as { toJSON(): string }
+      ).toJSON();
       const result = await retry(
         () =>
           testService.runTestSynchronous({
