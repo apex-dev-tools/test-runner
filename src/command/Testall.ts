@@ -200,7 +200,6 @@ export class Testall {
         store
       );
 
-      store.numberOfResets = result.numberOfResets;
     }
   }
 

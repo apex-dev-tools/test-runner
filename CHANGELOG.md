@@ -1,12 +1,13 @@
 # test-runner - Changelog
 
-## 3.4.0 - 2026-06-17
+## 3.4.0 - 2026-06-23
 
 * Only re-run incomplete tests after a test run reset.
   * When a run is cancelled and restarted due to lack of progress, results from classes that already completed are kept and only the unfinished classes are re-run, instead of re-running everything. Genuine failures are still re-run sequentially at the end.
 * Write a per-reset diagnostic file (`<name>-reset-<n>-<runId>.json`) alongside the other output, recording the queue item statuses and a results summary at the point of the reset.
 * Abort and abandon a run that stalls before it starts processing (e.g. while stuck queued), rather than leaving it in-flight to be re-run.
 * Test run status logging now shows a `No progress <n>/<limit>` suffix while a run is stalling, and resets log the reuse summary and a `Reset <n>/<max>` count.
+* `numberOfResets` in `TestRunSummary` now reports the total resets across all runs in a `Testall` invocation (including missing-test reruns), not just the outer run's count.
 
 ## 3.3.1-beta.0 - 2026-06-14
 
