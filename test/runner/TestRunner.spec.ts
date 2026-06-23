@@ -598,6 +598,69 @@ describe('TestRunner', () => {
     expect(snapshot.queueItems).to.have.length(2);
   });
 
+  it('should narrow restart to originally-requested methods for method-specific runners', async () => {
+    // The runner was created with specific methods (e.g. a missing-test rerun).
+    // Class3 is still pending. The restart should only re-run the originally
+    // requested methods of Class3, not widen to the whole class.
+    qhStub.query
+      .withArgs('ApexTestResult', match.any, match.any)
+      .onCall(0)
+      .resolves([mockTestResult[0]]) // Class1 pass
+      .onCall(1)
+      .resolves([mockTestResult[0]]) // no progress → hang
+      .onCall(2)
+      .resolves([mockTestResult[1]]); // re-run produces Class3 result
+    const queueItems = [
+      { Id: 'q1', ApexClassId: 'Class1', Status: 'Completed' },
+      { Id: 'q3', ApexClassId: 'Class3', Status: 'Processing' },
+    ];
+    qhStub.query
+      .withArgs('ApexTestQueueItem', match.any, match.any)
+      .resolves(queueItems);
+    setupMultipleQueryApexTestResults(qhStub, mockTestResult, [
+      { Status: 'Processing' },
+      { Status: 'Processing' },
+      { Status: 'Completed' },
+    ]);
+    setupExecuteAnonymous(
+      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
+      {
+        column: -1,
+        line: -1,
+        compiled: 'true',
+        compileProblem: '',
+        exceptionMessage: '',
+        exceptionStackTrace: '',
+        success: 'true',
+      }
+    );
+
+    const logger = new CapturingLogger();
+    const mockAborter = new MockAborter();
+    // Method-specific runner — only Method2 of Class3 was requested
+    const runner = new AsyncTestRunner(logger, mockConnection, [
+      { className: 'Class1' },
+      { classId: 'Class3', testMethods: ['Method2'] },
+    ], {
+      maxTestRunRetries: 2,
+      pollLimitToAssumeHangingTests: 1,
+      aborter: mockAborter,
+    });
+
+    await runner.run();
+
+    // Restart uses original _testItems — method scope is preserved, not widened to whole class
+    expect(testServiceAsyncStub.calledTwice).to.be.true;
+    expect(testServiceAsyncStub.args[1][0]).to.deep.equal({
+      tests: [
+        { className: 'Class1' },
+        { classId: 'Class3', testMethods: ['Method2'] },
+      ],
+      testLevel: TestLevel.RunSpecifiedTests,
+      skipCodeCoverage: true,
+    });
+  });
+
   it('should fall back to a full re-run when no incomplete classes can be identified', async () => {
     // No queue items returned -> we cannot tell what is incomplete, so re-run
     // everything rather than risk dropping tests.

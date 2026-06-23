@@ -304,7 +304,7 @@ export class AsyncTestRunner implements TestRunner {
         pendingClassIds.length
       );
 
-      return pendingClassIds.map(classId => ({ classId }));
+      return this.buildRestartItems(pendingClassIds);
     } catch (err) {
       // Be defensive: a reset should never be worse than a full re-run.
       this._logger.logWarning(
@@ -326,6 +326,19 @@ export class AsyncTestRunner implements TestRunner {
 
   private uniqueClassIds(queueItems: ApexTestQueueItem[]): string[] {
     return Array.from(new Set(queueItems.map(item => item.ApexClassId)));
+  }
+
+  /**
+   * Build the restart TestItems for pending classes. For method-specific
+   * runners (e.g. a missing-test rerun), re-use the original items unchanged
+   * so a reset doesn't widen a method-filtered run to the whole class.
+   * For all-local / class-level runs, restart at class granularity.
+   */
+  private buildRestartItems(pendingClassIds: string[]): TestItem[] {
+    if (this._testItems.some(item => item.testMethods?.length)) {
+      return this._testItems;
+    }
+    return pendingClassIds.map(classId => ({ classId }));
   }
 
   private writeResetSnapshot(
