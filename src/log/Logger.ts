@@ -35,10 +35,20 @@ export interface Logger {
   // Test runner
   logRunStarted(testRunId: string): void;
   logNoProgress(testRunId: string): void;
+  logRunStuck(testRunId: string, status: string): void;
+  logResetCount(resetNumber: number, maxResets: number): void;
+  logRunReset(
+    reusedTests: number,
+    completedClasses: number,
+    remainingTests: number,
+    pendingClasses: number
+  ): void;
   logStatus(
     status: ApexTestRunResult,
     tests: ApexTestResult[],
-    elapsedTime: string
+    elapsedTime: string,
+    noProgressPolls: number,
+    noProgressLimit: number
   ): void;
   logTestFailures(newResults: ApexTestResult[]): void;
 

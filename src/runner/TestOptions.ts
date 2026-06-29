@@ -34,6 +34,7 @@ export function getCancelPollTimeout(options: CancelTestRunOptions): Duration {
   else return Duration.minutes(DEFAULT_POLL_TIMEOUT_MINS);
 }
 
+export const DEFAULT_OUTPUT_FILE_BASE = 'test-result';
 export const DEFAULT_STATUS_POLL_INTERVAL_MS = 30000;
 export const DEFAULT_TEST_RUN_TIMEOUT_MINS = 120;
 const DEFAULT_MAX_TEST_RUN_RETRIES = 3;
@@ -65,6 +66,20 @@ export interface TestRunnerOptions extends CancelTestRunOptions {
   pollLimitToAssumeHangingTests?: number; // Number polls without test progress before a hang is assumed, default 60
   callbacks?: TestRunnerCallbacks; // Callbacks for events in test runner
   codeCoverage?: boolean; // Collect code coverage data, defaults false
+  outputDirBase?: string; // Base directory for junit and other output files
+  outputFileName?: string; // File name base for output files, default 'test-result'
+}
+
+export function getOutputFileBase(options: TestRunnerOptions): {
+  fileName: string;
+  outputDir: string;
+} {
+  if (options.outputDirBase && options.outputFileName)
+    return {
+      outputDir: options.outputDirBase,
+      fileName: options.outputFileName,
+    };
+  else return { outputDir: '', fileName: DEFAULT_OUTPUT_FILE_BASE };
 }
 
 export function getTestRunAborter(options: TestRunnerOptions): TestRunAborter {

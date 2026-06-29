@@ -117,7 +117,7 @@ describe('TestAll', () => {
         [new MockOutputGenerator()],
         {}
       );
-    } catch (err) {
+    } catch {
       // Ignore
     }
 
@@ -152,7 +152,7 @@ describe('TestAll', () => {
         [new MockOutputGenerator()],
         {}
       );
-    } catch (err) {
+    } catch {
       // Ignore
     }
 
@@ -712,5 +712,54 @@ describe('TestAll', () => {
     expect(logger.entries[3]).to.match(
       logRegex('Generated reports for 2 tests')
     );
+  });
+
+  it('should accumulate numberOfResets across outer run and missing-test rerun', async () => {
+    // Outer run has 2 resets; the missing-test rerun has 1 reset.
+    // The summary should report 3, not just the outer count.
+    const logger = new CapturingLogger();
+    const mockRunResult: ApexTestRunResult = createMockRunResult();
+    const classId = 'classId1';
+    const className = 'TestClass';
+    const mockTestResults = [
+      createMockTestResult({
+        MethodName: 'method1',
+        ApexClass: { Id: classId, Name: className, NamespacePrefix: null },
+      }),
+      createMockTestResult({
+        MethodName: 'method2',
+        ApexClass: { Id: classId, Name: className, NamespacePrefix: null },
+      }),
+    ];
+    const runner = new MockTestRunner({
+      run: mockRunResult,
+      tests: [mockTestResults[0]],
+      numberOfResets: 2,
+    }).addNextResult({
+      run: mockRunResult,
+      tests: [mockTestResults[1]],
+      numberOfResets: 1,
+    });
+    const testMethods = new MockTestMethodCollector(
+      logger,
+      mockConnection,
+      '',
+      new Map<string, string>([[classId, className]]),
+      new Map<string, Set<string>>([
+        [className, new Set(['method1', 'method2'])],
+      ])
+    );
+
+    const result = await Testall.run(
+      logger,
+      mockConnection,
+      '',
+      testMethods,
+      runner,
+      [new MockOutputGenerator()],
+      {}
+    );
+
+    expect(result.numberOfResets).to.equal(3);
   });
 });

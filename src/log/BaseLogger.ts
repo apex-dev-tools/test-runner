@@ -141,10 +141,34 @@ export abstract class BaseLogger implements Logger {
     );
   }
 
+  logRunStuck(testRunId: string, status: string): void {
+    this.logMessage(
+      `Test run '${testRunId}' stuck in ${status} with no progress, abandoning this attempt`
+    );
+  }
+
+  logResetCount(resetNumber: number, maxResets: number): void {
+    this.logMessage(`Reset ${resetNumber}/${maxResets} before abandoning run`);
+  }
+
+  logRunReset(
+    reusedTests: number,
+    completedClasses: number,
+    remainingTests: number,
+    pendingClasses: number
+  ): void {
+    this.logMessage(
+      `Reusing ${reusedTests} tests from ${completedClasses} completed classes; ` +
+        `rerunning ${remainingTests} remaining tests across ${pendingClasses} classes`
+    );
+  }
+
   logStatus(
     testRunResult: ApexTestRunResult,
     tests: ApexTestResult[],
-    elapsedTime: string
+    elapsedTime: string,
+    noProgressPolls: number,
+    noProgressLimit: number
   ): void {
     const status = testRunResult.Status;
     const outcomes = groupByOutcome(tests);
@@ -154,8 +178,15 @@ export abstract class BaseLogger implements Logger {
     const total = testRunResult.MethodsEnqueued;
     const complete = total > 0 ? Math.floor((completed * 100) / total) : 0;
 
+    // While a run is in flight, surface how close it is to a reset so a stall
+    // is visible without an extra log line per poll.
+    const noProgress =
+      noProgressPolls > 0
+        ? ` | No progress ${noProgressPolls}/${noProgressLimit}`
+        : '';
+
     this.logMessage(
-      `${elapsedTime} [${status}] Passed: ${passed} | Failed: ${failed} | ${completed}/${total} Complete (${complete}%)`
+      `${elapsedTime} [${status}] Passed: ${passed} | Failed: ${failed} | ${completed}/${total} Complete (${complete}%)${noProgress}`
     );
   }
 

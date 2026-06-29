@@ -45,7 +45,7 @@ export class TestResultStore {
     });
 
     this.asyncError = res.error;
-    this.numberOfResets = res.numberOfResets;
+    this.numberOfResets += res.numberOfResets;
   }
 
   public saveSyncResult(reruns: TestRerun[]): void {
