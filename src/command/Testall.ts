@@ -353,7 +353,7 @@ export class Testall {
   }
 
   private async getCoverage(store: TestResultStore): Promise<void> {
-    if (store.runIds.length > 1 || store.reruns) {
+    if (store.runIds.length > 1 || store.reruns.length > 0) {
       this._logger.logWarning(
         'Test run has reruns, so coverage report may not be complete'
       );
