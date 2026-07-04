@@ -30,6 +30,8 @@ import {
   testRunId,
 } from '../Setup';
 import { Logger } from '../../src/log/Logger';
+import { ResultCollector } from '../../src/collector/ResultCollector';
+import { CoverageReport } from '../../src/model/ApexCodeCoverage';
 
 function mockDefaultCollector(logger: Logger, connection: Connection) {
   const { classId, className, methodName } = defaultTestInfo;
@@ -761,5 +763,81 @@ describe('TestAll', () => {
     );
 
     expect(result.numberOfResets).to.equal(3);
+  });
+
+  it('should not warn about incomplete coverage when there were no reruns', async () => {
+    // Regression for #85: store.reruns is an array, so the truthiness check
+    // `|| store.reruns` was always true and the warning fired on every run.
+    const logger = new CapturingLogger();
+    const mockRunResult: ApexTestRunResult = createMockRunResult();
+    const mockTestResults: ApexTestResult[] = [createMockTestResult()];
+    const runner = new MockTestRunner({
+      run: mockRunResult,
+      tests: mockTestResults,
+      numberOfResets: 0,
+    });
+    const testMethods = mockDefaultCollector(logger, mockConnection);
+    const coverage: CoverageReport = { table: 'coverage table', data: [] };
+    const coverageStub = sandbox
+      .stub(ResultCollector, 'getCoverageReport')
+      .resolves(coverage);
+
+    const result = await Testall.run(
+      logger,
+      mockConnection,
+      '',
+      testMethods,
+      runner,
+      [new MockOutputGenerator()],
+      { codeCoverage: true }
+    );
+
+    expect(coverageStub.calledOnce).to.be.true;
+    expect(result.reruns.length).to.equal(0);
+    expect(result.runIds.length).to.equal(1);
+    const warned = logger.entries.some(e =>
+      /coverage report may not be complete/.test(e)
+    );
+    expect(warned).to.be.false;
+  });
+
+  it('should warn about incomplete coverage when tests were rerun', async () => {
+    const logger = new CapturingLogger();
+    const mockRunResult: ApexTestRunResult = createMockRunResult({
+      Status: 'Failed',
+    });
+    const mockTestResults: ApexTestResult[] = [
+      createMockTestResult({
+        Outcome: 'Fail',
+        Message: 'UNABLE_TO_LOCK_ROW',
+      }),
+    ];
+    const runner = new MockTestRunner({
+      run: mockRunResult,
+      tests: mockTestResults,
+      numberOfResets: 0,
+    });
+    const testMethods = mockDefaultCollector(logger, mockConnection);
+    testingServiceSyncStub.resolves({
+      tests: [{ asyncApexJobId: 'retryId', outcome: 'Pass', message: null }],
+    });
+    const coverage: CoverageReport = { table: 'coverage table', data: [] };
+    sandbox.stub(ResultCollector, 'getCoverageReport').resolves(coverage);
+
+    const result = await Testall.run(
+      logger,
+      mockConnection,
+      '',
+      testMethods,
+      runner,
+      [new MockOutputGenerator()],
+      { codeCoverage: true }
+    );
+
+    expect(result.reruns.length).to.equal(1);
+    const warned = logger.entries.some(e =>
+      /coverage report may not be complete/.test(e)
+    );
+    expect(warned).to.be.true;
   });
 });

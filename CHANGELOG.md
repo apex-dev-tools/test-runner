@@ -8,6 +8,7 @@
 * Abort and abandon a run that stalls before it starts processing (e.g. while stuck queued), rather than leaving it in-flight to be re-run.
 * Test run status logging now shows a `No progress <n>/<limit>` suffix while a run is stalling, and resets log the reuse summary and a `Reset <n>/<max>` count.
 * `numberOfResets` in `TestRunSummary` now reports the total resets across all runs in a `Testall` invocation (including missing-test reruns), not just the outer run's count.
+* Only warn that the coverage report may be incomplete when tests were actually rerun or the run was split across multiple run ids, instead of on every run with coverage enabled (#85).
 
 ## 3.3.1-beta.0 - 2026-06-14
 
