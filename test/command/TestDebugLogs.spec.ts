@@ -3,7 +3,7 @@
  */
 
 import { Connection } from '@salesforce/core';
-import { TestContext } from '@salesforce/core/lib/testSetup';
+import { TestContext } from '@salesforce/core/testSetup';
 import {
   SinonSandbox,
   SinonStub,
@@ -89,7 +89,7 @@ describe('TestDebugLogs', () => {
         'username',
         'outputDir'
       );
-    } catch (err) {
+    } catch {
       // Ignore
     }
 
@@ -132,7 +132,7 @@ describe('TestDebugLogs', () => {
         'username',
         tmpDir
       );
-    } catch (err) {
+    } catch {
       // Ignore
     }
 
@@ -177,7 +177,7 @@ describe('TestDebugLogs', () => {
         'username',
         tmpDir
       );
-    } catch (err) {
+    } catch {
       // Ignore
     }
 
@@ -231,7 +231,7 @@ describe('TestDebugLogs', () => {
         'username',
         tmpDir
       );
-    } catch (err) {
+    } catch {
       // Ignore
     }
 

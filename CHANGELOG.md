@@ -1,5 +1,12 @@
 # test-runner - Changelog
 
+## Next
+
+* **BREAKING**: This is expected to be released as the next major version because it raises the Node.js runtime requirement to Node 22.13 or newer.
+* Adopt `@apexdevtools/sfdx-auth-helper` 3.0.0.
+* Update to `@salesforce/core@^8` and `@salesforce/apex-node@^8`.
+* Replace test-only `@salesforce/core/lib/testSetup` deep imports with the supported `@salesforce/core/testSetup` export.
+
 ## 3.4.0 - 2026-06-23
 
 * Only re-run incomplete tests after a test run reset.

@@ -8,7 +8,7 @@ import {
   SoapResponse,
 } from '@salesforce/apex-node/lib/src/execute/types';
 import { Connection } from '@salesforce/core';
-import { MockTestOrgData, TestContext } from '@salesforce/core/lib/testSetup';
+import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
 import { SinonSandbox, SinonStub, SinonStubbedInstance, match } from 'sinon';
 import { TestMethodCollector } from '../src/collector/TestMethodCollector';
 import { Logger } from '../src/log/Logger';

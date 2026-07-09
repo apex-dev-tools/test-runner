@@ -3,7 +3,7 @@
  */
 import { ExecuteService } from '@salesforce/apex-node';
 import { Connection } from '@salesforce/core';
-import { TestContext } from '@salesforce/core/lib/testSetup';
+import { TestContext } from '@salesforce/core/testSetup';
 import { expect } from 'chai';
 import { SinonSandbox, SinonStubbedInstance, createSandbox } from 'sinon';
 import { CapturingLogger } from '../../src/log/CapturingLogger';

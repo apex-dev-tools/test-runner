@@ -4,7 +4,7 @@
 
 import { TestResult, TestService } from '@salesforce/apex-node';
 import { Connection } from '@salesforce/core';
-import { TestContext } from '@salesforce/core/lib/testSetup';
+import { TestContext } from '@salesforce/core/testSetup';
 import { expect } from 'chai';
 import { SinonSandbox, SinonStub, createSandbox } from 'sinon';
 import { RerunOption, Testall } from '../../src/command/Testall';
