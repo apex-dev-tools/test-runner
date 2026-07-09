@@ -5,7 +5,7 @@
 import { ExecuteService, TestLevel, TestService } from '@salesforce/apex-node';
 import { ApexTestResult as ApexNodeTestResult } from '@salesforce/apex-node/lib/src/tests/types';
 import { Connection } from '@salesforce/core';
-import { TestContext } from '@salesforce/core/lib/testSetup';
+import { TestContext } from '@salesforce/core/testSetup';
 import { expect } from 'chai';
 import {
   SinonSandbox,

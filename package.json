@@ -39,12 +39,12 @@
   "homepage": "https://github.com/apex-dev-tools/test-runner#readme",
   "packageManager": "pnpm@10.23.0",
   "engines": {
-    "node": "^20.19.0 || ^22.13.0 || >=24"
+    "node": "^22.13.0 || >=24"
   },
   "dependencies": {
-    "@apexdevtools/sfdx-auth-helper": "^2.1.1",
-    "@salesforce/apex-node": "^1.6.2",
-    "@salesforce/core": "^4.3.11",
+    "@apexdevtools/sfdx-auth-helper": "^3.0.0",
+    "@salesforce/apex-node": "^8.4.34",
+    "@salesforce/core": "^8.32.2",
     "@salesforce/kit": "^3.2.6",
     "istanbul-lib-coverage": "^3.2.2",
     "istanbul-lib-report": "^3.0.1",
