@@ -112,4 +112,80 @@ describe('TestRunCancelAborter', () => {
       );
     }
   });
+
+  it('should wait for outstanding queue items to clear before returning', async () => {
+    setupExecuteAnonymous(
+      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
+      {
+        column: -1,
+        line: -1,
+        compiled: 'true',
+        compileProblem: '',
+        exceptionMessage: '',
+        exceptionStackTrace: '',
+        success: 'true',
+      }
+    );
+    // call 0: items to abort. call 1: still outstanding. call 2: cleared.
+    qhStub.query
+      .onCall(0)
+      .resolves([{ Id: 'q1' }])
+      .onCall(1)
+      .resolves([{ Id: 'q1' }])
+      .onCall(2)
+      .resolves([]);
+
+    const logger = new CapturingLogger();
+    const aborter = new TestRunCancelAborter();
+    await aborter.abortRun(logger, mockConnection, testRunId, {
+      cancelPollIntervalMs: 1,
+    });
+
+    expect(qhStub.query.callCount).to.equal(3);
+    expect(logger.entries.length).to.equal(3);
+    expect(logger.entries[0]).to.match(
+      logRegex(`Cancelling test run '${testRunId}'`)
+    );
+    expect(logger.entries[1]).to.match(
+      logRegex(`Waiting for test run '${testRunId}' to cancel... 1 tests queued`)
+    );
+    expect(logger.entries[2]).to.match(
+      logRegex(`Test run '${testRunId}' has been cancelled`)
+    );
+  });
+
+  it('should warn and return rather than throw if the queue never clears', async () => {
+    setupExecuteAnonymous(
+      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
+      {
+        column: -1,
+        line: -1,
+        compiled: 'true',
+        compileProblem: '',
+        exceptionMessage: '',
+        exceptionStackTrace: '',
+        success: 'true',
+      }
+    );
+    // Every query, including confirmation polls, still reports an outstanding item
+    qhStub.query.resolves([{ Id: 'q1' }]);
+
+    const logger = new CapturingLogger();
+    const aborter = new TestRunCancelAborter();
+    const ids = await aborter.abortRun(logger, mockConnection, testRunId, {
+      cancelPollIntervalMs: 1,
+      cancelPollTimoutMins: 0.001,
+    });
+
+    // Returns normally with the ids it originally tried to abort, rather than throwing
+    expect(ids).to.deep.equal(['q1']);
+    expect(
+      logger.entries.some(e =>
+        logRegex(`Warning: Could not confirm test run '${testRunId}' finished cancelling.*`).test(
+          e
+        )
+      )
+    ).to.be.true;
+    expect(logger.entries.some(e => /has been cancelled/.test(e))).to.be.true;
+  });
 });
