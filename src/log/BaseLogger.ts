@@ -147,6 +147,12 @@ export abstract class BaseLogger implements Logger {
     );
   }
 
+  logRunCompleteMissingResults(testRunId: string): void {
+    this.logMessage(
+      `Test run '${testRunId}' has no pending classes, deferring to missing test check`
+    );
+  }
+
   logResetCount(resetNumber: number, maxResets: number): void {
     this.logMessage(`Reset ${resetNumber}/${maxResets} before abandoning run`);
   }
