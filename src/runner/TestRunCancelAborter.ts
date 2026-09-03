@@ -14,10 +14,15 @@ import {
 import { QueryHelper } from '../query/QueryHelper';
 import { chunk } from '../query/Chunk';
 import { TestError } from './TestError';
-import { ApexTestQueueItem } from '../model/ApexTestQueueItem';
+import {
+  ApexTestQueueItem,
+  PENDING_QUEUE_STATUSES,
+} from '../model/ApexTestQueueItem';
 import { Pollable, poll, retry } from './Poll';
 
-const PENDING_STATUSES = "'Holding', 'Queued', 'Preparing', 'Processing'";
+const PENDING_STATUSES = PENDING_QUEUE_STATUSES.map(
+  status => `'${status}'`
+).join(', ');
 
 export class TestRunCancelAborter implements TestRunAborter {
   async abortRun(

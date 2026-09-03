@@ -29,7 +29,10 @@ import {
 import path from 'path';
 import TestStats from './TestStats';
 import { QueryHelper } from '../query/QueryHelper';
-import { ApexTestQueueItem, QueueItemStatus } from '../model/ApexTestQueueItem';
+import {
+  ApexTestQueueItem,
+  PENDING_QUEUE_STATUSES,
+} from '../model/ApexTestQueueItem';
 import { TestError, TestErrorKind } from './TestError';
 import { Pollable, poll, retry } from './Poll';
 import { ApexTestResult, ApexTestResultFields } from '../model/ApexTestResult';
@@ -50,20 +53,6 @@ export interface TestRunnerResult {
   error?: TestError;
   numberOfResets: number; // Track the number of times the test run has been reset due to hanging or cancellation
 }
-
-// Queue item statuses for tests that have not finished running. After a reset
-// these are the classes we re-run; classes that finished keep their results
-// (mirrors the statuses the aborter cancels). Note this is only the async
-// re-run - failed tests in finished classes are still re-run afterwards by
-// Testall.syncRun, which applies the configurable rerun filter and runs them
-// sequentially to avoid the row-lock contention that may have caused
-// them.
-const PENDING_QUEUE_STATUSES: QueueItemStatus[] = [
-  'Holding',
-  'Queued',
-  'Preparing',
-  'Processing',
-];
 
 // Outcome of prepareRestart, naming why a restart does or doesn't happen.
 type PrepareRestartResult =
@@ -274,7 +263,8 @@ export class AsyncTestRunner implements TestRunner {
   /**
    * After a hang, work out which classes still need running so the restart only
    * re-runs those. Results from classes that already finished are kept (in
-   * _completedResults) rather than thrown away and re-run. See
+   * _completedResults) rather than thrown away and re-run - any genuine
+   * failures among them are re-run later by Testall.syncRun. See
    * PrepareRestartResult for what each outcome means.
    */
   private async prepareRestart(
