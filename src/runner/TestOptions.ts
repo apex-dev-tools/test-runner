@@ -14,6 +14,7 @@ const DEFAULT_POLL_TIMEOUT_MINS = 10;
 export interface CancelTestRunOptions {
   cancelPollIntervalMs?: number; // ms between polling for cancelled test queue items, default 30 secs
   cancelPollTimoutMins?: number; // mins for timeout when waiting for cancelled test queue items, default 10 minutes
+  skipCancelConfirmation?: boolean; // return without waiting for the org to confirm the abort, default false
 }
 
 export function getCancelPollInterval(options: CancelTestRunOptions): Duration {

@@ -154,6 +154,36 @@ describe('TestRunCancelAborter', () => {
     );
   });
 
+  it('should not query for confirmation when skipCancelConfirmation is set', async () => {
+    setupExecuteAnonymous(
+      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
+      {
+        column: -1,
+        line: -1,
+        compiled: 'true',
+        compileProblem: '',
+        exceptionMessage: '',
+        exceptionStackTrace: '',
+        success: 'true',
+      }
+    );
+    // Would never clear, so without the flag this would poll until it timed out
+    qhStub.query.resolves([{ Id: 'q1' }]);
+
+    const logger = new CapturingLogger();
+    const aborter = new TestRunCancelAborter();
+    await aborter.abortRun(logger, mockConnection, testRunId, {
+      skipCancelConfirmation: true,
+    });
+
+    // Only the query for the items to abort - no confirmation polling
+    expect(qhStub.query.callCount).to.equal(1);
+    expect(logger.entries.length).to.equal(2);
+    expect(logger.entries[1]).to.match(
+      logRegex(`Test run '${testRunId}' has been cancelled`)
+    );
+  });
+
   it('should warn and return rather than throw if the queue never clears', async () => {
     setupExecuteAnonymous(
       sandbox.stub(ExecuteService.prototype, 'connectionRequest'),

@@ -424,11 +424,40 @@ describe('TestRunner', () => {
     const error = result.error as TestError;
 
     expect(mockAborter.calls).to.equal(1);
+    // Nothing is resubmitted after a timeout, so don't wait for confirmation
+    expect(mockAborter.optionsSeen[0].skipCancelConfirmation).to.be.true;
     expect(error).to.be.instanceof(TestError);
     expect(error.message).to.equal(
       `Test run '${testRunId}' has exceeded test runner max allowed run time of 0 minutes`
     );
     expect(error.kind).to.equal(TestErrorKind.Timeout);
+  });
+
+  it('should abort without waiting for confirmation when cancellation is requested', async () => {
+    setupMultipleQueryApexTestResults(qhStub, mockTestResult, [
+      { Status: 'Queued' },
+      { Status: 'Queued' },
+    ]);
+
+    const logger = new CapturingLogger();
+    const mockAborter = new MockAborter();
+    const runner = AsyncTestRunner.forClasses(
+      logger,
+      mockConnection,
+      '',
+      ['TestSample'],
+      {
+        maxTestRunRetries: 1,
+        aborter: mockAborter,
+      }
+    );
+
+    const result = await runner.run({ isCancellationRequested: true });
+
+    expect(mockAborter.calls).to.equal(1);
+    // The caller asked to stop - returning promptly matters more than confirming
+    expect(mockAborter.optionsSeen[0].skipCancelConfirmation).to.be.true;
+    expect(result.run.Status).to.equal('Queued');
   });
 
   it('should preserve timeout error if abort fails', async () => {
@@ -518,6 +547,8 @@ describe('TestRunner', () => {
     const testRunResult = await runner.run();
 
     expect(mockAborter.calls).to.equal(1);
+    // This path resubmits, so it must wait for the abort to be confirmed
+    expect(mockAborter.optionsSeen[0].skipCancelConfirmation).to.be.undefined;
     expect(testServiceAsyncStub.calledTwice).to.be.true;
     // The re-run only asks for the class that had not completed
     expect(testServiceAsyncStub.args[1][0]).to.deep.equal({

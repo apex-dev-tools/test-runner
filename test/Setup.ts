@@ -217,16 +217,18 @@ export function setupQueryApexClassesSOAP(
 
 export class MockAborter implements TestRunAborter {
   calls = 0;
+  optionsSeen: CancelTestRunOptions[] = [];
 
   async abortRun(
-    /* eslint-disable @typescript-eslint/no-unused-vars */
+     
     _logger: Logger,
     _connection: Connection,
     _testRunId: string,
-    _options: CancelTestRunOptions
-    /* eslint-enable @typescript-eslint/no-unused-vars */
+    options: CancelTestRunOptions
+     
   ): Promise<string[]> {
     this.calls++;
+    this.optionsSeen.push(options);
     return Promise.resolve(['ID1']);
   }
 }

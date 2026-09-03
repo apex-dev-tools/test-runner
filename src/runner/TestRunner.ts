@@ -17,6 +17,7 @@ import {
   ApexTestRunResultFields,
 } from '../model/ApexTestRunResult';
 import {
+  CancelTestRunOptions,
   getMaxTestRunRetries,
   getOutputFileBase,
   getStatusPollInterval,
@@ -189,13 +190,19 @@ export class AsyncTestRunner implements TestRunner {
 
     // Ensure result for partial reporting
     try {
+      // Neither of these paths resubmits anything, so don't hold the caller up
+      // waiting for the org to confirm the abort has taken effect.
       if (result.error?.kind === TestErrorKind.Timeout) {
-        await this.abortTestRun(result.run.AsyncApexJobId);
+        await this.abortTestRun(result.run.AsyncApexJobId, {
+          skipCancelConfirmation: true,
+        });
         return result;
       }
 
       if (token?.isCancellationRequested) {
-        await this.abortTestRun(result.run.AsyncApexJobId);
+        await this.abortTestRun(result.run.AsyncApexJobId, {
+          skipCancelConfirmation: true,
+        });
         return result;
       }
 
@@ -631,12 +638,15 @@ export class AsyncTestRunner implements TestRunner {
     };
   }
 
-  private async abortTestRun(testRunId: string): Promise<string[]> {
+  private async abortTestRun(
+    testRunId: string,
+    options: CancelTestRunOptions = {}
+  ): Promise<string[]> {
     return getTestRunAborter(this._options).abortRun(
       this._logger,
       this._connection,
       testRunId,
-      this._options
+      { ...this._options, ...options }
     );
   }
 }

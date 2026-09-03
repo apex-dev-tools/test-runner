@@ -68,7 +68,14 @@ export class TestRunCancelAborter implements TestRunAborter {
       }
     }
 
-    await this.waitForCancelConfirmation(logger, connection, testRunId, options);
+    if (!options.skipCancelConfirmation) {
+      await this.waitForCancelConfirmation(
+        logger,
+        connection,
+        testRunId,
+        options
+      );
+    }
 
     logger.logRunCancelled(testRunId);
 
@@ -89,10 +96,9 @@ export class TestRunCancelAborter implements TestRunAborter {
 
   // The abort DML above only requests cancellation; the org can take a moment
   // to actually stop processing the queue items. Poll for confirmation so a
-  // caller that resubmits a run for the same classes right after abortRun
-  // returns doesn't race the still-live original run (ALREADY_IN_PROCESS).
-  // Best-effort: on timeout or error, warn and return rather than throw -
-  // an unconfirmed abort should never block reporting whatever we have.
+  // caller that resubmits the same classes doesn't race the still-live run
+  // (ALREADY_IN_PROCESS) - callers that resubmit nothing can skip this.
+  // Best-effort: on timeout or error, warn and return rather than throw.
   private async waitForCancelConfirmation(
     logger: Logger,
     connection: Connection,
