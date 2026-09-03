@@ -224,21 +224,19 @@ export class AsyncTestRunner implements TestRunner {
           );
         }
 
+        this._stats = this._stats.reset();
+        await this.abortTestRun(result.run.AsyncApexJobId);
+
         if (restart.kind === 'allComplete') {
-          // All classes reported a terminal status, but the expected number of
-          // results never showed up - the org can close a class's queue item
-          // before all its results are persisted. There's nothing left to
-          // restart, so hand back the partial result and let Testall's
-          // missing-test check find and re-run just the absent ones.
-          this._stats = this._stats.reset();
-          await this.abortTestRun(result.run.AsyncApexJobId);
+          // Nothing pending, so there's nothing to restart - the org can close
+          // a class's queue item before its results are persisted. Hand back
+          // the partial result and let Testall's missing-test check re-run
+          // anything actually absent.
           result.numberOfResets = this._stats.getNumberOfTimesReset();
           this._logger.logRunCompleteMissingResults(testRunIdResult.testRunId);
           return result;
         }
 
-        this._stats = this._stats.reset();
-        await this.abortTestRun(result.run.AsyncApexJobId);
         return await this.runInternal(
           token,
           restart.kind === 'restart' ? restart.items : undefined
