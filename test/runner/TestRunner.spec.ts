@@ -2,7 +2,7 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import { ExecuteService, TestLevel, TestService } from '@salesforce/apex-node';
+import { TestLevel, TestService } from '@salesforce/apex-node';
 import { ApexTestResult as ApexNodeTestResult } from '@salesforce/apex-node/lib/src/tests/types';
 import { Connection } from '@salesforce/core';
 import { TestContext } from '@salesforce/core/testSetup';
@@ -424,11 +424,40 @@ describe('TestRunner', () => {
     const error = result.error as TestError;
 
     expect(mockAborter.calls).to.equal(1);
+    // Nothing is resubmitted after a timeout, so don't wait for confirmation
+    expect(mockAborter.optionsSeen[0].skipCancelConfirmation).to.be.true;
     expect(error).to.be.instanceof(TestError);
     expect(error.message).to.equal(
       `Test run '${testRunId}' has exceeded test runner max allowed run time of 0 minutes`
     );
     expect(error.kind).to.equal(TestErrorKind.Timeout);
+  });
+
+  it('should abort without waiting for confirmation when cancellation is requested', async () => {
+    setupMultipleQueryApexTestResults(qhStub, mockTestResult, [
+      { Status: 'Queued' },
+      { Status: 'Queued' },
+    ]);
+
+    const logger = new CapturingLogger();
+    const mockAborter = new MockAborter();
+    const runner = AsyncTestRunner.forClasses(
+      logger,
+      mockConnection,
+      '',
+      ['TestSample'],
+      {
+        maxTestRunRetries: 1,
+        aborter: mockAborter,
+      }
+    );
+
+    const result = await runner.run({ isCancellationRequested: true });
+
+    expect(mockAborter.calls).to.equal(1);
+    // The caller asked to stop - returning promptly matters more than confirming
+    expect(mockAborter.optionsSeen[0].skipCancelConfirmation).to.be.true;
+    expect(result.run.Status).to.equal('Queued');
   });
 
   it('should preserve timeout error if abort fails', async () => {
@@ -488,18 +517,7 @@ describe('TestRunner', () => {
       { Status: 'Processing' },
       { Status: 'Completed' },
     ]);
-    setupExecuteAnonymous(
-      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
-      {
-        column: -1,
-        line: -1,
-        compiled: 'true',
-        compileProblem: '',
-        exceptionMessage: '',
-        exceptionStackTrace: '',
-        success: 'true',
-      }
-    );
+    setupExecuteAnonymous(sandbox);
 
     const logger = new CapturingLogger();
     const mockAborter = new MockAborter();
@@ -518,6 +536,8 @@ describe('TestRunner', () => {
     const testRunResult = await runner.run();
 
     expect(mockAborter.calls).to.equal(1);
+    // This path resubmits, so it must wait for the abort to be confirmed
+    expect(mockAborter.optionsSeen[0].skipCancelConfirmation).to.be.undefined;
     expect(testServiceAsyncStub.calledTwice).to.be.true;
     // The re-run only asks for the class that had not completed
     expect(testServiceAsyncStub.args[1][0]).to.deep.equal({
@@ -622,18 +642,7 @@ describe('TestRunner', () => {
       { Status: 'Processing' },
       { Status: 'Completed' },
     ]);
-    setupExecuteAnonymous(
-      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
-      {
-        column: -1,
-        line: -1,
-        compiled: 'true',
-        compileProblem: '',
-        exceptionMessage: '',
-        exceptionStackTrace: '',
-        success: 'true',
-      }
-    );
+    setupExecuteAnonymous(sandbox);
 
     const logger = new CapturingLogger();
     const mockAborter = new MockAborter();
@@ -661,29 +670,19 @@ describe('TestRunner', () => {
     });
   });
 
-  it('should fall back to a full re-run when no incomplete classes can be identified', async () => {
-    // No queue items returned -> we cannot tell what is incomplete, so re-run
-    // everything rather than risk dropping tests.
+  it('should return the partial result and defer to missing-test detection when no incomplete classes can be identified', async () => {
+    // No queue items returned -> every class is (vacuously) terminal, so
+    // there's nothing to restart. Rather than re-running everything, hand
+    // back the partial result and let Testall's missing-test check find and
+    // re-run the specific tests that are actually absent.
     qhStub.query
       .withArgs('ApexTestQueueItem', match.any, match.any)
       .resolves([]);
     setupMultipleQueryApexTestResults(qhStub, mockTestResult, [
       { Status: 'Processing' },
       { Status: 'Processing' },
-      { Status: 'Completed' },
     ]);
-    setupExecuteAnonymous(
-      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
-      {
-        column: -1,
-        line: -1,
-        compiled: 'true',
-        compileProblem: '',
-        exceptionMessage: '',
-        exceptionStackTrace: '',
-        success: 'true',
-      }
-    );
+    setupExecuteAnonymous(sandbox);
 
     const logger = new CapturingLogger();
     const mockAborter = new MockAborter();
@@ -702,17 +701,72 @@ describe('TestRunner', () => {
     const testRunResult = await runner.run();
 
     expect(mockAborter.calls).to.equal(1);
-    expect(testServiceAsyncStub.calledTwice).to.be.true;
-    // Re-run uses the original full payload, not a pending subset
-    expect(testServiceAsyncStub.args[1][0]).to.deep.equal({
-      tests: [{ className: 'TestSample', namespace: undefined }],
-      testLevel: TestLevel.RunSpecifiedTests,
-      skipCodeCoverage: true,
-    });
-    expect(testRunResult.run.Status).to.equal('Completed');
+    // Only the original async run - no re-submission from TestRunner itself
+    expect(testServiceAsyncStub.calledOnce).to.be.true;
+    expect(testRunResult.run.Status).to.equal('Processing');
     expect(testRunResult.numberOfResets).to.equal(1);
-    // No reset reuse summary was logged
+    // No reset reuse summary was logged, but the explanatory message was
     expect(logger.entries.some(e => /Reusing/.test(e))).to.be.false;
+    expect(
+      logger.entries.some(e =>
+        /has no pending classes, deferring to missing test check/.test(e)
+      )
+    ).to.be.true;
+  });
+
+  it('should keep already-completed results when every class reaches a terminal status but one never produces a result', async () => {
+    // Both classes report Completed in the queue: the org can close a
+    // class's queue item before its result is persisted. Class3's result
+    // never appears.
+    qhStub.query
+      .withArgs('ApexTestResult', match.any, match.any)
+      .onCall(0)
+      .resolves([mockTestResult[0]]) // Class1 pass
+      .onCall(1)
+      .resolves([mockTestResult[0]]); // no progress -> hang; Class3 never shows up
+    const queueItems = [
+      { Id: 'q1', ApexClassId: 'Class1', Status: 'Completed' },
+      { Id: 'q3', ApexClassId: 'Class3', Status: 'Completed' },
+    ];
+    qhStub.query
+      .withArgs('ApexTestQueueItem', match.any, match.any)
+      .resolves(queueItems);
+    setupMultipleQueryApexTestResults(qhStub, mockTestResult, [
+      { Status: 'Processing' },
+      { Status: 'Processing' },
+    ]);
+    setupExecuteAnonymous(sandbox);
+
+    const logger = new CapturingLogger();
+    const mockAborter = new MockAborter();
+    const runner = AsyncTestRunner.forClasses(
+      logger,
+      mockConnection,
+      '',
+      ['TestSample'],
+      {
+        maxTestRunRetries: 2,
+        pollLimitToAssumeHangingTests: 1,
+        aborter: mockAborter,
+      }
+    );
+
+    const testRunResult = await runner.run();
+
+    expect(mockAborter.calls).to.equal(1);
+    expect(testServiceAsyncStub.calledOnce).to.be.true;
+    expect(testRunResult.numberOfResets).to.equal(1);
+    // Class1's already-completed result is kept; Class3's is genuinely absent
+    expect(testRunResult.tests.map(t => t.Id)).to.deep.equal(['test1']);
+
+    const snapshot = JSON.parse(logger.files[0][1]) as {
+      completedClasses: number;
+      pendingClasses: number;
+      reusedTests: number;
+    };
+    expect(snapshot.completedClasses).to.equal(2);
+    expect(snapshot.pendingClasses).to.equal(0);
+    expect(snapshot.reusedTests).to.equal(1);
   });
 
   it('should fall back to a full re-run when the queue cannot be queried', async () => {
@@ -726,18 +780,7 @@ describe('TestRunner', () => {
       { Status: 'Processing' },
       { Status: 'Completed' },
     ]);
-    setupExecuteAnonymous(
-      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
-      {
-        column: -1,
-        line: -1,
-        compiled: 'true',
-        compileProblem: '',
-        exceptionMessage: '',
-        exceptionStackTrace: '',
-        success: 'true',
-      }
-    );
+    setupExecuteAnonymous(sandbox);
 
     const logger = new CapturingLogger();
     const mockAborter = new MockAborter();
@@ -851,18 +894,7 @@ describe('TestRunner', () => {
       .resolves(finalResults)
       .onCall(3)
       .resolves(finalResults);
-    setupExecuteAnonymous(
-      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
-      {
-        column: -1,
-        line: -1,
-        compiled: 'true',
-        compileProblem: '',
-        exceptionMessage: '',
-        exceptionStackTrace: '',
-        success: 'true',
-      }
-    );
+    setupExecuteAnonymous(sandbox);
 
     const logger = new CapturingLogger();
     const mockAborter = new MockAborter();

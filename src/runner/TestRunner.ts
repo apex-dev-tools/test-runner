@@ -17,6 +17,7 @@ import {
   ApexTestRunResultFields,
 } from '../model/ApexTestRunResult';
 import {
+  CancelTestRunOptions,
   getMaxTestRunRetries,
   getOutputFileBase,
   getStatusPollInterval,
@@ -28,7 +29,10 @@ import {
 import path from 'path';
 import TestStats from './TestStats';
 import { QueryHelper } from '../query/QueryHelper';
-import { ApexTestQueueItem, QueueItemStatus } from '../model/ApexTestQueueItem';
+import {
+  ApexTestQueueItem,
+  PENDING_QUEUE_STATUSES,
+} from '../model/ApexTestQueueItem';
 import { TestError, TestErrorKind } from './TestError';
 import { Pollable, poll, retry } from './Poll';
 import { ApexTestResult, ApexTestResultFields } from '../model/ApexTestResult';
@@ -50,19 +54,11 @@ export interface TestRunnerResult {
   numberOfResets: number; // Track the number of times the test run has been reset due to hanging or cancellation
 }
 
-// Queue item statuses for tests that have not finished running. After a reset
-// these are the classes we re-run; classes that finished keep their results
-// (mirrors the statuses the aborter cancels). Note this is only the async
-// re-run - failed tests in finished classes are still re-run afterwards by
-// Testall.syncRun, which applies the configurable rerun filter and runs them
-// sequentially to avoid the row-lock contention that may have caused
-// them.
-const PENDING_QUEUE_STATUSES: QueueItemStatus[] = [
-  'Holding',
-  'Queued',
-  'Preparing',
-  'Processing',
-];
+// Outcome of prepareRestart, naming why a restart does or doesn't happen.
+type PrepareRestartResult =
+  | { kind: 'restart'; items: TestItem[] } // pending classes found, restart with just these
+  | { kind: 'allComplete' } // nothing pending but results are still missing - defer to Testall
+  | { kind: 'unknown' }; // couldn't determine anything - fall back to a full re-run
 
 export interface TestRunner {
   getTestClasses(): string[];
@@ -183,13 +179,19 @@ export class AsyncTestRunner implements TestRunner {
 
     // Ensure result for partial reporting
     try {
+      // Neither of these paths resubmits anything, so don't hold the caller up
+      // waiting for the org to confirm the abort has taken effect.
       if (result.error?.kind === TestErrorKind.Timeout) {
-        await this.abortTestRun(result.run.AsyncApexJobId);
+        await this.abortTestRun(result.run.AsyncApexJobId, {
+          skipCancelConfirmation: true,
+        });
         return result;
       }
 
       if (token?.isCancellationRequested) {
-        await this.abortTestRun(result.run.AsyncApexJobId);
+        await this.abortTestRun(result.run.AsyncApexJobId, {
+          skipCancelConfirmation: true,
+        });
         return result;
       }
 
@@ -202,10 +204,10 @@ export class AsyncTestRunner implements TestRunner {
         // queue query and snapshot.
         const resetNumber = this._stats.getNumberOfTimesReset() + 1;
         const maxResets = getMaxTestRunRetries(this._options) - 1;
-        let restartItems: TestItem[] | undefined;
+        let restart: PrepareRestartResult = { kind: 'unknown' };
         if (resetNumber <= maxResets) {
           this._logger.logResetCount(resetNumber, maxResets);
-          restartItems = await this.prepareRestart(
+          restart = await this.prepareRestart(
             testRunIdResult.testRunId,
             result
           );
@@ -213,7 +215,21 @@ export class AsyncTestRunner implements TestRunner {
 
         this._stats = this._stats.reset();
         await this.abortTestRun(result.run.AsyncApexJobId);
-        return await this.runInternal(token, restartItems);
+
+        if (restart.kind === 'allComplete') {
+          // Nothing pending, so there's nothing to restart - the org can close
+          // a class's queue item before its results are persisted. Hand back
+          // the partial result and let Testall's missing-test check re-run
+          // anything actually absent.
+          result.numberOfResets = this._stats.getNumberOfTimesReset();
+          this._logger.logRunCompleteMissingResults(testRunIdResult.testRunId);
+          return result;
+        }
+
+        return await this.runInternal(
+          token,
+          restart.kind === 'restart' ? restart.items : undefined
+        );
       }
 
       if (
@@ -247,14 +263,14 @@ export class AsyncTestRunner implements TestRunner {
   /**
    * After a hang, work out which classes still need running so the restart only
    * re-runs those. Results from classes that already finished are kept (in
-   * _completedResults) rather than thrown away and re-run. Returns the test
-   * items to re-run, or undefined to fall back to a full re-run (e.g. if we
-   * can't determine progress) so a reset is never worse than before.
+   * _completedResults) rather than thrown away and re-run - any genuine
+   * failures among them are re-run later by Testall.syncRun. See
+   * PrepareRestartResult for what each outcome means.
    */
   private async prepareRestart(
     testRunId: string,
     result: TestRunnerResult
-  ): Promise<TestItem[] | undefined> {
+  ): Promise<PrepareRestartResult> {
     try {
       const queueItems = await this.getQueueItems(testRunId);
 
@@ -289,8 +305,11 @@ export class AsyncTestRunner implements TestRunner {
       );
 
       if (pendingClassIds.length === 0) {
-        // Nothing identified to re-run - fall back to a full re-run.
-        return undefined;
+        // Every class reached a terminal queue status - nothing left to
+        // restart here. Whether results actually are missing is Testall's
+        // call: its missing-test check compares expected vs. persisted
+        // results and re-runs anything absent.
+        return { kind: 'allComplete' };
       }
 
       // Tests still to run = those enqueued this attempt that weren't in a
@@ -304,7 +323,10 @@ export class AsyncTestRunner implements TestRunner {
         pendingClassIds.length
       );
 
-      return this.buildRestartItems(pendingClassIds);
+      return {
+        kind: 'restart',
+        items: this.buildRestartItems(pendingClassIds),
+      };
     } catch (err) {
       // Be defensive: a reset should never be worse than a full re-run.
       this._logger.logWarning(
@@ -312,7 +334,7 @@ export class AsyncTestRunner implements TestRunner {
           TestError.wrapError(err).message
         }`
       );
-      return undefined;
+      return { kind: 'unknown' };
     }
   }
 
@@ -604,12 +626,15 @@ export class AsyncTestRunner implements TestRunner {
     };
   }
 
-  private async abortTestRun(testRunId: string): Promise<string[]> {
+  private async abortTestRun(
+    testRunId: string,
+    options: CancelTestRunOptions = {}
+  ): Promise<string[]> {
     return getTestRunAborter(this._options).abortRun(
       this._logger,
       this._connection,
       testRunId,
-      this._options
+      { ...this._options, ...options }
     );
   }
 }

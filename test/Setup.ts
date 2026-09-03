@@ -2,7 +2,7 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import { TestItem } from '@salesforce/apex-node';
+import { ExecuteService, TestItem } from '@salesforce/apex-node';
 import {
   ExecAnonApiResponse,
   SoapResponse,
@@ -186,21 +186,39 @@ export function createMockTestResult(params: ApexTestResultParams = {}) {
   };
 }
 
+// Stubs out the anon apex call, e.g. the one used to abort queue items. The
+// result models the raw SOAP response, so 'compiled'/'success' are the strings
+// apex-node parses into booleans. Defaults to a successful run - pass only the
+// fields a test cares about.
 export function setupExecuteAnonymous(
-  stub: SinonStub,
-  result: ExecAnonApiResponse
-): void {
+  sandbox: SinonSandbox,
+  result: Partial<ExecAnonApiResponse> = {}
+): SinonStub {
   const log =
     '47.0 APEX_CODE,DEBUG;APEX_PROFILING,INFO\nExecute Anonymous: System.assert(true);|EXECUTION_FINISHED\n';
   const soapResponse: SoapResponse = {
     'soapenv:Envelope': {
       'soapenv:Header': { DebuggingInfo: { debugLog: log } },
       'soapenv:Body': {
-        executeAnonymousResponse: { result: result },
+        executeAnonymousResponse: {
+          result: {
+            column: -1,
+            line: -1,
+            compiled: 'true',
+            compileProblem: '',
+            exceptionMessage: '',
+            exceptionStackTrace: '',
+            success: 'true',
+            ...result,
+          },
+        },
       },
     },
   };
+
+  const stub = sandbox.stub(ExecuteService.prototype, 'connectionRequest');
   stub.resolves(soapResponse);
+  return stub;
 }
 
 export function setupQueryApexClassesSOAP(
@@ -217,16 +235,18 @@ export function setupQueryApexClassesSOAP(
 
 export class MockAborter implements TestRunAborter {
   calls = 0;
+  optionsSeen: CancelTestRunOptions[] = [];
 
   async abortRun(
-    /* eslint-disable @typescript-eslint/no-unused-vars */
+     
     _logger: Logger,
     _connection: Connection,
     _testRunId: string,
-    _options: CancelTestRunOptions
-    /* eslint-enable @typescript-eslint/no-unused-vars */
+    options: CancelTestRunOptions
+     
   ): Promise<string[]> {
     this.calls++;
+    this.optionsSeen.push(options);
     return Promise.resolve(['ID1']);
   }
 }

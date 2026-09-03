@@ -716,6 +716,93 @@ describe('TestAll', () => {
     );
   });
 
+  it('should re-run missing tests when a stalled run is handed back with no error', async () => {
+    // The runner abandons a stalled run by returning a partial result that is
+    // still marked Processing, with no error - missing-test detection has to
+    // run rather than treating the run as finished or aborted.
+    const logger = new CapturingLogger();
+    const { classId, className } = defaultTestInfo;
+    const mockTestResults: ApexTestResult[] = [
+      createMockTestResult({
+        Outcome: 'Pass',
+        MethodName: 'method1',
+        ApexClass: { Id: classId, Name: className, NamespacePrefix: 'ns' },
+      }),
+      createMockTestResult({
+        Outcome: 'Pass',
+        MethodName: 'method2',
+        ApexClass: { Id: classId, Name: className, NamespacePrefix: 'ns' },
+      }),
+    ];
+    const runner = new MockTestRunner({
+      run: createMockRunResult({ Status: 'Processing' }),
+      tests: [mockTestResults[0]],
+      numberOfResets: 1,
+    }).addNextResult({
+      run: createMockRunResult({ Status: 'Completed' }),
+      tests: [mockTestResults[1]],
+      numberOfResets: 0,
+    });
+    const testMethods = new MockTestMethodCollector(
+      logger,
+      mockConnection,
+      'ns',
+      new Map<string, string>([[classId, className]]),
+      new Map<string, Set<string>>([
+        [className, new Set(['method1', 'method2'])],
+      ])
+    );
+
+    const result = await Testall.run(
+      logger,
+      mockConnection,
+      'ns',
+      testMethods,
+      runner,
+      [new MockOutputGenerator()],
+      {}
+    );
+
+    expect(result.runIds.length).to.equal(2);
+    expect(result.testResults.length).to.equal(2);
+    expect(result.numberOfResets).to.equal(1);
+    // The follow-up run's terminal status replaces the stalled one
+    expect(result.runResult.Status).to.equal('Completed');
+    expect(logger.entries[1]).to.match(
+      logRegex('Found 1 methods in 1 classes were not run, trying again...')
+    );
+  });
+
+  it('should report a stalled run as Processing when no results were missing', async () => {
+    // A stalled run is handed back as a partial result still marked
+    // Processing with no error. Here every expected result did arrive - the
+    // org just never moved the run off Processing - so there is no follow-up
+    // run to replace the status and it reaches the summary unchanged.
+    const logger = new CapturingLogger();
+    const runner = new MockTestRunner({
+      run: createMockRunResult({ Status: 'Processing' }),
+      tests: [createMockTestResult()],
+      numberOfResets: 1,
+    });
+    const testMethods = mockDefaultCollector(logger, mockConnection);
+
+    const result = await Testall.run(
+      logger,
+      mockConnection,
+      '',
+      testMethods,
+      runner,
+      [new MockOutputGenerator()],
+      {}
+    );
+
+    expect(result.runIds.length).to.equal(1);
+    expect(result.numberOfResets).to.equal(1);
+    expect(result.runResult.Status).to.equal('Processing');
+    expect(logger.entries.some(e => /were not run, trying again/.test(e))).to.be
+      .false;
+  });
+
   it('should accumulate numberOfResets across outer run and missing-test rerun', async () => {
     // Outer run has 2 resets; the missing-test rerun has 1 reset.
     // The summary should report 3, not just the outer count.
