@@ -165,7 +165,8 @@ describe('TestRunCancelAborter', () => {
         )
       )
     ).to.be.true;
-    expect(logger.entries.some(e => /has been cancelled/.test(e))).to.be.true;
+    // The warning stands alone - don't also claim the run has been cancelled
+    expect(logger.entries.some(e => /has been cancelled/.test(e))).to.be.false;
   });
 
   it('should warn and return rather than throw if the queue never clears', async () => {
@@ -189,6 +190,7 @@ describe('TestRunCancelAborter', () => {
         )
       )
     ).to.be.true;
-    expect(logger.entries.some(e => /has been cancelled/.test(e))).to.be.true;
+    // The warning stands alone - don't also claim the run has been cancelled
+    expect(logger.entries.some(e => /has been cancelled/.test(e))).to.be.false;
   });
 });

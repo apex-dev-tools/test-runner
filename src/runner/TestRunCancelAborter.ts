@@ -73,8 +73,9 @@ export class TestRunCancelAborter implements TestRunAborter {
       }
     }
 
+    let confirmed = true;
     if (!options.skipCancelConfirmation) {
-      await this.waitForCancelConfirmation(
+      confirmed = await this.waitForCancelConfirmation(
         logger,
         connection,
         testRunId,
@@ -82,7 +83,11 @@ export class TestRunCancelAborter implements TestRunAborter {
       );
     }
 
-    logger.logRunCancelled(testRunId);
+    // When confirmation failed its warning has already said so - claiming the
+    // run has been cancelled on top of that just reads as a contradiction.
+    if (confirmed) {
+      logger.logRunCancelled(testRunId);
+    }
 
     return apexQueueItems.map(x => x.Id);
   }
@@ -103,13 +108,13 @@ export class TestRunCancelAborter implements TestRunAborter {
   // to actually stop processing the queue items. Poll for confirmation so a
   // caller that resubmits the same classes doesn't race the still-live run
   // (ALREADY_IN_PROCESS) - callers that resubmit nothing can skip this.
-  // Best-effort: on timeout or error, warn and return rather than throw.
+  // Best-effort: on timeout or error, warn and return false rather than throw.
   private async waitForCancelConfirmation(
     logger: Logger,
     connection: Connection,
     testRunId: string,
     options: CancelTestRunOptions
-  ): Promise<void> {
+  ): Promise<boolean> {
     const confirmation: Pollable<number> = {
       pollDelay: getCancelPollInterval(options).milliseconds,
       pollTimeout: getCancelPollTimeout(options).milliseconds,
@@ -137,12 +142,14 @@ export class TestRunCancelAborter implements TestRunAborter {
 
     try {
       await poll(confirmation, logger);
+      return true;
     } catch (err) {
       logger.logWarning(
         `Could not confirm test run '${testRunId}' finished cancelling: ${
           TestError.wrapError(err).message
         }`
       );
+      return false;
     }
   }
 }
