@@ -6,6 +6,8 @@
 * Adopt `@apexdevtools/sfdx-auth-helper` 3.0.0.
 * Update to `@salesforce/core@^8` and `@salesforce/apex-node@^8`.
 * Replace test-only `@salesforce/core/lib/testSetup` deep imports with the supported `@salesforce/core/testSetup` export.
+* Return partial results instead of re-running the whole suite when a run stalls with no classes left to run, so only the tests actually missing results are re-run.
+* Wait for an aborted run to stop in the org before returning, so a follow-up run for the same classes isn't rejected with `ALREADY_IN_PROCESS`. Can be skipped with the new `skipCancelConfirmation` option.
 
 ## 3.4.0 - 2026-06-23
 
