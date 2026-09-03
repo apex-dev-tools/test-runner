@@ -2,7 +2,7 @@
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
 
-import { ExecuteService, TestLevel, TestService } from '@salesforce/apex-node';
+import { TestLevel, TestService } from '@salesforce/apex-node';
 import { ApexTestResult as ApexNodeTestResult } from '@salesforce/apex-node/lib/src/tests/types';
 import { Connection } from '@salesforce/core';
 import { TestContext } from '@salesforce/core/testSetup';
@@ -517,18 +517,7 @@ describe('TestRunner', () => {
       { Status: 'Processing' },
       { Status: 'Completed' },
     ]);
-    setupExecuteAnonymous(
-      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
-      {
-        column: -1,
-        line: -1,
-        compiled: 'true',
-        compileProblem: '',
-        exceptionMessage: '',
-        exceptionStackTrace: '',
-        success: 'true',
-      }
-    );
+    setupExecuteAnonymous(sandbox);
 
     const logger = new CapturingLogger();
     const mockAborter = new MockAborter();
@@ -653,18 +642,7 @@ describe('TestRunner', () => {
       { Status: 'Processing' },
       { Status: 'Completed' },
     ]);
-    setupExecuteAnonymous(
-      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
-      {
-        column: -1,
-        line: -1,
-        compiled: 'true',
-        compileProblem: '',
-        exceptionMessage: '',
-        exceptionStackTrace: '',
-        success: 'true',
-      }
-    );
+    setupExecuteAnonymous(sandbox);
 
     const logger = new CapturingLogger();
     const mockAborter = new MockAborter();
@@ -704,18 +682,7 @@ describe('TestRunner', () => {
       { Status: 'Processing' },
       { Status: 'Processing' },
     ]);
-    setupExecuteAnonymous(
-      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
-      {
-        column: -1,
-        line: -1,
-        compiled: 'true',
-        compileProblem: '',
-        exceptionMessage: '',
-        exceptionStackTrace: '',
-        success: 'true',
-      }
-    );
+    setupExecuteAnonymous(sandbox);
 
     const logger = new CapturingLogger();
     const mockAborter = new MockAborter();
@@ -768,18 +735,7 @@ describe('TestRunner', () => {
       { Status: 'Processing' },
       { Status: 'Processing' },
     ]);
-    setupExecuteAnonymous(
-      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
-      {
-        column: -1,
-        line: -1,
-        compiled: 'true',
-        compileProblem: '',
-        exceptionMessage: '',
-        exceptionStackTrace: '',
-        success: 'true',
-      }
-    );
+    setupExecuteAnonymous(sandbox);
 
     const logger = new CapturingLogger();
     const mockAborter = new MockAborter();
@@ -824,18 +780,7 @@ describe('TestRunner', () => {
       { Status: 'Processing' },
       { Status: 'Completed' },
     ]);
-    setupExecuteAnonymous(
-      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
-      {
-        column: -1,
-        line: -1,
-        compiled: 'true',
-        compileProblem: '',
-        exceptionMessage: '',
-        exceptionStackTrace: '',
-        success: 'true',
-      }
-    );
+    setupExecuteAnonymous(sandbox);
 
     const logger = new CapturingLogger();
     const mockAborter = new MockAborter();
@@ -949,18 +894,7 @@ describe('TestRunner', () => {
       .resolves(finalResults)
       .onCall(3)
       .resolves(finalResults);
-    setupExecuteAnonymous(
-      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
-      {
-        column: -1,
-        line: -1,
-        compiled: 'true',
-        compileProblem: '',
-        exceptionMessage: '',
-        exceptionStackTrace: '',
-        success: 'true',
-      }
-    );
+    setupExecuteAnonymous(sandbox);
 
     const logger = new CapturingLogger();
     const mockAborter = new MockAborter();

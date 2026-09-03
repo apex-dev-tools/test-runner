@@ -123,7 +123,11 @@ export class TestRunCancelAborter implements TestRunAborter {
       },
 
       pollUntil: outstandingCount => outstandingCount === 0,
-      pollRetryIf: () => true,
+
+      // Don't retry a failing query - if the queue can't be read we can't
+      // confirm anything, and a resubmit that hits ALREADY_IN_PROCESS has its
+      // own retry. Give up now rather than spinning until the timeout.
+      pollRetryIf: () => false,
     };
 
     try {

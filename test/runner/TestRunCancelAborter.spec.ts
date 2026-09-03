@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2022, FinancialForce.com, inc. All rights reserved.
  */
-import { ExecuteService } from '@salesforce/apex-node';
 import { Connection } from '@salesforce/core';
 import { TestContext } from '@salesforce/core/testSetup';
 import { expect } from 'chai';
@@ -41,18 +40,7 @@ describe('TestRunCancelAborter', () => {
   });
 
   it('should cancel when no tests still running', async () => {
-    setupExecuteAnonymous(
-      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
-      {
-        column: -1,
-        line: -1,
-        compiled: 'true',
-        compileProblem: '',
-        exceptionMessage: '',
-        exceptionStackTrace: '',
-        success: 'true',
-      }
-    );
+    setupExecuteAnonymous(sandbox);
     qhStub.query.resolves([]);
 
     const logger = new CapturingLogger();
@@ -71,18 +59,10 @@ describe('TestRunCancelAborter', () => {
   it('should throw if execute anon to cancel tests fails', async () => {
     qhStub.query.onCall(0).resolves([{ Id: 'Some Id' }]);
 
-    setupExecuteAnonymous(
-      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
-      {
-        column: -1,
-        line: -1,
-        compiled: 'true',
-        compileProblem: '',
-        exceptionMessage: 'A message',
-        exceptionStackTrace: '',
-        success: 'false',
-      }
-    );
+    setupExecuteAnonymous(sandbox, {
+      exceptionMessage: 'A message',
+      success: 'false',
+    });
 
     const logger = new CapturingLogger();
     let error;
@@ -114,18 +94,7 @@ describe('TestRunCancelAborter', () => {
   });
 
   it('should wait for outstanding queue items to clear before returning', async () => {
-    setupExecuteAnonymous(
-      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
-      {
-        column: -1,
-        line: -1,
-        compiled: 'true',
-        compileProblem: '',
-        exceptionMessage: '',
-        exceptionStackTrace: '',
-        success: 'true',
-      }
-    );
+    setupExecuteAnonymous(sandbox);
     // call 0: items to abort. call 1: still outstanding. call 2: cleared.
     qhStub.query
       .onCall(0)
@@ -155,18 +124,7 @@ describe('TestRunCancelAborter', () => {
   });
 
   it('should not query for confirmation when skipCancelConfirmation is set', async () => {
-    setupExecuteAnonymous(
-      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
-      {
-        column: -1,
-        line: -1,
-        compiled: 'true',
-        compileProblem: '',
-        exceptionMessage: '',
-        exceptionStackTrace: '',
-        success: 'true',
-      }
-    );
+    setupExecuteAnonymous(sandbox);
     // Would never clear, so without the flag this would poll until it timed out
     qhStub.query.resolves([{ Id: 'q1' }]);
 
@@ -184,19 +142,34 @@ describe('TestRunCancelAborter', () => {
     );
   });
 
+  it('should give up on the first failed confirmation query rather than retrying', async () => {
+    setupExecuteAnonymous(sandbox);
+    qhStub.query
+      .onCall(0)
+      .resolves([{ Id: 'q1' }]) // items to abort
+      .onCall(1)
+      .rejects(new Error('INVALID_SESSION_ID')); // confirmation query fails
+
+    const logger = new CapturingLogger();
+    const aborter = new TestRunCancelAborter();
+    const ids = await aborter.abortRun(logger, mockConnection, testRunId);
+
+    // One confirmation attempt only - a broken query must not spin until the
+    // poll timeout
+    expect(qhStub.query.callCount).to.equal(2);
+    expect(ids).to.deep.equal(['q1']);
+    expect(
+      logger.entries.some(e =>
+        /Warning: Could not confirm test run .* finished cancelling: INVALID_SESSION_ID/.test(
+          e
+        )
+      )
+    ).to.be.true;
+    expect(logger.entries.some(e => /has been cancelled/.test(e))).to.be.true;
+  });
+
   it('should warn and return rather than throw if the queue never clears', async () => {
-    setupExecuteAnonymous(
-      sandbox.stub(ExecuteService.prototype, 'connectionRequest'),
-      {
-        column: -1,
-        line: -1,
-        compiled: 'true',
-        compileProblem: '',
-        exceptionMessage: '',
-        exceptionStackTrace: '',
-        success: 'true',
-      }
-    );
+    setupExecuteAnonymous(sandbox);
     // Every query, including confirmation polls, still reports an outstanding item
     qhStub.query.resolves([{ Id: 'q1' }]);
 
