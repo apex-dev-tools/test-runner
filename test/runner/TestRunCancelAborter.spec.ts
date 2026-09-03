@@ -116,7 +116,9 @@ describe('TestRunCancelAborter', () => {
       logRegex(`Cancelling test run '${testRunId}'`)
     );
     expect(logger.entries[1]).to.match(
-      logRegex(`Waiting for test run '${testRunId}' to cancel... 1 tests queued`)
+      logRegex(
+        `Waiting for test run '${testRunId}' to cancel... 1 tests queued`
+      )
     );
     expect(logger.entries[2]).to.match(
       logRegex(`Test run '${testRunId}' has been cancelled`)
@@ -185,9 +187,9 @@ describe('TestRunCancelAborter', () => {
     expect(ids).to.deep.equal(['q1']);
     expect(
       logger.entries.some(e =>
-        logRegex(`Warning: Could not confirm test run '${testRunId}' finished cancelling.*`).test(
-          e
-        )
+        logRegex(
+          `Warning: Could not confirm test run '${testRunId}' finished cancelling.*`
+        ).test(e)
       )
     ).to.be.true;
     // The warning stands alone - don't also claim the run has been cancelled
